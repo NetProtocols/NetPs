@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<Import Project="..\..\netps.props" />
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.1;net35-cf;</TargetFrameworks>
+		<Configurations>Debug;Release;</Configurations>
+	</PropertyGroup>
+	
+	<ItemGroup Condition=" '$(TargetFramework)' == 'net35-cf' ">
+		<PackageReference Include="WindowsCE.Collections.Immutable" Version="1.0.2" />
+		<PackageReference Include="WindowsCE.Reactive" Version="1.0.0" />
+	</ItemGroup>
+	<ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\NetPs.Socket\NetPs.Socket.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <None Update="README.md">
+	    <PackagePath>\</PackagePath>
+	    <Pack>true</Pack>
+	  </None>
+	</ItemGroup>
+
+</Project>
