@@ -1,23 +1,25 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\netps.props" />
-  <PropertyGroup>
-    <TargetFrameworks>netstandard2.1;net35-cf</TargetFrameworks>
-	<Description>Socket</Description>
-	<Configurations>Debug;Release;</Configurations>
-  </PropertyGroup>
+	<Import Project="..\..\netps.props" />
+	<PropertyGroup>
+		<TargetFrameworks>netstandard2.1;net35-cf;</TargetFrameworks>
+		<Description>Socket</Description>
+		<Configurations>Debug;Release;</Configurations>
+		<LangVersion>latest</LangVersion>
+		<NoWarn>
+			CS8632;
+		</NoWarn>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+	</PropertyGroup>
 	
-	<ItemGroup Condition=" '$(TargetFramework)' == 'net35-cf' ">
-		<PackageReference Include="WindowsCE.Collections.Immutable" Version="1.0.2" />
-		<PackageReference Include="WindowsCE.Reactive" Version="1.0.0" />
-	</ItemGroup>
-	<ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-		<PackageReference Include="System.Reactive" Version="5.0.0" />
-		<PackageReference Include="System.Memory" Version="4.5.4" />
-	</ItemGroup>
 	<ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-		<PackageReference Include="System.Reactive" Version="5.0.0" />
+		<Compile Remove="reference\System.Reactive.WinCE\**" />
+		<Compile Remove="reference\NETStandard.WindowsCE\**" />
+		<!--<PackageReference Include="System.Runtime.InteropServices.WindowsRuntime" Version="4.3.0" />-->
 	</ItemGroup>
-
+	<ItemGroup Condition=" '$(TargetFramework)' == 'net35-cf' ">
+		<Compile Remove="reference\System.Reactive\**" />
+		<IL Include="**\*.il" Exclude="**\obj\**\*.il;**\bin\**\*.il" />
+		<!--<PackageReference Include="Microsoft.Net.Compilers" Version="3.3.1" />-->
+	</ItemGroup>
 </Project>

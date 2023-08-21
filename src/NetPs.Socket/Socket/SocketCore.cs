@@ -25,20 +25,20 @@
     {
         private bool closed = true;
 
-        protected readonly CompositeDisposable disposables;
+        protected readonly CompositeDisposable h_disposables;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
         /// </summary>
         public SocketCore()
         {
-            this.disposables = new CompositeDisposable();
+            this.h_disposables = new CompositeDisposable();
         }
 
         /// <summary>
         /// Gets 取消订阅清单.
         /// </summary>
-        public virtual CompositeDisposable Disposables => this.disposables;
+        public virtual CompositeDisposable Disposables => this.h_disposables;
 
         /// <summary>
         /// 连接.
