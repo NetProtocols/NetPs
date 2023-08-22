@@ -23,9 +23,11 @@
     /// </summary>
     public abstract class SocketCore : IDisposable
     {
+        private bool disposed = false;
         private bool closed = true;
 
         protected readonly CompositeDisposable h_disposables;
+        public bool IsDisposed => disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
@@ -140,6 +142,7 @@
                     this.Socket = null;
                 }
             }
+            this.disposed = true;
             GC.SuppressFinalize(this);
         }
 

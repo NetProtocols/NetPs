@@ -10,14 +10,13 @@ NetPs.Udp基于NetPs.Socket，对UDP数据数据传输提供便捷。
   
 ```csharp
 var host = new UdpHost("0.0.0.0:12345");
-host.ReceicedObservable.Subscribe(data =>
+host.StartReveice(data =>
 {
     using (var tx = host.GetTx(data.IP))
     {
         tx.Transport(new byte[] { 1, 2 });
     }
 });
-host.Rx.StartReveice();
 using (var tx = host.GetTx("192.168.1.1:12345"))
 {
     tx.Transport(new byte[] { 1, 2 });

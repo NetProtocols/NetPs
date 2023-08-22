@@ -2,9 +2,6 @@
 {
     using System;
     using System.IO;
-    using System.Linq;
-    using System.Threading;
-    using System.Threading.Tasks;
 #if NET35_CF
     using Array = System.Array2;
 #endif

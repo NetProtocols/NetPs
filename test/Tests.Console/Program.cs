@@ -1,4 +1,5 @@
 ﻿using NetPs.Socket;
+using NetPs.Socket.Eggs;
 using NetPs.Tcp;
 using NetPs.Udp;
 using NetPs.Udp.DNS;
@@ -15,29 +16,24 @@ using TestsConsole;
 
 namespace TestsConsole
 {
-    class Program
+    class Program : IHeatingWatch
     {
-        static async Task Main(string[] args)
-        {
-            //new TcpServer((server, client) =>
-            //{
-            //    client.StartMirror("172.17.0.161:5244");
-            //}).Run("0.0.0.0:5244", () =>
-            //{
-            //    Environment.Exit(0);
-            //});
-            var host = "nuget.org";
-            Console.WriteLine(DnsHost.DNS_OPENDNS);
-            Console.Write("> ");
-            host = Console.ReadLine();
-            while (host != "exit")
-            {
-                await HostResolver(host, DnsHost.DNS_OPENDNS);
+        static bool exited = false;
 
-                Console.Write("> ");
-                host = Console.ReadLine();
-            }
+        static void Main()
+        {
+            Console.Write("loading");
+            var prog = new Program();
+            Task.Run(() => Food.Heating(prog)).GetAwaiter();
+            while (!exited) Thread.Sleep(100);
         }
+        //static async Task<int> Main(string[] args)
+        //{
+        //    var prog = new Program();
+        //    Task.Run(() => Food.Heating(prog)).GetAwaiter();
+        //    while (!exited) await Task.Delay(100);
+        //    return 0;
+        //}
 
         static internal async Task HostResolver(string host, string dns, int port= 53)
         {
@@ -79,6 +75,28 @@ namespace TestsConsole
             {
                 Console.WriteLine("enter 'exit' to exit.");
             }
+        }
+
+        public void Heat_Progress()
+        {
+            Console.Write(".");
+        }
+
+        public async void Heat_End()
+        {
+            Console.WriteLine("ok");
+            var host = "nuget.org";
+            Console.WriteLine(DnsHost.DNS_OPENDNS);
+            Console.Write("> ");
+            host = Console.ReadLine();
+            while (host != "exit")
+            {
+                await HostResolver(host, DnsHost.DNS_OPENDNS);
+
+                Console.Write("> ");
+                host = Console.ReadLine();
+            }
+            exited = true;
         }
     }
 }

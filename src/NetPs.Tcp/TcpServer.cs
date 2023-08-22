@@ -14,14 +14,17 @@
     {
         private object locker = new object();
         private bool alive = false;
+
+        public TcpServer(Action<TcpCore> tcp_config = null) : base(tcp_config)
+        {
+            construct();
+        }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpServer"/> class.
         /// </summary>
         public TcpServer(Action<TcpServer, TcpClient> accepted, Action<TcpCore> tcp_config = null) : base(tcp_config)
         {
-            this.Ax = new TcpAx(this);
-
-            this.Connects = new List<TcpClient>();
+            construct();
             this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
             {
                 var client = new TcpClient();
@@ -44,6 +47,41 @@
 
                 accepted?.Invoke(this, client);
             }));
+        }
+
+        public TcpServer(ITcpServerConfig serverConfig) : base(serverConfig)
+        {
+            construct();
+            this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
+            {
+                var client = new TcpClient(s);
+                if (serverConfig.TcpAccept(this, client))
+                {
+                    client.Disposables.Add(client.LoseConnectedObservable.Subscribe(_ =>
+                    {
+                        lock (this.locker)
+                        {
+                            this.Connects.Remove(client);
+                        }
+                        client.Dispose();
+                    }));
+                    lock (this.locker)
+                    {
+                        if (client.Actived)
+                        {
+                            this.Connects.Add(client);
+                        }
+                    }
+                    client.StartReceive(serverConfig);
+                }
+            }));
+            this.Run(serverConfig.BandAddress);
+        }
+
+        private void construct()
+        {
+            this.Ax = new TcpAx(this);
+            this.Connects = new List<TcpClient>();
         }
 
         /// <summary>
@@ -98,6 +136,16 @@
                 this.Tcp_config?.Invoke(this);
                 this.Bind();
                 this.Listen(Consts.MaxAcceptClient);
+                if (address.Port == 0)
+                {
+                    // 端口由socket 分配
+                    var ip = Socket.LocalEndPoint as IPEndPoint;
+                    if (ip != null)
+                    {
+                        Address = new SocketUri($"{Address.Scheme}{SocketUri.SchemeDelimiter}{Address.Host}{SocketUri.PortDelimiter}{ip.Port}");
+                        IPEndPoint.Port = ip.Port;
+                    }
+                }
                 this.OnConnected();
             }
         }

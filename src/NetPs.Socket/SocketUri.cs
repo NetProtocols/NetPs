@@ -8,7 +8,9 @@ namespace NetPs.Socket
 {
     public class SocketUri : Uri
     {
+        public const string PortDelimiter = ":";
         public virtual IPAddress IP { get; protected set; }
+
 
         public SocketUri(string uriString) : base(InitializationUriString(uriString))
         {
@@ -24,6 +26,7 @@ namespace NetPs.Socket
         {
             Initialization();
         }
+
         protected virtual void Initialization()
         {
             this.IP = ParseIP(Host);
@@ -41,7 +44,7 @@ namespace NetPs.Socket
 
         public static string GetProtol(string uriString)
         {
-            var protol = Regex.Match(uriString, @"[a-zA-Z]+\:\/\/");
+            var protol = Regex.Match(uriString, @"[a-zA-Z.]+\:\/\/");
             if (protol.Success)
             {
                 return protol.Value.TrimEnd(':','/','/');

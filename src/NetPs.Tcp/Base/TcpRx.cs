@@ -32,7 +32,7 @@
             this.core = tcpCore;
             this.nBuffersize = Consts.ReceiveBytes;
             this.bBuffer = new byte[this.nBuffersize];
-            this.ReceivedObservable = Observable.FromEvent<ReveicedStreamHandler, byte[]>(handler => buffer => handler(buffer), evt => this.Reveiced += evt, evt => this.Reveiced -= evt);
+            this.ReceivedObservable = Observable.FromEvent<ReceivedStreamHandler, byte[]>(handler => buffer => handler(buffer), evt => this.Received += evt, evt => this.Received -= evt);
         }
 
         /// <summary>
@@ -44,12 +44,12 @@
         /// 接收流.
         /// </summary>
         /// <param name="stream">流.</param>
-        public delegate void ReveicedStreamHandler(byte[] stream);
+        public delegate void ReceivedStreamHandler(byte[] stream);
 
         /// <summary>
         /// 接收数据.
         /// </summary>
-        public virtual event ReveicedStreamHandler Reveiced;
+        public virtual event ReceivedStreamHandler Received;
 
         /// <summary>
         /// Gets 接送缓冲区大小.
@@ -61,7 +61,7 @@
         /// <summary>
         /// 开始接收.
         /// </summary>
-        public virtual void StartReveice()
+        public virtual void StartReceive()
         {
             this._StartReveice();
             this.core.Receiving = true;
@@ -71,7 +71,7 @@
         public virtual void Dispose()
         {
             this.isDisposed = true;
-            this.Reveiced = null;
+            this.Received = null;
             this.core.Receiving = false;
         }
 
@@ -129,7 +129,7 @@
                     var buffer = new byte[this.nReceived];
                     Array.Copy(this.bBuffer, buffer, this.nReceived);
                     Array.Clear(this.bBuffer, 0, this.nReceived);
-                    this.Reveiced?.Invoke(buffer);
+                    this.Received?.Invoke(buffer);
                 }
                 else if (!this.actived)
                 {
