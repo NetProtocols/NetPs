@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NetPs.Socket;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace NetPs.Udp.DNS
     public class DnsQuestion
     {
         public string Name;
+        public string Name_punycode;
         public ushort Type;
         public ushort Class;
     }
@@ -32,7 +34,7 @@ namespace NetPs.Udp.DNS
     {
         public string PrimaryNameserver;
         public string ResponsibleAuthorityMailbox;
-        public int SerialNumber;
+        public long SerialNumber;
         public int RefreshInterval;
         public int RetryInterval;
         public int ExpireLimit;
@@ -47,6 +49,8 @@ namespace NetPs.Udp.DNS
     {
         public const ushort Flag_standard_query = 0x0100;
         public const ushort Flag_standard_query_response = 0x8180;
+        public const ushort Flag_standard_query_response_err = 0x8183;
+        public const ushort Flag_standard_query_response_NOTIMPLEMENTED = 0x8184;
         public const ushort Type_AAAA = 0x001c;
         public const ushort Type_A = 0x0001;
         public const ushort Type_NS = 0x0002;
@@ -84,6 +88,7 @@ namespace NetPs.Udp.DNS
                 var reader = new BinaryReader(ms);
                 TransactionID = Read_ushort(reader);
                 Flags = Read_ushort(reader);
+                if (Flag_standard_query_response != Flags) return; 
                 Questions = Read_ushort(reader);
                 AnswerRRs = Read_ushort(reader);
                 AuthorityRRs = Read_ushort(reader);
@@ -109,10 +114,10 @@ namespace NetPs.Udp.DNS
                             answer.Address = new IPAddress(answer.Data);
                             break;
                         case Type_CNAME:
-                            using (var ms_cname = new MemoryStream(answer.Data))
+                            using (var ms_cname = new QueueStream(answer.Data))
                             {
                                 var reader_cname = new BinaryReader(ms_cname);
-                                var cname_buf = Read_data(reader, reader_cname).ToArray();
+                                var cname_buf = Read_data(reader, ms_cname).ToArray();
                                 answer.CNAME = Encoding.UTF8.GetString(cname_buf, 0, cname_buf.Length);
                             }
                             break;
@@ -127,24 +132,23 @@ namespace NetPs.Udp.DNS
 
                     if (authoritativeNameserver.DataLength > 0)
                     {
-                        using (var ms_auth = new MemoryStream(authoritativeNameserver.Data))
+                        using (var ms_auth = new QueueStream(authoritativeNameserver.Data))
                         {
-                            var reader_auth = new BinaryReader(ms_auth);
-                            var nbuf = Read_data(reader, reader_auth).ToArray();
+                            var nbuf = Read_data(reader, ms_auth).ToArray();
                             authoritativeNameserver.PrimaryNameserver = Encoding.UTF8.GetString(nbuf, 0, nbuf.Length);
                             if (!ms_auth.CanRead) continue;
-                            nbuf = Read_data(reader, reader_auth).ToArray();
+                            nbuf = Read_data(reader, ms_auth).ToArray();
                             authoritativeNameserver.ResponsibleAuthorityMailbox = Encoding.UTF8.GetString(nbuf, 0, nbuf.Length);
                             if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.SerialNumber = Read_int(reader_auth);
+                            authoritativeNameserver.SerialNumber = ms_auth.DequeueInt64_32();
                             if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.RefreshInterval = Read_int(reader_auth);
+                            authoritativeNameserver.RefreshInterval = ms_auth.DequeueInt32_Reversed();
                             if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.RetryInterval = Read_int(reader_auth);
+                            authoritativeNameserver.RetryInterval = ms_auth.DequeueInt32_Reversed();
                             if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.ExpireLimit = Read_int(reader_auth);
+                            authoritativeNameserver.ExpireLimit = ms_auth.DequeueInt32_Reversed();
                             if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.MinimumTTL = Read_int(reader_auth);
+                            authoritativeNameserver.MinimumTTL = ms_auth.DequeueInt32_Reversed();
                         }
                     }
                 }
@@ -182,18 +186,18 @@ namespace NetPs.Udp.DNS
             var rlt = BitConverter.ToInt32(reader.ReadBytes(4).Reverse().ToArray(), 0);
             return rlt;
         }
-        private IList<byte> Read_data(BinaryReader reader, BinaryReader data_reader)
+        private IList<byte> Read_data(BinaryReader reader, QueueStream data_reader)
         {
             byte len;
             var lst = new List<byte>();
 
             do
             {
-                len = data_reader.ReadByte();
+                len = data_reader.DequeueByte();
 
                 if (len == 0xc0)
                 {
-                    var c0_ix = data_reader.ReadByte();
+                    var c0_ix = data_reader.DequeueByte();
                     var ix = reader.BaseStream.Position;
                     reader.BaseStream.Position = c0_ix;
                     lst.AddRange(Read_c0(reader));
@@ -207,10 +211,10 @@ namespace NetPs.Udp.DNS
                 }
                 else
                 {
-                    lst.AddRange(data_reader.ReadBytes(len));
+                    lst.AddRange(data_reader.Dequeue(len));
                     lst.Add((byte)'.');
                 }
-            } while (data_reader.BaseStream.CanRead);
+            } while (data_reader.CanRead);
             return lst;
         }
         private IList<byte> Read_c0(BinaryReader reader)
@@ -330,7 +334,8 @@ namespace NetPs.Udp.DNS
 
         private void WriteQuestion(MemoryStream ms, DnsQuestion question, IDictionary<string, byte> c0_dict)
         {
-            WriteString(question.Name, ms, c0_dict);
+            question.Name_punycode = Punycode.Encode(question.Name);
+            WriteString(question.Name_punycode, ms, c0_dict);
 
             WriteBytes(ms, question.Type);
             WriteBytes(ms, question.Class);
@@ -375,6 +380,14 @@ namespace NetPs.Udp.DNS
         }
 
         private void WriteBytes(MemoryStream ms, int data)
+        {
+            var _data = BitConverter.GetBytes(data);
+            ms.WriteByte(_data[3]);
+            ms.WriteByte(_data[2]);
+            ms.WriteByte(_data[1]);
+            ms.WriteByte(_data[0]);
+        }
+        private void WriteBytes(MemoryStream ms, long data)
         {
             var _data = BitConverter.GetBytes(data);
             ms.WriteByte(_data[3]);

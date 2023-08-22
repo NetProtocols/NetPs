@@ -2,6 +2,9 @@
 {
     using System;
     using System.IO;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
 #if NET35_CF
     using Array = System.Array2;
 #endif
@@ -33,9 +36,24 @@
         /// <summary>
         /// Initializes a new instance of the <see cref="QueueStream"/> class.
         /// </summary>
-        public QueueStream()
+        public QueueStream() : base(0)
         {
             this.Clear();
+        }
+
+        public QueueStream(int capacity) : base(capacity)
+        {
+            this.Clear();
+        }
+
+        /// <summary>
+        /// 只读
+        /// </summary>
+        /// <param name="bytes"></param>
+        public QueueStream(byte[] bytes) : base(bytes)
+        {
+            this.Clear();
+            nLength = bytes.Length;
         }
 
         /// <summary>
@@ -45,6 +63,8 @@
 
         /// <inheritdoc/>
         public override long Length => this.nLength;
+        
+        public override bool CanRead => this.Length != 0;
 
         /// <summary>
         /// 清空队列.
@@ -72,6 +92,10 @@
         {
             lock (this.locker)
             {
+                if (length + this.Length > Capacity)
+                {
+                    Capacity += length;
+                }
                 if (block == null || block.Length == 0 || length == 0)
                 {
                     return;
@@ -105,7 +129,7 @@
                 }
 
                 this.Position = this.w + 1;
-                this.Write(block, offset, (int)len);
+                base.Write(block, offset, (int)len);
                 this.nLength += len;
                 this.w += len;
                 if (this.is_main(this.w))
@@ -130,13 +154,13 @@
         /// <param name="block">数据块.</param>
         /// <param name="offset">偏移.</param>
         /// <param name="length">长度.</param>
-        public virtual void Dequeue(ref byte[] block, int offset = 0, int length = -1)
+        public virtual int Dequeue(ref byte[] block, int offset = 0, int length = -1)
         {
             lock (this.locker)
             {
                 if (block == null || block.Length == 0 || length == 0 || this.IsEmpty)
                 {
-                    return;
+                    return 0;
                 }
                 else if (length > block.Length || length < 0)
                 {
@@ -178,7 +202,7 @@
                 }
 
                 this.Position = this.r + 1;
-                this.Read(block, offset, (int)len);
+                var rlt = base.Read(block, offset, (int)len);
                 this.nLength -= len;
                 this.r += len;
 
@@ -192,6 +216,8 @@
                     this.x = this.r = this.w = this.enda = this.endb = -1;
                     this.SetLength(0);
                 }
+
+                return rlt;
             }
         }
 
@@ -219,6 +245,14 @@
             }
         }
 
+        public virtual byte DequeueByte()
+        {
+            lock (this.locker)
+            {
+                return this.Dequeue(1)[0];
+            }
+        }
+
         /// <summary>
         /// 出 Int32.
         /// </summary>
@@ -232,6 +266,27 @@
         }
 
         /// <summary>
+        /// 出 Int32.
+        /// </summary>
+        /// <returns>整形.</returns>
+        public virtual Int64 DequeueInt64_32()
+        {
+            byte[] bytes = new byte[8];
+            lock (this.locker)
+            {
+                this.Dequeue(ref bytes, 0, 4);
+            }
+            bytes[4] = bytes[0];
+            bytes[0] = bytes[3];
+            bytes[3] = bytes[4]; ;
+            bytes[4] = bytes[1];
+            bytes[1] = bytes[2];
+            bytes[2] = bytes[4];
+            bytes[4] = 0;
+            return BitConverter.ToInt64(bytes, 0);
+        }
+
+        /// <summary>
         /// 存入 Int32.
         /// </summary>
         /// <param name="data">整形.</param>
@@ -240,6 +295,53 @@
             lock (this.locker)
             {
                 this.Enqueue(BitConverter.GetBytes(data));
+            }
+        }
+
+        public virtual int DequeueInt32_Reversed()
+        {
+            byte[] bytes;
+            lock (this.locker)
+            {
+                bytes = this.Dequeue(4);
+            }
+            var buf = bytes[0];
+            bytes[0] = bytes[3];
+            bytes[3] = buf;
+            buf = bytes[1];
+            bytes[1] = bytes[2];
+            bytes[2] = buf;
+            return BitConverter.ToInt32(bytes, 0);
+        }
+
+        public override int ReadByte()
+        {
+            return this.DequeueByte();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return this.Dequeue(ref buffer, offset, count);
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            this.Enqueue(buffer, offset, count);
+        }
+
+        public override void WriteByte(byte value)
+        {
+            this.Enqueue(new byte[] { value }, 0, 1);
+        }
+
+        public override void WriteTo(Stream stream)
+        {
+            var length = (int)this.Length;
+            var buffer = new byte[4096];
+            while (this.CanRead)
+            {
+                var len = this.Dequeue(ref buffer, 0, 4096);
+                stream.Write(buffer, 0, len);
             }
         }
 

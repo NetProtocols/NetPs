@@ -44,7 +44,7 @@ namespace NetPs.Socket
             var protol = Regex.Match(uriString, @"[a-zA-Z]+\:\/\/");
             if (protol.Success)
             {
-                return protol.Value.TrimEnd("://".ToCharArray());
+                return protol.Value.TrimEnd(':','/','/');
             }
 
             return Uri.UriSchemeNetTcp;
