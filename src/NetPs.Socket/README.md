@@ -6,6 +6,8 @@ NetPs基类，对原始的System.Net.Socket类进行简单封装。
 
 SocketUri增加了任意地址的解析。
 
+该库支持提前预热来加快首次运行速度，可以通过调用方法进行使用 `NetPs.Socket.Eggs.Food.Heating();`
+
 ## How To Use?
 
 - **SocketCore**

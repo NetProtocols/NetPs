@@ -1,25 +1,24 @@
 ﻿namespace NetPs.Socket.Eggs
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using System.Runtime.CompilerServices;
     using System.Threading;
-    using System.Threading.Tasks;
 
     public static class Food
     {
         public const char Delimiter = ';';
-        public const string Assemblys = "NetPs.Socket;NetPs.Tcp;NetPs.Udp;NetPs.Webdav;";
+        public const string Assemblys = "NetPs.Tcp;NetPs.Udp;NetPs.Webdav";
         public static void Heating(IHeatingWatch watch = null)
         {
             if (watch == null) watch = new NoneWatch();
             var ass = Assemblys.Split(Delimiter);
             try
             {
-                watch.Heat_Progress();
-                var queue = new Queue<TaskAwaiter>();
+                var queue = new Queue<Thread>();
+                queue.Enqueue(run_heat(typeof(Heat_socket), watch));
                 for (int ass_i = 0; ass_i < ass.Length; ass_i++)
                 {
                     Assembly a = null;
@@ -35,24 +34,29 @@
 
                         if (types[i].GetInterfaces().Contains(typeof(IHeat)))
                         {
-                            watch.Heat_Progress();
-                            IHeat heat = Activator.CreateInstance(types[i]) as IHeat;
-                            queue.Enqueue(Task.Run(() => heat.Start(watch)).GetAwaiter());
+                            queue.Enqueue(run_heat(types[i], watch));
                         }
                     }
                 }
 
-                while (queue.Count > 0)
-                {
-                    var w = queue.Dequeue();
-                    while (!w.IsCompleted) w.GetResult();
-                }
+                while (queue.Count > 0) queue.Dequeue().Join();
             }
             catch (Exception e){ throw e; }
             finally
             {
-                watch.Heat_End();
+                new Thread(new ThreadStart(watch.Heat_End)).Start();
             }
+        }
+
+        private static Thread run_heat(Type type, IHeatingWatch watch)
+        {
+            watch.Heat_Progress();
+            IHeat heat = Activator.CreateInstance(type) as IHeat;
+            var thread = new Thread(new ThreadStart(() => heat.Start(watch)));
+            thread.IsBackground = true;
+            thread.Priority = ThreadPriority.Lowest;
+            thread.Start();
+            return thread;
         }
 
         private class NoneWatch : IHeatingWatch

@@ -38,7 +38,7 @@
         public const string DNS_CLOUDFLARE = "1.1.1.1";
         #endregion
         public const int DEFAUlT_TIMEOUT = 2000;
-        public const int DEFAULT_RETRY_TIMES = 1;
+        public const int DEFAULT_RETRY_TIMES = 2;
         private static ushort id = 1;
         protected readonly CompositeDisposable disposables;
         private UdpHost host;

@@ -1,21 +1,13 @@
-﻿using NetPs.Socket;
-using NetPs.Socket.Eggs;
-using NetPs.Tcp;
-using NetPs.Udp;
-using NetPs.Udp.DNS;
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using TestsConsole;
-
-namespace TestsConsole
+﻿namespace TestsConsole
 {
+    using NetPs.Socket.Eggs;
+    using NetPs.Udp;
+    using System;
+    using System.Diagnostics;
+    using System.Linq;
+    using System.Threading;
+    using System.Threading.Tasks;
+
     class Program : IHeatingWatch
     {
         static bool exited = false;
@@ -23,24 +15,50 @@ namespace TestsConsole
         static void Main()
         {
             Console.Write("loading");
-            var prog = new Program();
-            Task.Run(() => Food.Heating(prog)).GetAwaiter();
+            new Thread(new ThreadStart(() => Food.Heating(new Program()))).Start();
             while (!exited) Thread.Sleep(100);
         }
-        //static async Task<int> Main(string[] args)
-        //{
-        //    var prog = new Program();
-        //    Task.Run(() => Food.Heating(prog)).GetAwaiter();
-        //    while (!exited) await Task.Delay(100);
-        //    return 0;
-        //}
 
-        static internal async Task HostResolver(string host, string dns, int port= 53)
+        public void Heat_Progress()
+        {
+            Console.Write(".");
+        }
+
+        public async void Heat_End()
+        {
+            Console.WriteLine("ok");
+            var host = "nuget.org";
+            var dns = DnsHost.DNS_NETEASE;
+            Console.WriteLine(dns);
+            Console.Write("> ");
+            host = Console.ReadLine();
+            while (host != "exit")
+            {
+                var a = host.Split(" ".ToArray(), 2);
+                if (a.Length == 2)
+                    switch (a[0])
+                    {
+                        case "dns":
+                            dns = a[1];
+                            break;
+
+                    }
+                else
+                {
+                    await HostResolver(host, dns);
+                }
+
+                Console.Write("> ");
+                host = Console.ReadLine();
+            }
+            exited = true;
+        }
+        private static async Task HostResolver(string host, string dns, int port = 53)
         {
             dns += ":" + port;
             try
             {
-                using (var dns_client = new DnsHost(1000))
+                using (var dns_client = new DnsHost(5000))
                 {
                     var sw = new Stopwatch();
 
@@ -54,7 +72,7 @@ namespace TestsConsole
                     sw.Stop();
                     var times2 = sw.ElapsedMilliseconds;
                     //var times2 = sw.ElapsedMilliseconds;
-                    var addrs = packet.Answers.Where(a => a.Address !=null).Select(a => a.Address.ToString()).ToArray();
+                    var addrs = packet.Answers.Where(a => a.Address != null).Select(a => a.Address.ToString()).ToArray();
                     var addrs2 = packet2.Answers.Where(a => a.Address != null).Select(a => a.Address.ToString()).ToArray();
                     var cnames = packet.Answers.Where(a => a.CNAME != null).Select(a => a.CNAME).ToArray();
                     Console.WriteLine($"IPv4 take {times}ms; Total: " + addrs.Length);
@@ -75,28 +93,6 @@ namespace TestsConsole
             {
                 Console.WriteLine("enter 'exit' to exit.");
             }
-        }
-
-        public void Heat_Progress()
-        {
-            Console.Write(".");
-        }
-
-        public async void Heat_End()
-        {
-            Console.WriteLine("ok");
-            var host = "nuget.org";
-            Console.WriteLine(DnsHost.DNS_OPENDNS);
-            Console.Write("> ");
-            host = Console.ReadLine();
-            while (host != "exit")
-            {
-                await HostResolver(host, DnsHost.DNS_OPENDNS);
-
-                Console.Write("> ");
-                host = Console.ReadLine();
-            }
-            exited = true;
         }
     }
 }
