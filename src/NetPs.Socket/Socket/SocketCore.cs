@@ -23,22 +23,24 @@
     /// </summary>
     public abstract class SocketCore : IDisposable
     {
+        private bool disposed = false;
         private bool closed = true;
 
-        protected readonly CompositeDisposable disposables;
+        protected readonly CompositeDisposable h_disposables;
+        public bool IsDisposed => disposed;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
         /// </summary>
         public SocketCore()
         {
-            this.disposables = new CompositeDisposable();
+            this.h_disposables = new CompositeDisposable();
         }
 
         /// <summary>
         /// Gets 取消订阅清单.
         /// </summary>
-        public virtual CompositeDisposable Disposables => this.disposables;
+        public virtual CompositeDisposable Disposables => this.h_disposables;
 
         /// <summary>
         /// 连接.
@@ -140,6 +142,7 @@
                     this.Socket = null;
                 }
             }
+            this.disposed = true;
             GC.SuppressFinalize(this);
         }
 

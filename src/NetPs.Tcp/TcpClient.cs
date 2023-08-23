@@ -1,10 +1,7 @@
 ﻿namespace NetPs.Tcp
 {
-    using NetPs.Socket;
     using System;
-    using System.Net;
     using System.Net.Sockets;
-    using System.Reactive.Linq;
 
     /// <summary>
     /// Tcp 客户端.
@@ -19,6 +16,11 @@
         {
         }
 
+        public TcpClient(Socket socket) : base(null)
+        {
+            PutSocket(socket);
+        }
+
         /// <summary>
         /// Gets or sets 发送完成.
         /// </summary>
@@ -28,6 +30,16 @@
         /// Gets or sets 接收数据.
         /// </summary>
         public virtual IObservable<byte[]> ReceivedObservable => this.Rx.ReceivedObservable;
+
+        public void StartReceive() => this.Rx.StartReceive();
+
+        public void Transport(byte[] data) => Tx.Transport(data);
+
+        public void StartReceive(ITcpReceive receive)
+        {
+            this.Disposables.Add(this.Rx.ReceivedObservable.Subscribe(data => receive.TcpReceive(data, this)));
+            this.Rx.StartReceive();
+        }
 
         /// <inheritdoc/>
         public override void Dispose()

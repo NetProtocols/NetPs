@@ -1,15 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-	<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\NetPs.Tcp\NetPs.Tcp.csproj" />
-    <ProjectReference Include="..\..\src\NetPs.Udp\NetPs.Udp.csproj" />
-  </ItemGroup>
+	<Import Project="..\..\net35-cf.program.props" />
+	<PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>
+	<PropertyGroup>
+		<TargetFrameworks>netcoreapp3.1;net35-cf;</TargetFrameworks>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\..\src\NetPs.Tcp\NetPs.Tcp.csproj" />
+		<ProjectReference Include="..\..\src\NetPs.Udp\NetPs.Udp.csproj" />
+	</ItemGroup>
 
 </Project>

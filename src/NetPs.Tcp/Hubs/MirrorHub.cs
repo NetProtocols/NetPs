@@ -1,11 +1,7 @@
-﻿using System;
-using System.Reactive.Disposables;
-using System.Threading;
-using System.Text;
-using NetPs.Tcp;
-
-namespace NetPs.Tcp
+﻿namespace NetPs.Tcp
 {
+    using System;
+
     public class MirrorHub : HubBase, IHub
     {
         private TcpClient tcp;
@@ -26,8 +22,8 @@ namespace NetPs.Tcp
             }));
             this.mirror.Disposables.Add(mirror.ConnectedObservable.Subscribe(_ =>
             {
-                mirror.Rx.StartReveice();
-                this.tcp.Rx.StartReveice();
+                mirror.Rx.StartReceive();
+                this.tcp.Rx.StartReceive();
             }));
         }
         public long ID => this.id;

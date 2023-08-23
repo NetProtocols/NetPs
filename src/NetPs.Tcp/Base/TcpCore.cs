@@ -9,12 +9,25 @@
     /// <summary>
     /// .
     /// </summary>
-    public class TcpCore : SocketCore
+    public class TcpCore : SocketCore, ITcpConfig
     {
         private readonly Action<TcpCore> tcp_config;
+        private ITcpConfig X_TcpConfig { get; }
         public TcpCore(Action<TcpCore> tcp_config)
         {
             this.tcp_config = tcp_config;
+            X_TcpConfig = this;
+            construct();
+        }
+
+        public TcpCore(ITcpConfig config)
+        {
+            X_TcpConfig = config;
+            construct();
+        }
+
+        private void construct()
+        {
             this.ConnectedObservable = Observable.FromEvent<SateChangeHandler, IPEndPoint>(handler => ip => handler(ip), evt => this.Connected += evt, evt => this.Connected -= evt);
             this.LoseConnectedObservable = Observable.FromEvent<SateChangeHandler, IPEndPoint>(handler => ip => handler(ip), evt => this.DisConnected += evt, evt => this.DisConnected -= evt);
         }
@@ -71,9 +84,14 @@
                 this.Connecting = true;
                 this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
                 this.Socket = new Socket(address.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                this.Tcp_config?.Invoke(this);
+                X_TcpConfig.TcpConfigure(this);
                 this.StartConnect(this.ConnectTimeout);
             }
+        }
+
+        public void TcpConfigure(TcpCore core)
+        {
+            if (tcp_config != null) tcp_config.Invoke(core);
         }
     }
 }

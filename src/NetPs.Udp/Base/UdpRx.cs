@@ -130,7 +130,7 @@
                 if (this.nReceived > 0)
                 {
                     var buffer = new byte[this.nReceived];
-                    Array.Copy(this.bBuffer, buffer, this.nReceived);
+                    Array.Copy(this.bBuffer, 0, buffer, 0, this.nReceived);
                     Array.Clear(this.bBuffer, 0, this.nReceived);
                     this.Reveiced?.Invoke(new UdpData { Data = buffer, IP = this.remotePoint as IPEndPoint });
                 }

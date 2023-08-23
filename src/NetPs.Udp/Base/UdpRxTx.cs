@@ -20,6 +20,16 @@
         public UdpRx Rx { get; protected set; }
 
         /// <summary>
+        /// 开始接收数据
+        /// </summary>
+        public void StartReveice(Action<UdpData> action = null)
+        {
+            if (action == null) this.Disposables.Add(this.ReceicedObservable.Subscribe());
+            else this.Disposables.Add(this.ReceicedObservable.Subscribe(action));
+            this.Rx.StartReveice();
+        }
+
+        /// <summary>
         /// Gets or sets 接收数据.
         /// </summary>
         public virtual IObservable<UdpData> ReceicedObservable => this.Rx.ReceicedObservable;
@@ -36,6 +46,7 @@
                 }
                 tx.Disposables.Add(tx.TransportedObservable.Subscribe(observer =>
                 {
+                    if (this.IsDisposed) return;
                     lock (txs)
                     {
                         this.txs.Remove(tx);
@@ -54,9 +65,12 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
-            this.Rx?.Dispose();
-            foreach (var tx in this.txs) tx.Dispose();
-            base.Dispose();
+            lock (txs)
+            {
+                this.Rx?.Dispose();
+                for (var i = 0; i< txs.Count; i++) txs[i].Dispose();
+                base.Dispose();
+            }
         }
     }
 }

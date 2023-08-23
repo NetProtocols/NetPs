@@ -24,6 +24,16 @@
             this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
             this.Socket = new Socket(address.IP.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             this.Socket.Bind(this.IPEndPoint);
+            if (address.Port == 0)
+            {
+                // 端口由socket 分配
+                var ip = Socket.LocalEndPoint as IPEndPoint;
+                if (ip != null)
+                {
+                    Address = new SocketUri($"{Address.Scheme}{SocketUri.SchemeDelimiter}{Address.Host}{SocketUri.PortDelimiter}{ip.Port}");
+                    IPEndPoint.Port = ip.Port;
+                }
+            }
         }
 
         public virtual void Bind(string address)
