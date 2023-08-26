@@ -10,6 +10,7 @@
 		</NoWarn>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 	
 	<ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">

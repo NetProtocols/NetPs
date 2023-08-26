@@ -3,6 +3,7 @@
 	<Import Project="..\..\net35-cf.program.props" />
 	<PropertyGroup Condition="'$(TargetFramework)' == 'netcoreapp3.1'">
 		<OutputType>Exe</OutputType>
+		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 	<PropertyGroup>
 		<TargetFrameworks>netcoreapp3.1;net35-cf;</TargetFrameworks>

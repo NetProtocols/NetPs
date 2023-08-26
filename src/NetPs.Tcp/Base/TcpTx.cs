@@ -5,6 +5,7 @@
     using System.Net.Sockets;
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
+    using System.Threading;
 
     /// <summary>
     /// tcp 发送控制.
@@ -84,13 +85,9 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data)
         {
-            if (this.isDisposed)
-            {
-                return;
-            }
-
             this.TransportCache.Enqueue(data);
-            this.StartTransport();
+            if (this.isDisposed) end_transport();
+            else this.StartTransport();
         }
 
         /// <summary>
@@ -98,98 +95,81 @@
         /// </summary>
         public virtual void StartTransport()
         {
-            if (this.transporting)
-            {
-                return;
-            }
-
+            if (this.transporting) return;
             this.transporting = true;
-            this._Transport();
+            this.x_Transport();
+        }
+
+        private void end_transport()
+        {
+            this.transporting = false;
+            if (this.Transported != null) this.Transported.Invoke(this);
         }
 
         /// <summary>
         /// 发送数据.
         /// </summary>
         /// <param name="data">数据.</param>
-        protected virtual void _Transport()
+        protected virtual void x_Transport(bool need_receive = true, bool retry = false)
         {
-            if (!this.core.Receiving)
+            if (need_receive && !this.core.Receiving)
             {
+                //必须存在接收
                 this.transporting = false;
             }
-            // Socket Poll 判断连接是否可用
-            else if (this.core.Actived && this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite))
+
+            else if (this.isDisposed || this.core.IsDisposed) end_transport();
+            // Socket Poll 判断连接是否可用 this.core.Actived
+            else if (!this.TransportCache.IsEmpty && this.core.Actived)
             {
-                if (this.isDisposed)
+                try
                 {
-                    return;
-                }
-
-                if (!this.TransportCache.IsEmpty)
-                {
-                    try
+                    if (!retry && this.state > 0)
                     {
-                        if (this.state > 0)
-                        {
-                            this.buffer = this.TransportCache.Dequeue(this.TransportSize);
-                        }
-
-                        this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
+                        this.buffer = this.TransportCache.Dequeue(this.TransportSize);
                     }
-                    catch (SocketException e)
-                    {
-                        this.transporting = false;
-                        var ex = new NetPsSocketException(e, this.core);
-                        if (!ex.Handled)
-                        {
-                            this.core.ThrowException(ex);
-                        }
-                    }
+                    this.state = 0;
+                    var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
+                    if (poll_ok) this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
+                    else end_transport();
                 }
-                else
+                catch (Exception e)
                 {
-                    this.transporting = false;
-                    this.Transported?.Invoke(this);
+                    Thread.Sleep(5);
+                    this.x_Transport(need_receive, true);//出错重传
+                    if (e is SocketException socket_e)
+                    {
+                        var ex = new NetPsSocketException(socket_e, this.core);
+                        if (!ex.Handled) this.core.ThrowException(ex);
+                    }
                 }
             }
             else
             {
-                this.core.OnLoseConnected();
+                end_transport();
             }
         }
 
         private void SendCallback(IAsyncResult asyncResult)
         {
-            if (this.isDisposed)
-            {
-                return;
-            }
-
+            var client = (Socket)asyncResult.AsyncState;
             try
             {
-                var client = (Socket)asyncResult.AsyncState;
-                try
-                {
-                    this.state = client.EndSend(asyncResult);
-                    asyncResult.AsyncWaitHandle.Close();
-                }
-                catch (SocketException e)
-                {
-                    this.transporting = false;
-                    var ex = new NetPsSocketException(e, this.core);
-                    if (!ex.Handled)
-                    {
-                        throw ex;
-                    }
-                }
-
-                this._Transport();
+                this.state = client.EndSend(asyncResult); //state决定是否冲重传
             }
             catch (Exception e)
             {
-                this.transporting = false;
-                this.core.ThrowException(e);
+                Thread.Sleep(5);
+                if (e is SocketException socket_e)
+                {
+                    var ex = new NetPsSocketException(socket_e, this.core);
+                    if (!ex.Handled) this.core.ThrowException(ex);
+                }
             }
+            //传输完成
+            this.x_Transport();
+            asyncResult.AsyncWaitHandle.Close();
+
         }
     }
 }

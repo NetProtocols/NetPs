@@ -23,6 +23,7 @@
     /// </summary>
     public abstract class SocketCore : IDisposable
     {
+        private ISocketLose socketLose { get; set; }
         private bool disposed = false;
         private bool closed = true;
 
@@ -115,7 +116,7 @@
         /// </summary>
         public virtual void Close()
         {
-            this.Socket?.Close();
+            if (this.Socket != null && !this.Closed) this.Socket.Close();
             this.OnLoseConnected();
         }
 
@@ -131,19 +132,16 @@
         /// <inheritdoc/>
         public virtual void Dispose()
         {
-            this.Disposables?.Dispose();
-            this.Connected = null;
-            this.DisConnected = null;
+            this.disposed = true;
             if (this.Socket != null)
             {
-                using (this.Socket)
-                {
-                    System.Threading.Thread.Sleep(60);
-                    this.Socket = null;
-                }
+                Close();
+                if (this.Actived) Shutdown();
+                if (this.Socket is IDisposable o) o.Dispose();
+                this.Socket = null;
             }
-            this.disposed = true;
-            GC.SuppressFinalize(this);
+            this.Disposables.Dispose();
+            //GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -154,8 +152,14 @@
             if (!this.Closed)
             {
                 this.closed = true;
-                this.DisConnected?.Invoke(this.IPEndPoint);
+                this.socketLose?.SocketLosed(this);
+                DisConnected?.Invoke(this.IPEndPoint);
             }
+        }
+
+        public virtual void WhenLoseConnected(ISocketLose lose)
+        {
+            this.socketLose = lose;
         }
 
         /// <summary>
@@ -172,11 +176,7 @@
         /// </summary>
         protected virtual void OnConnected()
         {
-            if (this.Closed)
-            {
-                this.closed = false;
-                this.Connected?.Invoke(this.IPEndPoint);
-            }
+            if (!this.Closed) this.Connected?.Invoke(this.IPEndPoint);
         }
 
         /// <summary>
@@ -185,6 +185,8 @@
         /// <param name="timeout">超时毫秒数.</param>
         protected virtual async void StartConnect(int timeout)
         {
+            this.closed = true;
+
             var rlt = this.Socket.BeginConnect(this.IPEndPoint, this.ConnectCallback, this.Socket);
             await Task.Delay(timeout);
             if (!rlt.IsCompleted)
@@ -193,7 +195,7 @@
                 if (!ok)
                 {
                     this.Socket.Close();
-                    this.closed = false;
+                    this.closed = true;
                     this.OnLoseConnected();
                 }
             }
@@ -203,12 +205,10 @@
         {
             try
             {
-                this.closed = false;
                 var client = (Socket)asyncResult.AsyncState;
                 client.EndConnect(asyncResult);
-                asyncResult.AsyncWaitHandle.Close();
                 this.Connecting = false;
-                this.closed = true;
+                this.closed = false;
                 this.OnConnected();
             }
             catch (ObjectDisposedException)
@@ -237,6 +237,7 @@
             finally
             {
                 this.Connecting = false;
+                asyncResult.AsyncWaitHandle.Close();
             }
         }
 
@@ -244,12 +245,14 @@
         public virtual void Listen(int backlog)
         {
             this.Socket.Listen(backlog);
+            this.closed = false;
         }
 
         //绑定到IPEndPoint
         public virtual void Bind()
         {
             this.Socket.Bind(this.IPEndPoint);
+            this.closed = false;
         }
     }
 }

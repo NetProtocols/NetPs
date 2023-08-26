@@ -1,5 +1,6 @@
 ﻿namespace NetPs.Tcp
 {
+    using NetPs.Socket;
     using System;
     using System.Net.Sockets;
 
@@ -16,8 +17,9 @@
         {
         }
 
-        public TcpClient(Socket socket) : base(null)
+        public TcpClient(Socket socket, ISocketLose lose = null) : base(null)
         {
+            this.WhenLoseConnected(lose);
             PutSocket(socket);
         }
 

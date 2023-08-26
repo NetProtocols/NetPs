@@ -75,15 +75,13 @@
                     }
 
                     this.Connecting = false;
-                    using (this.Socket)
-                    {
-                        this.Socket.Close();
-                    }
+                    if (this.Socket != null && this.Socket is IDisposable o) o.Dispose();
                 }
 
                 this.Connecting = true;
                 this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
                 this.Socket = new Socket(address.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                this.Socket.Blocking = false;
                 X_TcpConfig.TcpConfigure(this);
                 this.StartConnect(this.ConnectTimeout);
             }

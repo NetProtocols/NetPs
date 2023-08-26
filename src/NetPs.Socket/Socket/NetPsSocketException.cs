@@ -2,14 +2,16 @@
 {
     using System;
     using System.Net.Sockets;
+    using System.Threading;
 
     /// <summary>
-    /// 异常.
+    /// 异常处理
     /// </summary>
     public class NetPsSocketException : Exception
     {
-        private bool handled = false;
-
+        private bool handled { get; set; }
+        private bool is_accept { get; set; }
+        private SocketCore socket { get; set; }
         private string message;
 
         /// <summary>
@@ -23,6 +25,8 @@
             this.ErrorCode = errorCode;
             this.SocketException = socketException;
             this.message = msg;
+            this.is_accept = false;
+            this.handled = false;
         }
 
         /// <summary>
@@ -30,69 +34,102 @@
         /// </summary>
         /// <param name="e">SocketException.</param>
         /// <param name="socket">SocketCore.</param>
-        public NetPsSocketException(SocketException e, SocketCore socket)
+        public NetPsSocketException(SocketException e, SocketCore socket, bool is_accept = false)
         {
+            this.is_accept = is_accept;
+            this.socket = socket;
+            this.handled = false;
             this.message = e.Message;
             this.SocketException = e;
             switch ((int)e.ErrorCode)
             {
                 case 0:
                     this.ErrorCode = SocketErrorCode.Success;
+                    //发送数据异常：直接发送错误，被上游设备禁止发送
                     this.handled = true;
                     break;
                 case 995:
                     this.ErrorCode = SocketErrorCode.OperationAborted;
+                    //由于线程退出或应用程序请求，已放弃 I/O 操作
                     break;
                 case 997:
                     this.ErrorCode = SocketErrorCode.IOPending;
+                    //数据传输时发生 IO 重叠
                     break;
                 case 10004:
                     this.ErrorCode = SocketErrorCode.Interrupted;
+                    //调用中断，多次调用socket_close
+                    this.handled = true;
                     break;
                 case 10013:
                     this.ErrorCode = SocketErrorCode.AccessDenied;
+                    //端口被占用，或没有权限使用
                     break;
                 case 10014:
                     this.ErrorCode = SocketErrorCode.Fault;
+                    //使用了一个无效的指针
                     break;
                 case 10022:
                     this.ErrorCode = SocketErrorCode.InvalidArgument;
+                    //提供了一个无效的参数
                     break;
                 case 10024:
                     this.ErrorCode = SocketErrorCode.TooManyOpenSockets;
+                    //打开的套接字太多
+                    //Thread.Sleep(5);
+                    this.handled = true;
                     break;
                 case 10035:
                     this.ErrorCode = SocketErrorCode.WouldBlock;
+                    //非阻塞错误
+                    socket.Socket.Blocking = true;
+                    handled = true;
                     break;
                 case 10036:
                     this.ErrorCode = SocketErrorCode.InProgress;
+                    //一个阻塞操作正在进行
+                    //Thread.Sleep(5);
+                    this.handled = true;
                     break;
                 case 10037:
                     this.ErrorCode = SocketErrorCode.AlreadyInProgress;
+                    //操作正在进行中
+                    //Thread.Sleep(5);
+                    this.handled = true;
                     break;
                 case 10038:
                     this.ErrorCode = SocketErrorCode.NotSocket;
+                    //无效套接字
+                    tell_lose();
+                    this.handled = true;
                     break;
                 case 10039:
                     this.ErrorCode = SocketErrorCode.DestinationAddressRequired;
+                    //目标地址错误
                     break;
                 case 10040:
                     this.ErrorCode = SocketErrorCode.MessageSize;
+                    //发送/接收buffer不够大，消息过长
                     break;
                 case 10041:
                     this.ErrorCode = SocketErrorCode.MessageSize;
+                    //发送/接收buffer不够大，消息过长
                     break;
                 case 10042:
                     this.ErrorCode = SocketErrorCode.ProtocolOption;
+                    //错误的协议选项
                     break;
                 case 10043:
                     this.ErrorCode = SocketErrorCode.ProtocolNotSupported;
+                    //请求的协议还没有在系统中配置，或者没有它存在的迹象
                     break;
                 case 10044:
                     this.ErrorCode = SocketErrorCode.SocketNotSupported;
+                    //在这个地址家族中不存在对指定的插槽类型的支持
                     break;
                 case 10045:
                     this.ErrorCode = SocketErrorCode.OperationNotSupported;
+                    //不支持该操作
                     break;
                 case 10046:
                     this.ErrorCode = SocketErrorCode.ProtocolFamilyNotSupported;
@@ -105,21 +142,29 @@
                     break;
                 case 10050:
                     this.ErrorCode = SocketErrorCode.NetworkDown;
+                    //网关被破坏,路由表出错
+                    tell_lose();
+                    this.handled = true;
                     break;
                 case 10051:
                     this.ErrorCode = SocketErrorCode.NetworkUnreachable;
+                    //向一个无法连接的网络尝试了一个套接字操作
+                    tell_lose();
+                    this.handled = true;
                     break;
                 case 10052:
                     this.ErrorCode = SocketErrorCode.NetworkReset;
+                    tell_lose();
+                    this.handled = true;
                     break;
                 case 10053:
                     this.ErrorCode = SocketErrorCode.ConnectionAborted;
-                    socket.OnLoseConnected();
+                    tell_lose();
                     this.handled = true;
                     break;
                 case 10054:
                     this.ErrorCode = SocketErrorCode.ConnectionReset;
-                    socket.OnLoseConnected();
+                    tell_lose();
                     this.handled = true;
                     break;
                 case 10055:
@@ -131,19 +176,26 @@
                     break;
                 case 10057:
                     this.ErrorCode = SocketErrorCode.NotConnected;
-                    socket.OnLoseConnected();
+                    tell_lose();
+                    this.handled = true;
                     break;
                 case 10058:
                     this.ErrorCode = SocketErrorCode.Shutdown;
-                    socket.OnLoseConnected();
+                    tell_lose();
+                    this.handled = true;
                     break;
                 case 10060:
                     this.ErrorCode = SocketErrorCode.TimedOut;
-                    socket.OnLoseConnected();
+                    //操作超时
+                    //if (!server) socket.OnLoseConnected();
+                    tell_lose();
+                    this.handled = true;
                     break;
                 case 10061:
                     this.ErrorCode = SocketErrorCode.ConnectionRefused;
-                    socket.OnLoseConnected();
+                    //if (!server) socket.OnLoseConnected();
+                    //连接被拒
+                    tell_lose();
                     this.handled = true;
                     break;
                 case 10064:
@@ -154,6 +206,8 @@
                     break;
                 case 10067:
                     this.ErrorCode = SocketErrorCode.ProcessLimit;
+                    //Thread.Sleep(10);
+                    this.handled = true;
                     break;
                 case 10091:
                     this.ErrorCode = SocketErrorCode.SystemNotReady;
@@ -175,12 +229,15 @@
                     break;
                 case 11002:
                     this.ErrorCode = SocketErrorCode.TryAgain;
+                    this.handled = true;
                     break;
                 case 11003:
                     this.ErrorCode = SocketErrorCode.NoRecovery;
                     break;
                 case 11004:
                     this.ErrorCode = SocketErrorCode.NoData;
+                    //无数据
+                    this.handled = true;
                     break;
                 case -1:
                 default:
@@ -206,5 +263,10 @@
         /// Gets 套接字异常.
         /// </summary>
         public virtual SocketException SocketException { get; }
+
+        private void tell_lose()
+        {
+            if (!is_accept && socket != null) socket.OnLoseConnected();
+        }
     }
 }

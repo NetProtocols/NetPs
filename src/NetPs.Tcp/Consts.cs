@@ -11,7 +11,7 @@ namespace NetPs.Tcp
         public static int ReceiveBytes = BUFFER_SIZE;
         //发送缓冲区大小
         public static int TransportBytes = BUFFER_SIZE;
-        public static int MaxAcceptClient = 54435;
-        public static int SocketPollTime = 3600;
+        public static int MaxAcceptClient = int.MaxValue;
+        public static int SocketPollTime = 3600;//500ms
     }
 }

@@ -31,9 +31,9 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
+            base.Dispose();
             this.Rx?.Dispose();
             this.Tx?.Dispose();
-            base.Dispose();
         }
     }
 }

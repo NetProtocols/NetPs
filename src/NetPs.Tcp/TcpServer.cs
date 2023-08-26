@@ -6,13 +6,13 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// .
     /// </summary>
-    public class TcpServer : TcpCore, IDisposable
+    public class TcpServer : TcpCore, IDisposable, ISocketLose
     {
-        private object locker = new object();
         private bool alive = false;
 
         public TcpServer(Action<TcpCore> tcp_config = null) : base(tcp_config)
@@ -27,24 +27,8 @@
             construct();
             this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
             {
-                var client = new TcpClient();
-                client.PutSocket(s);
-                client.Disposables.Add(client.LoseConnectedObservable.Subscribe(_ =>
-                {
-                    lock (this.locker)
-                    {
-                        this.Connects.Remove(client);
-                    }
-                    client.Dispose();
-                }));
-                if (client.Actived)
-                {
-                    lock (this.locker)
-                    {
-                        this.Connects.Add(client);
-                    }
-                }
-
+                var client = new TcpClient(s, this);
+                lock (this.Connects) this.Connects.Add(client);
                 accepted?.Invoke(this, client);
             }));
         }
@@ -54,25 +38,14 @@
             construct();
             this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
             {
-                var client = new TcpClient(s);
+                var client = new TcpClient(s, this);
                 if (serverConfig.TcpAccept(this, client))
                 {
-                    client.Disposables.Add(client.LoseConnectedObservable.Subscribe(_ =>
+                    if (client.Actived)
                     {
-                        lock (this.locker)
-                        {
-                            this.Connects.Remove(client);
-                        }
-                        client.Dispose();
-                    }));
-                    lock (this.locker)
-                    {
-                        if (client.Actived)
-                        {
-                            this.Connects.Add(client);
-                        }
+                        lock (this.Connects) this.Connects.Add(client);
+                        client.StartReceive(serverConfig);
                     }
-                    client.StartReceive(serverConfig);
                 }
             }));
             this.Run(serverConfig.BandAddress);
@@ -81,7 +54,7 @@
         private void construct()
         {
             this.Ax = new TcpAx(this);
-            this.Connects = new List<TcpClient>();
+            this.Connects = new List<TcpClient>(64571); // 65535-1024= 64571
         }
 
         /// <summary>
@@ -164,6 +137,19 @@
                 closed?.Invoke();
             }));
             Listen(address);
+        }
+
+        /// <summary>
+        /// 客户端丢失
+        /// </summary>
+        public void SocketLosed(object socket)
+        {
+            var client = (TcpClient)socket;
+            if (client != null)
+            {
+                lock (this.Connects) this.Connects.Remove(client);
+                client.Dispose();
+            }
         }
     }
 }

@@ -4,6 +4,7 @@
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// 服务.
@@ -11,7 +12,6 @@
     public class TcpAx : IDisposable
     {
         private readonly TcpCore core;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpAx"/> class.
         /// </summary>
@@ -49,51 +49,54 @@
         /// </summary>
         public virtual void StartAccept()
         {
+            if (this.core.IsDisposed) return;
             try
             {
-                this.core.Socket.BeginAccept(this.AcceptCallback, this.core.Socket);
+                if (this.core.Socket == null) this.core.OnLoseConnected();
+                else this.core.Socket.BeginAccept(this.AcceptCallback, this.core.Socket);
             }
-            catch (SocketException e)
+            catch (Exception e)
             {
-                var ex = new NetPsSocketException(e, this.core);
-                if (!ex.Handled)
+                StartAccept();
+                if (e is SocketException socket_e)
                 {
-                    throw ex;
+                    var ex = new NetPsSocketException(socket_e, this.core, true);
+                    if (!ex.Handled) this.core.ThrowException(ex);
+                }
+                else
+                {
+                    this.core.ThrowException(e);
                 }
             }
         }
-
         private void AcceptCallback(IAsyncResult asyncResult)
         {
+            var socket = (Socket)asyncResult.AsyncState;
             try
             {
-                var socket = (Socket)asyncResult.AsyncState;
-                try
-                {
-                    var client = socket.EndAccept(asyncResult);
-                    asyncResult.AsyncWaitHandle.Close();
-                    this.Accepted?.Invoke(client);
-                }
-                catch (ObjectDisposedException)
-                {
-                    this.core.OnLoseConnected();
-                    return;
-                }
-                catch (SocketException e)
-                {
-                    var ex = new NetPsSocketException(e, this.core);
-                    if (!ex.Handled)
-                    {
-                        throw ex;
-                    }
-                }
-
+                var client = socket.EndAccept(asyncResult);
+                Task.Factory.StartNew(tell_accept, client);
                 this.StartAccept();
             }
             catch (Exception e)
             {
-                this.core.ThrowException(e);
+                this.StartAccept();
+                //请求错误不处理
+                if (e is SocketException socket_e)
+                {
+                    var ex = new NetPsSocketException(socket_e, this.core, true);
+                    if (!ex.Handled) this.core.ThrowException(ex);
+                }
+                else
+                {
+                    this.core.ThrowException(e);
+                }
             }
+            asyncResult.AsyncWaitHandle.Close();
+        }
+        private void tell_accept(object client)
+        {
+            if (this.Accepted != null) Accepted.Invoke(client as Socket);
         }
     }
 }
