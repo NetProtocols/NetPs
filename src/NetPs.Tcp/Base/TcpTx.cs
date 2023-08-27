@@ -85,9 +85,12 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data)
         {
-            this.TransportCache.Enqueue(data);
             if (this.isDisposed) end_transport();
-            else this.StartTransport();
+            else
+            {
+                this.TransportCache.Enqueue(data);
+                this.StartTransport();
+            }
         }
 
         /// <summary>
@@ -110,7 +113,7 @@
         /// 发送数据.
         /// </summary>
         /// <param name="data">数据.</param>
-        protected virtual void x_Transport(bool need_receive = true, bool retry = false)
+        protected virtual void x_Transport(bool need_receive = true)
         {
             if (need_receive && !this.core.Receiving)
             {
@@ -121,31 +124,33 @@
             else if (this.isDisposed || this.core.IsDisposed) end_transport();
             // Socket Poll 判断连接是否可用 this.core.Actived
             else if (!this.TransportCache.IsEmpty && this.core.Actived)
-            {
+        {
+                //发送数据为零，使用上次的缓存进行发送
+                if (this.state > 0)
+                {
+                    this.buffer = this.TransportCache.Dequeue(this.TransportSize);
+                }
+                this.state = 0;
                 try
                 {
-                    if (!retry && this.state > 0)
-                    {
-                        this.buffer = this.TransportCache.Dequeue(this.TransportSize);
-                    }
-                    this.state = 0;
                     var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
                     if (poll_ok) this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
                     else end_transport();
                 }
                 catch (Exception e)
                 {
-                    Thread.Sleep(5);
-                    this.x_Transport(need_receive, true);//出错重传
                     if (e is SocketException socket_e)
                     {
-                        var ex = new NetPsSocketException(socket_e, this.core);
+                        var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.StartWrite);
                         if (!ex.Handled) this.core.ThrowException(ex);
                     }
+                    //不是在传输过程中报错，不需要重传
+                    end_transport();
                 }
             }
             else
             {
+                //发送队列空 or 连接失效
                 end_transport();
             }
         }
@@ -159,10 +164,9 @@
             }
             catch (Exception e)
             {
-                Thread.Sleep(5);
                 if (e is SocketException socket_e)
                 {
-                    var ex = new NetPsSocketException(socket_e, this.core);
+                    var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.Writing);
                     if (!ex.Handled) this.core.ThrowException(ex);
                 }
             }

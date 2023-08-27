@@ -60,7 +60,7 @@
                 StartAccept();
                 if (e is SocketException socket_e)
                 {
-                    var ex = new NetPsSocketException(socket_e, this.core, true);
+                    var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.Accept);
                     if (!ex.Handled) this.core.ThrowException(ex);
                 }
                 else
@@ -84,7 +84,7 @@
                 //请求错误不处理
                 if (e is SocketException socket_e)
                 {
-                    var ex = new NetPsSocketException(socket_e, this.core, true);
+                    var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.Accept);
                     if (!ex.Handled) this.core.ThrowException(ex);
                 }
                 else

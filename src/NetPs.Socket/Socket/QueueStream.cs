@@ -11,6 +11,7 @@
     /// </summary>
     public class QueueStream : MemoryStream
     {
+        public const int MAX_STACK_LENGTH = 4096;
         // 读取点
         private long r;
 
@@ -126,7 +127,13 @@
                 }
 
                 this.Position = this.w + 1;
-                base.Write(block, offset, (int)len);
+                for(long i= offset; i< len; i += MAX_STACK_LENGTH)
+                {
+                    //防止占堆溢出: memorystream.write方法使用递归调用
+                    if (i + MAX_STACK_LENGTH < len) base.Write(block, (int)i, MAX_STACK_LENGTH);
+                    else base.Write(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                }
+                //base.Write(block, offset, (int)len);
                 this.nLength += len;
                 this.w += len;
                 if (this.is_main(this.w))
@@ -199,7 +206,13 @@
                 }
 
                 this.Position = this.r + 1;
-                var rlt = base.Read(block, offset, (int)len);
+                var rlt = 0;
+                for(long i = offset; i<len; i+= MAX_STACK_LENGTH)
+                {
+                    //防止占堆溢出: memorystream.read方法使用递归调用
+                    if (i + MAX_STACK_LENGTH < len) rlt+=base.Read(block, (int)i, MAX_STACK_LENGTH);
+                    else rlt+=base.Read(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                }
                 this.nLength -= len;
                 this.r += len;
 

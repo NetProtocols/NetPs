@@ -2,15 +2,24 @@
 {
     using System;
     using System.Net.Sockets;
-    using System.Threading;
-
+    public enum NetPsSocketExceptionSource
+    {
+        None = 0,
+        Write = 1,
+        Read = 2,
+        Connect = 3,
+        Accept = 10,
+        StartWrite = 20,
+        Writing = 21,
+        EndWrite = 22,
+    }
     /// <summary>
     /// 异常处理
     /// </summary>
     public class NetPsSocketException : Exception
     {
         private bool handled { get; set; }
-        private bool is_accept { get; set; }
+        private NetPsSocketExceptionSource source { get; set; }
         private SocketCore socket { get; set; }
         private string message;
 
@@ -25,7 +34,7 @@
             this.ErrorCode = errorCode;
             this.SocketException = socketException;
             this.message = msg;
-            this.is_accept = false;
+            this.source = NetPsSocketExceptionSource.None;
             this.handled = false;
         }
 
@@ -34,9 +43,9 @@
         /// </summary>
         /// <param name="e">SocketException.</param>
         /// <param name="socket">SocketCore.</param>
-        public NetPsSocketException(SocketException e, SocketCore socket, bool is_accept = false)
+        public NetPsSocketException(SocketException e, SocketCore socket, NetPsSocketExceptionSource source)
         {
-            this.is_accept = is_accept;
+            this.source = source;
             this.socket = socket;
             this.handled = false;
             this.message = e.Message;
@@ -266,7 +275,19 @@
 
         private void tell_lose()
         {
-            if (!is_accept && socket != null) socket.OnLoseConnected();
+            //读取中报错，丢失链接
+            if (socket != null)
+                switch (source)
+            {
+                case NetPsSocketExceptionSource.Read:
+                case NetPsSocketExceptionSource.Connect:
+                case NetPsSocketExceptionSource.Write:
+                case NetPsSocketExceptionSource.StartWrite:
+                case NetPsSocketExceptionSource.Writing:
+                case NetPsSocketExceptionSource.EndWrite:
+                    socket.OnLoseConnected();
+                    break;
+            }
         }
     }
 }

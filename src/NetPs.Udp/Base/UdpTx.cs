@@ -149,7 +149,7 @@
                     catch (SocketException e)
                     {
                         this.transporting = false;
-                        var ex = new NetPsSocketException(e, this.core);
+                        var ex = new NetPsSocketException(e, this.core, NetPsSocketExceptionSource.Write);
                         if (!ex.Handled)
                         {
                             this.core.ThrowException(ex);
@@ -181,7 +181,7 @@
                 catch (SocketException e)
                 {
                     this.transporting = false;
-                    var ex = new NetPsSocketException(e, this.core);
+                    var ex = new NetPsSocketException(e, this.core, NetPsSocketExceptionSource.Write);
                     if (!ex.Handled)
                     {
                         throw ex;

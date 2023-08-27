@@ -222,7 +222,7 @@
             }
             catch (SocketException e)
             {
-                var ex = new NetPsSocketException(e, this);
+                var ex = new NetPsSocketException(e, this, NetPsSocketExceptionSource.Connect);
                 if (!ex.Handled)
                 {
                     this.OnLoseConnected();

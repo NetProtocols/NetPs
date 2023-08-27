@@ -94,7 +94,7 @@
             }
             catch (SocketException e)
             {
-                var ex = new NetPsSocketException(e, this.core);
+                var ex = new NetPsSocketException(e, this.core, NetPsSocketExceptionSource.Read);
                 if (!ex.Handled)
                 {
                     throw ex;
@@ -120,7 +120,7 @@
                 catch (SocketException e)
                 {
                     this.nReceived = -1;
-                    var ex = new NetPsSocketException(e, this.core);
+                    var ex = new NetPsSocketException(e, this.core, NetPsSocketExceptionSource.Read);
                     if (!ex.Handled)
                     {
                         this.core.ThrowException(e);
