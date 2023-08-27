@@ -43,11 +43,7 @@
             }
             catch (Exception e)
             {
-                var ok = ThrowException(e);
-                if (!ok)
-                {
-                    throw e;
-                }
+                Hub.ThrowException(e);
             }
         }
         private void Hub_Closed(object sender, EventArgs e)

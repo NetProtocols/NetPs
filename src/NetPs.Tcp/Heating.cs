@@ -15,9 +15,14 @@
             var serv = new TcpServer(this);
             watch.Heat_Progress();
             var client = new TcpClient();
-            client.Connect(serv.Address);
+            client.Disposables.Add(client.ConnectedObservable.Subscribe(ip =>
+            {
+                watch.Heat_Progress();
+                client.Transport(test_data);
+            }));
+            client.Disposables.Add(client.TransportedObservable.Subscribe(tx => client.Dispose()));
+            client.Connect($"127.0.0.1:{serv.Address.Port}");
             watch.Heat_Progress();
-            client.Transport(test_data);
             var static_val = Consts.ReceiveBytes;
             static_val = Consts.SocketPollTime;
             static_val = Consts.TransportBytes;

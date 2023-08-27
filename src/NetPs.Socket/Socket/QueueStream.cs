@@ -9,27 +9,27 @@
     /// <summary>
     /// 队列 Stream.
     /// </summary>
-    public class QueueStream : MemoryStream
+    public class QueueStream : MemoryStream, IDisposable
     {
         public const int MAX_STACK_LENGTH = 4096;
         // 读取点
-        private long r;
+        private long r { get; set; }
 
         // 当前写入点
-        private long w;
+        private long w { get; set; }
 
         // 转折点
-        private long x;
+        private long x { get; set; }
 
         // 前结尾
-        private long enda;
+        private long enda { get; set; }
 
         // 末结尾
-        private long endb;
+        private long endb { get; set; }
 
-        private long nLength;
+        private long nLength { get; set; }
 
-        private object locker = new object();
+        private object locker { get; set; } = new object();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="QueueStream"/> class.
@@ -63,6 +63,7 @@
         public override long Length => this.nLength;
         
         public override bool CanRead => this.Length != 0;
+        public virtual bool IsDisposed { get; private set; } = false;
 
         /// <summary>
         /// 清空队列.
@@ -127,7 +128,7 @@
                 }
 
                 this.Position = this.w + 1;
-                for(long i= offset; i< len; i += MAX_STACK_LENGTH)
+                for(long i= offset; !IsDisposed && i< len; i += MAX_STACK_LENGTH)
                 {
                     //防止占堆溢出: memorystream.write方法使用递归调用
                     if (i + MAX_STACK_LENGTH < len) base.Write(block, (int)i, MAX_STACK_LENGTH);
@@ -207,7 +208,7 @@
 
                 this.Position = this.r + 1;
                 var rlt = 0;
-                for(long i = offset; i<len; i+= MAX_STACK_LENGTH)
+                for(long i = offset; !IsDisposed && i<len; i+= MAX_STACK_LENGTH)
                 {
                     //防止占堆溢出: memorystream.read方法使用递归调用
                     if (i + MAX_STACK_LENGTH < len) rlt+=base.Read(block, (int)i, MAX_STACK_LENGTH);
@@ -353,6 +354,12 @@
                 var len = this.Dequeue(ref buffer, 0, 4096);
                 stream.Write(buffer, 0, len);
             }
+        }
+
+        void IDisposable.Dispose()
+        {
+            this.IsDisposed = true;
+            base.Dispose();
         }
 
         private bool is_main(long point) => this.x == -1 || this.x < point;

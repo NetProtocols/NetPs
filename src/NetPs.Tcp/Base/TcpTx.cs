@@ -71,10 +71,9 @@
         public virtual void Dispose()
         {
             this.isDisposed = true;
-            this.Transported = null;
             if (this.cache != null)
             {
-                this.cache.Dispose();
+                lock (this.cache) this.cache.Dispose();
                 this.cache = null;
             }
         }
@@ -134,7 +133,10 @@
                 try
                 {
                     var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
-                    if (poll_ok) this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
+                    if (poll_ok)
+                        //fix: 0x0000005 Access violation 空引用
+                        if (this.core.Socket != null) this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
+                        else this.core.OnLoseConnected();
                     else end_transport();
                 }
                 catch (Exception e)

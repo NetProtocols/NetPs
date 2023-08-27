@@ -75,7 +75,6 @@
         public virtual void Dispose()
         {
             this.isDisposed = true;
-            this.Received = null;
             this.core.Receiving = false;
         }
 

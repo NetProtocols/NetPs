@@ -33,10 +33,20 @@
         /// </summary>
         public virtual IObservable<byte[]> ReceivedObservable => this.Rx.ReceivedObservable;
 
+        /// <summary>
+        /// 开始接收数据
+        /// </summary>
         public void StartReceive() => this.Rx.StartReceive();
 
+        /// <summary>
+        /// 发送数据
+        /// </summary>
+        /// <param name="data"></param>
         public void Transport(byte[] data) => Tx.Transport(data);
 
+        /// <summary>
+        /// 开始用指定接口接收数据
+        /// </summary>
         public void StartReceive(ITcpReceive receive)
         {
             this.Disposables.Add(this.Rx.ReceivedObservable.Subscribe(data => receive.TcpReceive(data, this)));
