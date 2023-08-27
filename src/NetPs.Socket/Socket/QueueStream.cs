@@ -71,7 +71,7 @@
         /// </summary>
         public virtual void Clear()
         {
-            lock (this.locker)
+            lock (this)
             {
                 this.r = -1;
                 this.w = -1;
@@ -90,66 +90,73 @@
         /// <param name="length">长度.</param>
         public virtual void Enqueue(byte[] block, int offset = 0, int length = -1)
         {
-            lock (this.locker)
+            lock (this)
             {
-                if (length + this.Length > Capacity)
+                try
                 {
-                    Capacity += length;
-                }
-                if (block == null || block.Length == 0 || length == 0)
-                {
-                    return;
-                }
-                else if (length > block.Length || length < 0)
-                {
-                    length = block.Length;
-                }
+                    if (length + this.Length > Capacity)
+                    {
+                        Capacity += length;
+                    }
+                    if (block == null || block.Length == 0 || length == 0)
+                    {
+                        return;
+                    }
+                    else if (length > block.Length || length < 0)
+                    {
+                        length = block.Length;
+                    }
 
-                long len = length;
-                if (this.before_is_empty())
-                {
-                    // 回去写.
-                    this.w = -1;
-                    this.x = this.endb;
-                    len = this.before_empty();
-                }
-                else if (!this.is_main(this.w))
-                {
-                    len = this.before_empty();
-                    if (len == 0)
+                    long len = length;
+                    if (this.before_is_empty())
+                    {
+                        // 回去写.
+                        this.w = -1;
+                        this.x = this.endb;
+                        len = this.before_empty();
+                    }
+                    else if (!this.is_main(this.w))
+                    {
+                        len = this.before_empty();
+                        if (len == 0)
+                        {
+                            len = length;
+                            this.w = this.x;
+                        }
+                    }
+
+                    if (length < len)
                     {
                         len = length;
-                        this.w = this.x;
+                    }
+
+                    this.SafePositionSet(this.w + 1);
+                    for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
+                    {
+                        //防止占堆溢出: memorystream.write方法使用递归调用
+                        if (i + MAX_STACK_LENGTH < len) this.SafeWrite(block, (int)i, MAX_STACK_LENGTH);
+                        else this.SafeWrite(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                    }
+                    //base.Write(block, offset, (int)len);
+                    this.nLength += len;
+                    this.w += len;
+                    if (this.is_main(this.w))
+                    {
+                        this.endb = this.w;
+                    }
+                    else
+                    {
+                        this.enda = this.w;
+                    }
+
+                    if (length > len)
+                    {
+                        this.Enqueue(block, (int)len, (int)(length - len));
                     }
                 }
-
-                if (length < len)
+                catch (ObjectDisposedException)
                 {
-                    len = length;
-                }
-
-                this.Position = this.w + 1;
-                for(long i= offset; !IsDisposed && i< len; i += MAX_STACK_LENGTH)
-                {
-                    //防止占堆溢出: memorystream.write方法使用递归调用
-                    if (i + MAX_STACK_LENGTH < len) this.SafeWrite(block, (int)i, MAX_STACK_LENGTH);
-                    else this.SafeWrite(block, (int)i, (int)(len % MAX_STACK_LENGTH));
-                }
-                //base.Write(block, offset, (int)len);
-                this.nLength += len;
-                this.w += len;
-                if (this.is_main(this.w))
-                {
-                    this.endb = this.w;
-                }
-                else
-                {
-                    this.enda = this.w;
-                }
-
-                if (length > len)
-                {
-                    this.Enqueue(block, (int)len, (int)(length - len));
+                    //不需要进行处理实例已经Closed, 释放了
                 }
             }
         }
@@ -162,74 +169,82 @@
         /// <param name="length">长度.</param>
         public virtual int Dequeue(ref byte[] block, int offset = 0, int length = -1)
         {
-            lock (this.locker)
+            if (block == null || block.Length == 0 || length == 0 || this.IsEmpty)
             {
-                if (block == null || block.Length == 0 || length == 0 || this.IsEmpty)
-                {
-                    return 0;
-                }
-                else if (length > block.Length || length < 0)
-                {
-                    length = block.Length;
-                }
+                return 0;
+            }
+            else if (length > block.Length || length < 0)
+            {
+                length = block.Length;
+            }
 
-                long len = length;
-                if (this.nLength < len)
+            long len = length;
+            lock (this)
+            {
+                try
                 {
-                    len = this.nLength;
-                }
-
-                if (!this.is_main(this.r))
-                {
-                    if (this.r < this.enda)
+                    if (this.nLength < len)
                     {
-                        len = this.enda - this.r;
-                        if (len == 0)
+                        len = this.nLength;
+                    }
+
+                    if (!this.is_main(this.r))
+                    {
+                        if (this.r < this.enda)
                         {
-                            this.r = -1;
+                            len = this.enda - this.r;
+                            if (len == 0)
+                            {
+                                this.r = -1;
+                            }
+                        }
+
+                        if (this.r > this.enda)
+                        {
+                            len = this.x - this.r;
+                        }
+
+                        if (this.r == this.enda)
+                        {
+                            this.r = this.x;
+                            this.enda = this.x = -1;
                         }
                     }
 
-                    if (this.r > this.enda)
+                    if (length < len)
                     {
-                        len = this.x - this.r;
+                        len = length;
                     }
 
-                    if (this.r == this.enda)
+                    this.SafePositionSet(this.r + 1);
+                    var rlt = 0;
+                    for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
                     {
-                        this.r = this.x;
-                        this.enda = this.x = -1;
+                        //防止占堆溢出: memorystream.read方法使用递归调用
+                        if (i + MAX_STACK_LENGTH < len) rlt += this.SafeRead(block, (int)i, MAX_STACK_LENGTH);
+                        else rlt += this.SafeRead(block, (int)i, (int)(len % MAX_STACK_LENGTH));
                     }
-                }
+                    this.nLength -= len;
+                    this.r += len;
 
-                if (length < len)
+                    if (length > len)
+                    {
+                        this.Dequeue(ref block, (int)len, (int)(length - len));
+                    }
+
+                    if (this.IsEmpty)
+                    {
+                        this.x = this.r = this.w = this.enda = this.endb = -1;
+                        this.SetLength(0);
+                    }
+
+                    return rlt;
+                }
+                catch(ObjectDisposedException)
                 {
-                    len = length;
+                    //不需要进行处理实例已经Closed, 释放了
+                    return 0;
                 }
-
-                this.Position = this.r + 1;
-                var rlt = 0;
-                for(long i = offset; !IsDisposed && i<len; i+= MAX_STACK_LENGTH)
-                {
-                    //防止占堆溢出: memorystream.read方法使用递归调用
-                    if (i + MAX_STACK_LENGTH < len) rlt+=this.SafeRead(block, (int)i, MAX_STACK_LENGTH);
-                    else rlt+=this.SafeRead(block, (int)i, (int)(len % MAX_STACK_LENGTH));
-                }
-                this.nLength -= len;
-                this.r += len;
-
-                if (length > len)
-                {
-                    this.Dequeue(ref block, (int)len, (int)(length - len));
-                }
-
-                if (this.IsEmpty)
-                {
-                    this.x = this.r = this.w = this.enda = this.endb = -1;
-                    this.SetLength(0);
-                }
-
-                return rlt;
             }
         }
 
@@ -240,7 +255,7 @@
         /// <returns>数据块.</returns>
         public virtual byte[] Dequeue(long length)
         {
-            lock (this.locker)
+            lock (this)
             {
                 if (this.IsEmpty)
                 {
@@ -259,10 +274,7 @@
 
         public virtual byte DequeueByte()
         {
-            lock (this.locker)
-            {
-                return this.Dequeue(1)[0];
-            }
+            return this.Dequeue(1)[0];
         }
 
         /// <summary>
@@ -271,10 +283,7 @@
         /// <returns>整形.</returns>
         public virtual int DequeueInt32()
         {
-            lock (this.locker)
-            {
-                return BitConverter.ToInt32(this.Dequeue(4), 0);
-            }
+            return BitConverter.ToInt32(this.Dequeue(4), 0);
         }
 
         /// <summary>
@@ -284,10 +293,7 @@
         public virtual Int64 DequeueInt64_32()
         {
             byte[] bytes = new byte[8];
-            lock (this.locker)
-            {
-                this.Dequeue(ref bytes, 0, 4);
-            }
+            this.Dequeue(ref bytes, 0, 4);
             bytes[4] = bytes[0];
             bytes[0] = bytes[3];
             bytes[3] = bytes[4]; ;
@@ -304,19 +310,13 @@
         /// <param name="data">整形.</param>
         public virtual void EnqueueInt32(int data)
         {
-            lock (this.locker)
-            {
-                this.Enqueue(BitConverter.GetBytes(data));
-            }
+            this.Enqueue(BitConverter.GetBytes(data));
         }
 
         public virtual int DequeueInt32_Reversed()
         {
             byte[] bytes;
-            lock (this.locker)
-            {
-                bytes = this.Dequeue(4);
-            }
+            bytes = this.Dequeue(4);
             var buf = bytes[0];
             bytes[0] = bytes[3];
             bytes[3] = buf;
@@ -380,7 +380,7 @@
         private void SafeWrite(byte[] buffer, int offset, int count)
         {
             //fix: ObjectDisposedException Cannot access a closed Stream
-            if (!this.IsClosed && !this.IsDisposed) base.Write(buffer, offset, count);
+            if (!this.IsClosed) base.Write(buffer, offset, count);
         }
 
         /// <summary>
@@ -389,8 +389,17 @@
         private int SafeRead(byte[] buffer, int offset, int count)
         {
             //fix: ObjectDisposedException Cannot access a closed Stream
-            if (!this.IsClosed && !this.IsDisposed) return base.Read(buffer, offset, count);
+            if (!this.IsClosed) return base.Read(buffer, offset, count);
             return 0;
+        }
+
+        /// <summary>
+        /// 安全的指针位置设置
+        /// </summary>
+        /// <param name="position"></param>
+        private void SafePositionSet(long position)
+        {
+            if (!this.IsClosed) this.Position = position;
         }
     }
 }

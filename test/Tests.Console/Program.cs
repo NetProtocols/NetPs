@@ -15,11 +15,12 @@
     {
         static void Main()
         {
+            //new TcpTest();
             var server = new TcpServer((_, client) =>
             {
-                client.StartMirror("172.17.0.161:15244");
+                client.StartMirror("172.17.0.161:5244");
             });
-            server.Run("127.0.0.1:15244");
+            server.Run("127.0.0.1:5244");
             Console.ReadLine();
         }
     }

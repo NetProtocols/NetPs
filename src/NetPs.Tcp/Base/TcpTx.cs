@@ -87,7 +87,13 @@
             if (this.isDisposed) end_transport();
             else
             {
-                this.TransportCache.Enqueue(data);
+                //fix: NullReferenceException; TransportCache=null
+                if (this.TransportCache != null) this.TransportCache.Enqueue(data);
+                else
+                {
+                    end_transport();
+                    return;
+                }
                 this.StartTransport();
             }
         }
@@ -135,13 +141,21 @@
                     var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
                     if (poll_ok)
                         //fix: 0x0000005 Access violation 空引用
-                        if (this.core.Socket != null) this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
-                        else this.core.OnLoseConnected();
+                        if (this.core.Socket != null && !this.core.Closed) this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
+                        else
+                        {
+                            this.core.OnLoseConnected();
+                            end_transport();
+                        }
                     else end_transport();
                 }
                 catch (Exception e)
                 {
-                    if (e is SocketException socket_e)
+                    if (this.core.Closed)
+                    {
+                        //socketcore 已经释放，告知传输结束即可
+                    }
+                    else if (e is SocketException socket_e)
                     {
                         var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.StartWrite);
                         if (!ex.Handled) this.core.ThrowException(ex);
@@ -162,11 +176,18 @@
             var client = (Socket)asyncResult.AsyncState;
             try
             {
-                this.state = client.EndSend(asyncResult); //state决定是否冲重传
+                //fix:ObjectDisposedException;Cannot access a disposed object. Object name: 'System.Net.Sockets.Socket'.”
+                if (!this.core.Closed) this.state = client.EndSend(asyncResult); //state决定是否冲重传
             }
             catch (Exception e)
             {
-                if (e is SocketException socket_e)
+                if (this.core.Closed)
+                {
+                    //Socket ObjectDisposedException 连接已经关闭，退出即可不用任何操作
+                    end_transport();
+                    return;
+                }
+                else if (e is SocketException socket_e)
                 {
                     var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.Writing);
                     if (!ex.Handled) this.core.ThrowException(ex);

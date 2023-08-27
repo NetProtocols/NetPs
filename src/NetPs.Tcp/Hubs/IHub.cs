@@ -15,7 +15,6 @@ namespace NetPs.Tcp
     }
     public abstract class HubBase {
         private static long id = 1;
-        private static object locker = new object();
         
         public event EventHandler Closed;
 
@@ -26,10 +25,7 @@ namespace NetPs.Tcp
 
         protected static long GetId()
         {
-            lock (locker)
-            {
-                return id++;
-            }
+            return id++;
         }
     }
     public interface IHub : IDisposable

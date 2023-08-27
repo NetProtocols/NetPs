@@ -201,6 +201,7 @@
             }
         }
 
+        private static readonly NetPsSocketException TIMEOUT_EXCEPTION = new NetPsSocketException(SocketErrorCode.TimedOut, "socket connecting timeout.");
         private void ConnectCallback(IAsyncResult asyncResult)
         {
             try
@@ -215,9 +216,8 @@
             {
                 if (this.Connecting)
                 {
-                    var ex = new NetPsSocketException(SocketErrorCode.TimedOut, "socket connecting timeout.");
                     this.OnLoseConnected();
-                    this.ThrowException(ex);
+                    this.ThrowException(TIMEOUT_EXCEPTION);
                 }
             }
             catch (SocketException e)
