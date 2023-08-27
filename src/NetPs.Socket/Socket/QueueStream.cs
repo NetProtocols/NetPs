@@ -64,6 +64,7 @@
         
         public override bool CanRead => this.Length != 0;
         public virtual bool IsDisposed { get; private set; } = false;
+        public virtual bool IsClosed { get; private set; } = false;
 
         /// <summary>
         /// 清空队列.
@@ -131,8 +132,8 @@
                 for(long i= offset; !IsDisposed && i< len; i += MAX_STACK_LENGTH)
                 {
                     //防止占堆溢出: memorystream.write方法使用递归调用
-                    if (i + MAX_STACK_LENGTH < len) base.Write(block, (int)i, MAX_STACK_LENGTH);
-                    else base.Write(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                    if (i + MAX_STACK_LENGTH < len) this.SafeWrite(block, (int)i, MAX_STACK_LENGTH);
+                    else this.SafeWrite(block, (int)i, (int)(len % MAX_STACK_LENGTH));
                 }
                 //base.Write(block, offset, (int)len);
                 this.nLength += len;
@@ -211,8 +212,8 @@
                 for(long i = offset; !IsDisposed && i<len; i+= MAX_STACK_LENGTH)
                 {
                     //防止占堆溢出: memorystream.read方法使用递归调用
-                    if (i + MAX_STACK_LENGTH < len) rlt+=base.Read(block, (int)i, MAX_STACK_LENGTH);
-                    else rlt+=base.Read(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                    if (i + MAX_STACK_LENGTH < len) rlt+=this.SafeRead(block, (int)i, MAX_STACK_LENGTH);
+                    else rlt+=this.SafeRead(block, (int)i, (int)(len % MAX_STACK_LENGTH));
                 }
                 this.nLength -= len;
                 this.r += len;
@@ -356,6 +357,11 @@
             }
         }
 
+        public override void Close()
+        {
+            this.IsClosed = true;
+            base.Close();
+        }
         void IDisposable.Dispose()
         {
             this.IsDisposed = true;
@@ -367,5 +373,24 @@
         private bool before_is_empty() => this.x == -1 && this.enda == -1 && this.nLength > 0 && this.endb == this.r;
 
         private long before_empty() => this.x - this.r - this.enda;
+
+        /// <summary>
+        /// 安全的写入
+        /// </summary>
+        private void SafeWrite(byte[] buffer, int offset, int count)
+        {
+            //fix: ObjectDisposedException Cannot access a closed Stream
+            if (!this.IsClosed && !this.IsDisposed) base.Write(buffer, offset, count);
+        }
+
+        /// <summary>
+        /// 安全的读取
+        /// </summary>
+        private int SafeRead(byte[] buffer, int offset, int count)
+        {
+            //fix: ObjectDisposedException Cannot access a closed Stream
+            if (!this.IsClosed && !this.IsDisposed) return base.Read(buffer, offset, count);
+            return 0;
+        }
     }
 }
