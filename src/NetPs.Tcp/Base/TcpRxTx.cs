@@ -11,11 +11,15 @@
         /// Initializes a new instance of the <see cref="TcpRxTx"/> class.
         /// </summary>
         /// <param name="tcp_config">配置.</param>
-        public TcpRxTx(Action<TcpCore> tcp_config = null)
+        public TcpRxTx(Action<TcpCore> tcp_config)
             : base(tcp_config)
         {
             this.Rx = new TcpRx(this);
             this.Tx = new TcpTx(this);
+        }
+
+        public TcpRxTx() : base()
+        {
         }
 
         /// <summary>
@@ -31,9 +35,9 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
+            if (this.Rx != null) this.Rx.Dispose();
+            if (this.Tx != null) this.Tx.Dispose();
             base.Dispose();
-            this.Rx?.Dispose();
-            this.Tx?.Dispose();
         }
     }
 }

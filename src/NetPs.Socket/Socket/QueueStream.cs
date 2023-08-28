@@ -2,6 +2,7 @@
 {
     using System;
     using System.IO;
+    using System.Threading;
 #if NET35_CF
     using Array = System.Array2;
 #endif
@@ -11,8 +12,8 @@
     /// </summary>
     public class QueueStream : MemoryStream, IDisposable
     {
-        public const int MAX_STACK_LENGTH = 4096;
-        // 读取点
+        public const int MAX_STACK_LENGTH = 10240; //80K，可扩大
+        // 读取点s
         private long r { get; set; }
 
         // 当前写入点
@@ -29,7 +30,11 @@
 
         private long nLength { get; set; }
 
-        private object locker { get; set; } = new object();
+        private bool locked { get; set; } = false;
+
+        private int per_millisecond_max { get; set; } = MAX_STACK_LENGTH;
+        private int per_millisecond_real { get; set; } = 0;
+        public int Per_Millisecond_MAX => per_millisecond_max;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="QueueStream"/> class.
@@ -61,10 +66,22 @@
 
         /// <inheritdoc/>
         public override long Length => this.nLength;
-        
+
         public override bool CanRead => this.Length != 0;
         public virtual bool IsDisposed { get; private set; } = false;
         public virtual bool IsClosed { get; private set; } = false;
+
+        /// <summary>
+        /// 限制带宽
+        /// </summary>
+        /// <remarks>
+        /// 单位KB/s, 最小单次接收数
+        /// </remarks>
+        /// <param name="speed">带宽</param>
+        public virtual void LimitSpeed(int speed)
+        {
+            this.per_millisecond_max = speed;
+        }
 
         /// <summary>
         /// 清空队列.
@@ -90,74 +107,75 @@
         /// <param name="length">长度.</param>
         public virtual void Enqueue(byte[] block, int offset = 0, int length = -1)
         {
+            if (block == null || block.Length == 0 || length == 0)
+            {
+                return;
+            }
+            else if (length > block.Length || length < 0)
+            {
+                length = block.Length;
+            }
             lock (this)
             {
-                try
+                //try
+                //{
+                //if (length + this.Length > Capacity)
+                //{
+                //    Capacity += length;
+                //}
+
+                long len = length;
+                if (this.before_is_empty())
                 {
-                    if (length + this.Length > Capacity)
-                    {
-                        Capacity += length;
-                    }
-                    if (block == null || block.Length == 0 || length == 0)
-                    {
-                        return;
-                    }
-                    else if (length > block.Length || length < 0)
-                    {
-                        length = block.Length;
-                    }
-
-                    long len = length;
-                    if (this.before_is_empty())
-                    {
-                        // 回去写.
-                        this.w = -1;
-                        this.x = this.endb;
-                        len = this.before_empty();
-                    }
-                    else if (!this.is_main(this.w))
-                    {
-                        len = this.before_empty();
-                        if (len == 0)
-                        {
-                            len = length;
-                            this.w = this.x;
-                        }
-                    }
-
-                    if (length < len)
+                    // 回去写.
+                    this.w = -1;
+                    this.x = this.endb;
+                    len = this.before_empty();
+                }
+                else if (!this.is_main(this.w))
+                {
+                    len = this.before_empty();
+                    if (len == 0)
                     {
                         len = length;
-                    }
-
-                    this.SafePositionSet(this.w + 1);
-                    for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
-                    {
-                        //防止占堆溢出: memorystream.write方法使用递归调用
-                        if (i + MAX_STACK_LENGTH < len) this.SafeWrite(block, (int)i, MAX_STACK_LENGTH);
-                        else this.SafeWrite(block, (int)i, (int)(len % MAX_STACK_LENGTH));
-                    }
-                    //base.Write(block, offset, (int)len);
-                    this.nLength += len;
-                    this.w += len;
-                    if (this.is_main(this.w))
-                    {
-                        this.endb = this.w;
-                    }
-                    else
-                    {
-                        this.enda = this.w;
-                    }
-
-                    if (length > len)
-                    {
-                        this.Enqueue(block, (int)len, (int)(length - len));
+                        this.w = this.x;
                     }
                 }
-                catch (ObjectDisposedException)
+
+                if (length < len)
                 {
-                    //不需要进行处理实例已经Closed, 释放了
+                    len = length;
                 }
+
+                this.SafePositionSet(this.w + 1);
+                for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
+                {
+                    //防止占堆溢出: memorystream.write方法使用递归调用
+                    if (i + MAX_STACK_LENGTH < len) this.SafeWrite(block, (int)i, MAX_STACK_LENGTH);
+                    else this.SafeWrite(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                }
+                //base.Write(block, offset, (int)len);
+                this.nLength += len;
+                this.w += len;
+                if (this.is_main(this.w))
+                {
+                    this.endb = this.w;
+                }
+                else
+                {
+                    this.enda = this.w;
+                }
+
+                if (length > len)
+                {
+                    this.Enqueue(block, (int)len, (int)(length - len));
+                }
+                this.Flush();
+                //}
+                //catch (ObjectDisposedException)
+                //{
+                //    //不需要进行处理实例已经Closed, 释放了
+                //}
             }
         }
 
@@ -167,7 +185,7 @@
         /// <param name="block">数据块.</param>
         /// <param name="offset">偏移.</param>
         /// <param name="length">长度.</param>
-        public virtual int Dequeue(ref byte[] block, int offset = 0, int length = -1)
+        public virtual int Dequeue(byte[] block, int offset = 0, int length = -1)
         {
             if (block == null || block.Length == 0 || length == 0 || this.IsEmpty)
             {
@@ -181,76 +199,78 @@
             long len = length;
             lock (this)
             {
-                try
+                //try
+                //{
+                if (this.nLength < len)
                 {
-                    if (this.nLength < len)
-                    {
-                        len = this.nLength;
-                    }
-
-                    if (!this.is_main(this.r))
-                    {
-                        if (this.r < this.enda)
-                        {
-                            len = this.enda - this.r;
-                            if (len == 0)
-                            {
-                                this.r = -1;
-                            }
-                        }
-
-                        if (this.r > this.enda)
-                        {
-                            len = this.x - this.r;
-                        }
-
-                        if (this.r == this.enda)
-                        {
-                            this.r = this.x;
-                            this.enda = this.x = -1;
-                        }
-                    }
-
-                    if (length < len)
-                    {
-                        len = length;
-                    }
-
-                    this.SafePositionSet(this.r + 1);
-                    var rlt = 0;
-                    for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
-                    {
-                        //防止占堆溢出: memorystream.read方法使用递归调用
-                        if (i + MAX_STACK_LENGTH < len) rlt += this.SafeRead(block, (int)i, MAX_STACK_LENGTH);
-                        else rlt += this.SafeRead(block, (int)i, (int)(len % MAX_STACK_LENGTH));
-                    }
-                    this.nLength -= len;
-                    this.r += len;
-
-                    if (length > len)
-                    {
-                        this.Dequeue(ref block, (int)len, (int)(length - len));
-                    }
-
-                    if (this.IsEmpty)
-                    {
-                        this.x = this.r = this.w = this.enda = this.endb = -1;
-                        this.SetLength(0);
-                    }
-
-                    return rlt;
+                    len = this.nLength;
                 }
-                catch(ObjectDisposedException)
+
+                if (!this.is_main(this.r))
                 {
-                    //不需要进行处理实例已经Closed, 释放了
-                    return 0;
+                    if (this.r < this.enda)
+                    {
+                        len = this.enda - this.r;
+                        if (len == 0)
+                        {
+                            this.r = -1;
+                        }
+                    }
+
+                    if (this.r > this.enda)
+                    {
+                        len = this.x - this.r;
+                    }
+
+                    if (this.r == this.enda)
+                    {
+                        this.r = this.x;
+                        this.enda = this.x = -1;
+                    }
                 }
+
+                if (length < len)
+                {
+                    len = length;
+                }
+
+                this.SafePositionSet(this.r + 1);
+                var rlt = 0;
+                for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
+                {
+                    //防止占堆溢出: memorystream.read方法使用递归调用
+                    if (i + MAX_STACK_LENGTH < len) rlt += this.SafeRead(block, (int)i, MAX_STACK_LENGTH);
+                    else rlt += this.SafeRead(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                }
+                this.nLength -= len;
+                this.r += len;
+
+                if (length > len)
+                {
+                    this.Dequeue(block, (int)len, (int)(length - len));
+                }
+
+                if (this.IsEmpty)
+                {
+                    this.x = this.r = this.w = this.enda = this.endb = -1;
+                    //this.SetLength(0);
+                }
+
+                this.Flush();
+                return rlt;
+                //}
+                //catch(ObjectDisposedException)
+                //{
+                //    //不需要进行处理实例已经Closed, 释放了
+                //    return 0;
+                //}
             }
         }
 
         /// <summary>
         /// 放出队列.
         /// </summary>
+        /// <remarks>可能导致内存泄露</remarks>
         /// <param name="length">长度.</param>
         /// <returns>数据块.</returns>
         public virtual byte[] Dequeue(long length)
@@ -267,7 +287,7 @@
                 }
 
                 var outbuf = new byte[length];
-                this.Dequeue(ref outbuf);
+                this.Dequeue(outbuf);
                 return outbuf;
             }
         }
@@ -293,7 +313,7 @@
         public virtual Int64 DequeueInt64_32()
         {
             byte[] bytes = new byte[8];
-            this.Dequeue(ref bytes, 0, 4);
+            this.Dequeue(bytes, 0, 4);
             bytes[4] = bytes[0];
             bytes[0] = bytes[3];
             bytes[3] = bytes[4]; ;
@@ -333,7 +353,7 @@
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return this.Dequeue(ref buffer, offset, count);
+            return this.Dequeue(buffer, offset, count);
         }
 
         public override void Write(byte[] buffer, int offset, int count)
@@ -352,7 +372,7 @@
             var buffer = new byte[4096];
             while (this.CanRead)
             {
-                var len = this.Dequeue(ref buffer, 0, 4096);
+                var len = this.Dequeue(buffer, 0, 4096);
                 stream.Write(buffer, 0, len);
             }
         }
@@ -362,6 +382,30 @@
             this.IsClosed = true;
             base.Close();
         }
+
+        /// <summary>
+        /// 锁定
+        /// </summary>
+        public void LOCK()
+        {
+            lock (this)
+            {
+                if (!this.locked) this.locked = true;
+            }
+            this.Position = 0;
+            this.Clear();
+            this.Flush();
+        }
+
+        /// <summary>
+        /// 解锁
+        /// </summary>
+        public void UNLOCK()
+        {
+            lock (this)
+                if (locked) this.locked = false;
+        }
+
         void IDisposable.Dispose()
         {
             this.IsDisposed = true;
@@ -380,7 +424,7 @@
         private void SafeWrite(byte[] buffer, int offset, int count)
         {
             //fix: ObjectDisposedException Cannot access a closed Stream
-            if (!this.IsClosed) base.Write(buffer, offset, count);
+            if (!this.IsClosed && !this.locked) base.Write(buffer, offset, count);
         }
 
         /// <summary>
@@ -389,7 +433,7 @@
         private int SafeRead(byte[] buffer, int offset, int count)
         {
             //fix: ObjectDisposedException Cannot access a closed Stream
-            if (!this.IsClosed) return base.Read(buffer, offset, count);
+            if (!this.IsClosed && !this.locked) return base.Read(buffer, offset, count);
             return 0;
         }
 
@@ -399,7 +443,7 @@
         /// <param name="position"></param>
         private void SafePositionSet(long position)
         {
-            if (!this.IsClosed) this.Position = position;
+            if (!this.IsClosed && !this.locked) this.Position = position;
         }
     }
 }

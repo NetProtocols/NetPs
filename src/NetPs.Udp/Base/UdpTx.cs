@@ -149,10 +149,9 @@
                     catch (SocketException e)
                     {
                         this.transporting = false;
-                        var ex = new NetPsSocketException(e, this.core, NetPsSocketExceptionSource.Write);
-                        if (!ex.Handled)
+                        if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write))
                         {
-                            this.core.ThrowException(ex);
+                            this.core.ThrowException(e);
                         }
                     }
                 }
@@ -181,10 +180,9 @@
                 catch (SocketException e)
                 {
                     this.transporting = false;
-                    var ex = new NetPsSocketException(e, this.core, NetPsSocketExceptionSource.Write);
-                    if (!ex.Handled)
+                    if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write))
                     {
-                        throw ex;
+                        throw e;
                     }
                 }
 

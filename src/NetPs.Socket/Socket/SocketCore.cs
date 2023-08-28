@@ -23,6 +23,15 @@
     /// </summary>
     public abstract class SocketCore : IDisposable
     {
+        /// <summary>
+        /// 数据流池
+        /// </summary>
+        /// <remarks>
+        /// 默认池中只保留2个流,可以使用StreamPool.SET_MAX([size])进行扩大。
+        /// <br/>
+        /// * 需要保证流的带宽不能无限大，这可能导致内存过大。
+        /// </remarks>
+        public static readonly QueueStreamPool StreamPool = new QueueStreamPool(0x2);
         private ISocketLose socketLose { get; set; }
         private bool disposed = false;
         private bool closed = true;
@@ -200,44 +209,33 @@
                 }
             }
         }
-
-        private static readonly NetPsSocketException TIMEOUT_EXCEPTION = new NetPsSocketException(SocketErrorCode.TimedOut, "socket connecting timeout.");
         private void ConnectCallback(IAsyncResult asyncResult)
         {
+            var client = (Socket)asyncResult.AsyncState;
             try
             {
-                var client = (Socket)asyncResult.AsyncState;
                 client.EndConnect(asyncResult);
+                asyncResult.AsyncWaitHandle.Close();
                 this.Connecting = false;
                 this.closed = false;
                 this.OnConnected();
             }
             catch (ObjectDisposedException)
             {
+                this.Connecting = false;
                 if (this.Connecting)
                 {
                     this.OnLoseConnected();
-                    this.ThrowException(TIMEOUT_EXCEPTION);
                 }
             }
             catch (SocketException e)
             {
-                var ex = new NetPsSocketException(e, this, NetPsSocketExceptionSource.Connect);
-                if (!ex.Handled)
+                this.Connecting = false;
+                if (!NetPsSocketException.Deal(e, this, NetPsSocketExceptionSource.Connect))
                 {
                     this.OnLoseConnected();
                     this.ThrowException(e);
                 }
-            }
-            catch (Exception e)
-            {
-                this.OnLoseConnected();
-                this.ThrowException(e);
-            }
-            finally
-            {
-                this.Connecting = false;
-                asyncResult.AsyncWaitHandle.Close();
             }
         }
 

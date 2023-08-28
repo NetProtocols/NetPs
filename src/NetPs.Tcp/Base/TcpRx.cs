@@ -1,11 +1,11 @@
 ﻿namespace NetPs.Tcp
 {
     using NetPs.Socket;
+    using NetPs.Tcp.Interfaces;
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
     using System.Threading;
-    using System.Threading.Tasks;
 #if NET35_CF
     using Array = System.Array2;
 #endif
@@ -15,16 +15,13 @@
     /// </summary>
     public class TcpRx : IDisposable
     {
-        private readonly TcpCore core;
-
-        private byte[] bBuffer { get; set; }
-
-        private int nReceived { get; set; }
-
+        protected TcpCore core { get; }
+        protected byte[] bBuffer { get; private set; }
+        protected byte[] bNow { get; set; }
+        public int nReceived { get; protected set; }
         private int nBuffersize { get; set; }
-
         private bool isDisposed { get; set; }
-        private int zero_receive_times { get; set; }
+        public bool Running => this.core.Receiving;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpRx"/> class.
@@ -33,7 +30,7 @@
         public TcpRx(TcpCore tcpCore)
         {
             this.isDisposed = false;
-            this.zero_receive_times = 0;
+            this.nReceived = 0;
             this.core = tcpCore;
             this.nBuffersize = Consts.ReceiveBytes;
             this.bBuffer = new byte[this.nBuffersize];
@@ -60,15 +57,14 @@
         /// Gets 接送缓冲区大小.
         /// </summary>
         public virtual int ReceiveBufferSize => this.nBuffersize;
-
-
+        
         /// <summary>
         /// 开始接收.
         /// </summary>
         public virtual void StartReceive()
         {
             this.core.Receiving = true;
-            this.x_StartReveice();
+            this.x_StartReceive();
         }
 
         /// <inheritdoc/>
@@ -78,9 +74,27 @@
             this.core.Receiving = false;
         }
 
-        private void x_StartReveice()
+        /// <summary>
+        /// 发送接收事件
+        /// </summary>
+        /// <param name="data"></param>
+        public virtual void SendReceived(byte[] data)
         {
-            if (this.isDisposed || !this.core.Actived)
+            if (this.Received != null && data.Length > 0) this.Received.Invoke(data);
+        }
+
+        public virtual void EndRecevie()
+        {
+            this.bNow = new byte[this.nReceived];
+            Array.Copy(this.bBuffer, this.bNow, this.nReceived);
+            SendReceived(this.bNow);
+            this.x_StartReceive();
+        }
+
+        private void x_StartReceive()
+        {
+            if (this.isDisposed) return;
+            else if (!this.core.Actived)
             {
                 this.core.OnLoseConnected();
                 return;
@@ -88,59 +102,50 @@
 
             try
             {
-                this.core.Socket?.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, this.core.Socket);
+                if (this.core != null) this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
+                return;
             }
-            catch (Exception e)
+            catch (NullReferenceException)
             {
-                if (e is SocketException socket_e)
-                {
-                    var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.Read);
-                    if (!ex.Handled) this.core.ThrowException(ex);
-                }
-                x_StartReveice();
+                //释放
             }
+            catch (SocketException e)
+            {
+                if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
+                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
+            }
+            
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
-            if (this.isDisposed)
-            {
-                return;
-            }
+            if (this.isDisposed) return;
 
             try
             {
-                var client = (Socket)asyncResult.AsyncState;
-                this.nReceived = client.EndReceive(asyncResult);
-                //asyncResult.AsyncWaitHandle.Close();
-            }
-            catch (Exception e)
-            {
-                this.nReceived = -1;
-                if (e is SocketException exception)
+                this.nReceived = this.core.Socket.EndReceive(asyncResult);
+                asyncResult.AsyncWaitHandle.Close();
+                if (this.nReceived <= 0)
                 {
-                    var ex = new NetPsSocketException(exception, this.core, NetPsSocketExceptionSource.Read);
-                    if (!ex.Handled)
-                    {
-                        this.core.ThrowException(e);
-                    }
+                    this.core.OnLoseConnected();
+                    return;
                 }
-            }
 
-            if (this.nReceived > 0)
-            {
-                zero_receive_times = 0;
-                var buffer = new byte[this.nReceived];
-                Array.Copy(this.bBuffer, buffer, this.nReceived);
-                Array.Clear(this.bBuffer, 0, this.nReceived);
-                this.Received?.Invoke(buffer);
+                this.EndRecevie();
+                return;
             }
-            else if (zero_receive_times++ > 2)
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException)
             {
-                this.core.OnLoseConnected();
+                //释放
             }
+            catch (SocketException e)
+            {
+                this.nReceived = 0;
 
-            this.x_StartReveice();
-            asyncResult.AsyncWaitHandle.Close();
+                if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
+                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
+            }
         }
+
     }
 }

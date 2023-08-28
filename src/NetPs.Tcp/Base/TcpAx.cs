@@ -11,7 +11,7 @@
     /// </summary>
     public class TcpAx : IDisposable
     {
-        private readonly TcpCore core;
+        private TcpCore core { get; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpAx"/> class.
         /// </summary>
@@ -53,46 +53,38 @@
             try
             {
                 if (this.core.Socket == null) this.core.OnLoseConnected();
-                else this.core.Socket.BeginAccept(this.AcceptCallback, this.core.Socket);
+                else this.core.Socket.BeginAccept(this.AcceptCallback, null);
             }
-            catch (Exception e)
+            catch (NullReferenceException)
             {
-                StartAccept();
-                if (e is SocketException socket_e)
-                {
-                    var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.Accept);
-                    if (!ex.Handled) this.core.ThrowException(ex);
-                }
-                else
-                {
-                    this.core.ThrowException(e);
-                }
+                //释放
+            }
+            catch (SocketException e)
+            {
+                if (this.core != null && this.core.Actived) StartAccept(); //忽略 客户端连接错误
+                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Accept)) this.core.ThrowException(e);
             }
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
-            var socket = (Socket)asyncResult.AsyncState;
             try
             {
-                var client = socket.EndAccept(asyncResult);
+                var client = this.core.Socket.EndAccept(asyncResult);
+                asyncResult.AsyncWaitHandle.Close();
                 Task.Factory.StartNew(tell_accept, client);
                 this.StartAccept();
             }
-            catch (Exception e)
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException)
             {
-                this.StartAccept();
-                //请求错误不处理
-                if (e is SocketException socket_e)
-                {
-                    var ex = new NetPsSocketException(socket_e, this.core, NetPsSocketExceptionSource.Accept);
-                    if (!ex.Handled) this.core.ThrowException(ex);
-                }
-                else
-                {
-                    this.core.ThrowException(e);
-                }
+                //释放
             }
-            asyncResult.AsyncWaitHandle.Close();
+            catch (SocketException e)
+            {
+                if (this.core != null && this.core.Actived) StartAccept(); //忽略 客户端连接错误
+                //请求错误不处理
+                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Accept)) this.core.ThrowException(e);
+            }
         }
         private void tell_accept(object client)
         {
