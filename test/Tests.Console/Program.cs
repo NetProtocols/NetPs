@@ -16,7 +16,7 @@
         static void Main()
         {
             int i = 0;
-            new TcpTest();
+            //new TcpTest();
             var server = new TcpServer((_, client) =>
             {
                 i++;
@@ -27,7 +27,7 @@
             {
                 client.StartMirror("127.0.0.1:5301");
             });
-            server2.Run("127.0.0.1:5244");
+            server2.Run("0.0.0.0:5244");
             while (true)
             {
                 Console.ReadLine();

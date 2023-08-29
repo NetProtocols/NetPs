@@ -117,13 +117,6 @@
             }
             lock (this)
             {
-                //try
-                //{
-                //if (length + this.Length > Capacity)
-                //{
-                //    Capacity += length;
-                //}
-
                 long len = length;
                 if (this.before_is_empty())
                 {
@@ -170,12 +163,8 @@
                 {
                     this.Enqueue(block, (int)len, (int)(length - len));
                 }
+                //Flush减少内存回收
                 this.Flush();
-                //}
-                //catch (ObjectDisposedException)
-                //{
-                //    //不需要进行处理实例已经Closed, 释放了
-                //}
             }
         }
 
@@ -199,8 +188,6 @@
             long len = length;
             lock (this)
             {
-                //try
-                //{
                 if (this.nLength < len)
                 {
                     len = this.nLength;
@@ -256,14 +243,9 @@
                     //this.SetLength(0);
                 }
 
+                //Flush减少内存回收
                 this.Flush();
                 return rlt;
-                //}
-                //catch(ObjectDisposedException)
-                //{
-                //    //不需要进行处理实例已经Closed, 释放了
-                //    return 0;
-                //}
             }
         }
 
@@ -406,9 +388,12 @@
                 if (locked) this.locked = false;
         }
 
-        void IDisposable.Dispose()
+        public new void Dispose()
         {
-            this.IsDisposed = true;
+            lock (this)
+            {
+                this.IsDisposed = true;
+            }
             base.Dispose();
         }
 

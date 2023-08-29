@@ -35,8 +35,19 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
-            if (this.Rx != null) this.Rx.Dispose();
-            if (this.Tx != null) this.Tx.Dispose();
+            lock (this)
+            {
+                if (this.Rx != null)
+                {
+                    this.Rx.Dispose();
+                    this.Rx = null;
+                }
+                if (this.Tx != null)
+                {
+                    this.Tx.Dispose();
+                    this.Tx = null;
+                }
+            }
             base.Dispose();
         }
     }

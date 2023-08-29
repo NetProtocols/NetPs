@@ -8,19 +8,19 @@
     public class MirrorHub : HubBase, IHub
     {
         private bool is_disposed = false;
-        private TcpRepeaterClient tcp { get; }
+        private TcpRepeaterClient tcp { get; set; }
         private readonly long id = GetId();
-        private TcpRepeaterClient mirror { get; }
+        private TcpRepeaterClient mirror { get; set; }
 
         public virtual string Mirror_Address { get; protected set; }
-        public MirrorHub(TcpClient tcp, string mirror_addr)
+        public MirrorHub(TcpClient tcp, string mirror_addr, int limit)
         {
             if (tcp.IsDisposed || !tcp.Actived) return;
             this.Mirror_Address = mirror_addr;
             this.mirror = new TcpRepeaterClient(tcp.Tx);
             this.tcp = new TcpRepeaterClient(tcp, this.mirror.Tx);
-            this.mirror.Limit(1024 * 1024 * 20);
-            this.tcp.Limit(1024 * 1024 * 20);
+            this.mirror.Limit(limit);
+            this.tcp.Limit(limit);
             mirror.DisConnected += Mirror_DisConnected;
             this.tcp.DisConnected += Mirror_DisConnected;
             this.mirror.Disposables.Add(mirror.ConnectedObservable.Subscribe(_ =>
@@ -32,7 +32,10 @@
 
         private void Mirror_DisConnected(System.Net.IPEndPoint iPEndPoint)
         {
-            if (!is_disposed) this.Dispose();
+            lock (this)
+            {
+                if (!is_disposed) this.Dispose();
+            }
         }
 
         public long ID => this.id;
@@ -40,11 +43,19 @@
         public void Dispose()
         {
             this.is_disposed = true;
-            mirror.DisConnected -= Mirror_DisConnected;
-            this.tcp.DisConnected -= Mirror_DisConnected;
-            this.mirror.Dispose();
-            this.tcp.Dispose();
             this.Close();
+            if (this.mirror != null)
+            {
+                mirror.DisConnected -= Mirror_DisConnected;
+                this.mirror.Dispose();
+                this.mirror = null;
+            }
+            if (this.tcp != null)
+            {
+                this.tcp.DisConnected -= Mirror_DisConnected;
+                this.tcp.Dispose();
+                this.tcp = null;
+            }
         }
 
         public void Start()

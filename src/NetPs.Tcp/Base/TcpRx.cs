@@ -1,11 +1,9 @@
 ﻿namespace NetPs.Tcp
 {
     using NetPs.Socket;
-    using NetPs.Tcp.Interfaces;
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
-    using System.Threading;
 #if NET35_CF
     using Array = System.Array2;
 #endif
@@ -80,7 +78,7 @@
         /// <param name="data"></param>
         public virtual void SendReceived(byte[] data)
         {
-            if (this.Received != null && data.Length > 0) this.Received.Invoke(data);
+            if (this.Received != null && data != null && data.Length > 0) this.Received.Invoke(data);
         }
 
         public virtual void EndRecevie()
@@ -118,19 +116,22 @@
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
-            if (this.isDisposed) return;
 
             try
             {
-                this.nReceived = this.core.Socket.EndReceive(asyncResult);
-                asyncResult.AsyncWaitHandle.Close();
-                if (this.nReceived <= 0)
+                lock (this)
                 {
-                    this.core.OnLoseConnected();
-                    return;
-                }
+                    if (this.isDisposed) return;
+                    this.nReceived = this.core.Socket.EndReceive(asyncResult);
+                    asyncResult.AsyncWaitHandle.Close();
+                    if (this.nReceived <= 0)
+                    {
+                        this.core.OnLoseConnected();
+                        return;
+                    }
 
-                this.EndRecevie();
+                    this.EndRecevie();
+                }
                 return;
             }
             catch (ObjectDisposedException) { }

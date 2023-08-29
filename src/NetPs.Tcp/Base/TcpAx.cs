@@ -11,6 +11,7 @@
     /// </summary>
     public class TcpAx : IDisposable
     {
+        private bool is_disposed = false;
         private TcpCore core { get; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpAx"/> class.
@@ -41,6 +42,8 @@
         /// <inheritdoc/>
         public virtual void Dispose()
         {
+            lock(this)
+            this.is_disposed = true;
             this.Accepted = null;
         }
 
@@ -52,6 +55,10 @@
             if (this.core.IsDisposed) return;
             try
             {
+                lock (this)
+                {
+                    if (this.is_disposed) return;
+                }
                 if (this.core.Socket == null) this.core.OnLoseConnected();
                 else this.core.Socket.BeginAccept(this.AcceptCallback, null);
             }
@@ -69,10 +76,15 @@
         {
             try
             {
-                var client = this.core.Socket.EndAccept(asyncResult);
+                Socket client = null;
+                lock (this)
+                {
+                    if (this.is_disposed) return;
+                    client = this.core.Socket.EndAccept(asyncResult);
+                }
                 asyncResult.AsyncWaitHandle.Close();
-                Task.Factory.StartNew(tell_accept, client);
                 this.StartAccept();
+                Task.Factory.StartNew(tell_accept, client);
             }
             catch (ObjectDisposedException) { }
             catch (NullReferenceException)

@@ -64,10 +64,10 @@
         /// 镜像模式.
         /// </summary>
         /// <param name="address">镜像来源.</param>
-        public void StartMirror(string address)
+        public void StartMirror(string address, int limit = -1)
         {
             if (Hub != null) Hub.Close();
-            Hub = new MirrorHub(this, address);
+            Hub = new MirrorHub(this, address, limit);
             Hub.Start();
         }
     }

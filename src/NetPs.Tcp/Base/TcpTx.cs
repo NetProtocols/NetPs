@@ -73,15 +73,18 @@
         /// <inheritdoc/>
         public virtual void Dispose()
         {
-            this.is_disposed = true;
-            if (this.cache != null)
+            lock (this)
             {
-                i--;
-                SocketCore.StreamPool.PUT(this.cache);
-                this.cache = null;
+                this.is_disposed = true;
+                if (this.cache != null)
+                {
+                    i--;
+                    SocketCore.StreamPool.PUT(this.cache);
+                    this.cache = null;
+                }
+                this.core = null;
+                this.EndTransport = null;
             }
-            this.core = null;
-            this.EndTransport = null;
         }
 
         /// <summary>
@@ -117,7 +120,7 @@
 
         private void end_transport()
         {
-            lock (this) this.transporting = false;
+            lock (this) { this.transporting = false; }
             if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
             if (this.Transported != null) this.Transported.Invoke(this);
         }
@@ -170,8 +173,12 @@
         {
             try
             {
-                //fix:ObjectDisposedException;Cannot access a disposed object. Object name: 'System.Net.Sockets.Socket'.”
-                if (this.core != null) this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
+                lock (this)
+                {
+                    if (this.IsDisposed || this.core == null) return;
+                    //fix:ObjectDisposedException;Cannot access a disposed object. Object name: 'System.Net.Sockets.Socket'.”
+                    this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
+                }
                 asyncResult.AsyncWaitHandle.Close();
                 //传输完成
                 this.x_Transport();

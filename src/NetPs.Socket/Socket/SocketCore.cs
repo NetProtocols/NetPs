@@ -31,7 +31,7 @@
         /// <br/>
         /// * 需要保证流的带宽不能无限大，这可能导致内存过大。
         /// </remarks>
-        public static readonly QueueStreamPool StreamPool = new QueueStreamPool(0x2);
+        public static readonly QueueStreamPool StreamPool = new QueueStreamPool(0x4);
         private ISocketLose socketLose { get; set; }
         private bool disposed = false;
         private bool closed = true;

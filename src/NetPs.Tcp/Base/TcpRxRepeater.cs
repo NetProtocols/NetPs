@@ -15,7 +15,7 @@ namespace NetPs.Tcp
     /// </remarks>
     public class TcpRxRepeater : TcpRx, IEndTransport, IDisposable
     {
-        public const int SECOND = 70000000; // 70%
+        public const int SECOND = 7000000; // 70%
         private bool waiting { get; set; }
         private int realtime_count { get; set; }
         private long last_time { get; set; }
@@ -35,12 +35,19 @@ namespace NetPs.Tcp
 
         public override void Dispose()
         {
-            if (this.stream != null)
+            lock (this)
             {
-                SocketCore.StreamPool.PUT(this.stream);
-                this.stream = null;
+                if (this.stream != null)
+                {
+                    SocketCore.StreamPool.PUT(this.stream);
+                    this.stream = null;
+                }
+                if (this.Transport != null)
+                {
+                    this.Transport.Dispose();
+                    this.Transport = null;
+                }
             }
-            if (!this.Transport.IsDisposed) this.Transport.Dispose();
             base.Dispose();
         }
 
@@ -50,68 +57,71 @@ namespace NetPs.Tcp
         /// <param name="limit">单位 kb/s</param>
         public void SetLimit(int limit)
         {
-            this.Limit = limit >> 3;
+            if (limit > 0) limit = limit >> 3;
+            this.Limit = limit;
         }
 
         public override void EndRecevie()
         {
-            if (Running && this.nReceived > 0) stream.Enqueue(this.bBuffer, 0, this.nReceived);
-
-            this.core.Receiving = false;
-            if (!waiting && !this.Transport.Running && this.stream.Length > 0)
+            var send_run = false;
+            var has_cache = false;
+            long max_len = 0;
+            var i = 0;
+            lock (this)
             {
-                if (this.Limit > 0 && stream.Length > Limit)
+                //异步回调, 预防空引用, 需要加锁
+                if (stream == null) return;
+                else if (Running && this.nReceived > 0) stream.Enqueue(this.bBuffer, 0, this.nReceived);
+                send_run = !waiting && !this.Transport.Running && this.stream.Length > 0;
+                has_cache = this.Limit > 0 && stream.Length > Limit;
+                if (has_cache)
                 {
-                    var len = stream.Length - this.Limit;
-                    var i = this.Limit;
-                    this.waiting = true;
-                    while (stream.Length > len)
-                    {
-                        if (this.core == null || this.Transport.IsDisposed) return;
-                        if (i > this.ReceiveBufferSize)
-                        {
-                            i -= this.ReceiveBufferSize;
-                            this.stream.Dequeue(this.bBuffer, 0, this.ReceiveBufferSize);
-                            this.limit_transport(this.bBuffer, 0, this.ReceiveBufferSize);
-                        }
-                        else
-                        {
-                            this.stream.Dequeue(this.bBuffer, 0, i);
-                            this.limit_transport(this.bBuffer, 0, i);
-                        }
-                    }
-                    this.waiting = false;
-                    if (!this.Transport.Running) this.WhenTransportEnd(this.Transport);
                     //has cache, cahce is now
-                    return;
+                    i = this.Limit;
+                    max_len = stream.Length - this.Limit;
                 }
                 else
                 {
-                    // data is now
-                    this.waiting = true;
-                    while (stream.Length > 0)
+                    i = (int)this.stream.Length;
+                    max_len = 0;
+                }
+            }
+
+            this.core.Receiving = false;
+            if (send_run)
+            {
+                var len = 0;
+                this.waiting = true;
+                while (true)
+                {
+                    lock (this)
                     {
-                        if (this.core == null || this.Transport.IsDisposed) return;
-                        if (stream.Length > this.ReceiveBufferSize)
+                        if (stream == null || this.core == null || this.Transport.IsDisposed) return;
+                        if (stream.Length <= max_len) break;
+                        if (i > this.ReceiveBufferSize)
                         {
-                            this.stream.Dequeue(this.bBuffer, 0, this.ReceiveBufferSize);
-                            this.limit_transport(this.bBuffer, 0, this.ReceiveBufferSize);
+                            i -= this.ReceiveBufferSize;
+                            len = this.ReceiveBufferSize;
                         }
                         else
                         {
-                            var len = this.stream.Dequeue(this.bBuffer, 0, (int)stream.Length);
-                            this.limit_transport(this.bBuffer, 0, len);
+                            len = i;
                         }
+                        this.stream.Dequeue(this.bBuffer, 0, len);
                     }
-                    this.waiting = false;
-                    if (!this.Transport.Running) this.WhenTransportEnd(this.Transport);
-                    return;
+                    //耗时不宜lock
+                    this.limit_transport(this.bBuffer, 0, len);
                 }
+                lock (this)
+                {
+                    this.waiting = false;
+                    if (this.Transport != null && !this.Transport.Running) this.WhenTransportEnd(this.Transport);
+                }
+                return;
             }
 
             if (this.Limit <= 0 || stream.Length < Limit)
             {
-
                 this.StartReceive();
                 return;
             }
@@ -121,6 +131,7 @@ namespace NetPs.Tcp
         {
             lock (this)
             {
+                if (this.Transport == null) return;
                 this.Transport.Transport(data, offset, length);
                 this.realtime_count += length - offset;
             }
@@ -131,7 +142,7 @@ namespace NetPs.Tcp
                 var now = DateTime.Now.Ticks;
                 if (now - this.last_time < SECOND)
                 {
-                    var wait = 700 - (int)((now - this.last_time) / 10000000);
+                    var wait = 700 - (int)((now - this.last_time) / 10000);
                     if (wait > 100) Thread.Sleep(wait);
                 }
                 this.last_time = now;
@@ -140,9 +151,9 @@ namespace NetPs.Tcp
 
         public void WhenTransportEnd(IDataTransport transport)
         {
-            if (transport.IsDisposed || this.core == null) return;
             lock (this)
             {
+                if (transport.IsDisposed || this.core == null) return;
                 if (!this.Running && !waiting)
                 {
                     this.nReceived = 0;
