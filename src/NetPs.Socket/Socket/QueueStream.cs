@@ -2,6 +2,7 @@
 {
     using System;
     using System.IO;
+    using System.Threading;
 #if NET35_CF
     using Array = System.Array2;
 #endif
@@ -9,26 +10,31 @@
     /// <summary>
     /// 队列 Stream.
     /// </summary>
-    public class QueueStream : MemoryStream
+    public class QueueStream : MemoryStream, IDisposable
     {
-        // 读取点
-        private long r;
+        public const int MAX_STACK_LENGTH = 10240; //80K，可扩大
+        // 读取点s
+        private long r { get; set; }
 
         // 当前写入点
-        private long w;
+        private long w { get; set; }
 
         // 转折点
-        private long x;
+        private long x { get; set; }
 
         // 前结尾
-        private long enda;
+        private long enda { get; set; }
 
         // 末结尾
-        private long endb;
+        private long endb { get; set; }
 
-        private long nLength;
+        private long nLength { get; set; }
 
-        private object locker = new object();
+        private bool locked { get; set; } = false;
+
+        private int per_millisecond_max { get; set; } = MAX_STACK_LENGTH;
+        private int per_millisecond_real { get; set; } = 0;
+        public int Per_Millisecond_MAX => per_millisecond_max;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="QueueStream"/> class.
@@ -60,15 +66,29 @@
 
         /// <inheritdoc/>
         public override long Length => this.nLength;
-        
+
         public override bool CanRead => this.Length != 0;
+        public virtual bool IsDisposed { get; private set; } = false;
+        public virtual bool IsClosed { get; private set; } = false;
+
+        /// <summary>
+        /// 限制带宽
+        /// </summary>
+        /// <remarks>
+        /// 单位KB/s, 最小单次接收数
+        /// </remarks>
+        /// <param name="speed">带宽</param>
+        public virtual void LimitSpeed(int speed)
+        {
+            this.per_millisecond_max = speed;
+        }
 
         /// <summary>
         /// 清空队列.
         /// </summary>
         public virtual void Clear()
         {
-            lock (this.locker)
+            lock (this)
             {
                 this.r = -1;
                 this.w = -1;
@@ -87,21 +107,16 @@
         /// <param name="length">长度.</param>
         public virtual void Enqueue(byte[] block, int offset = 0, int length = -1)
         {
-            lock (this.locker)
+            if (block == null || block.Length == 0 || length == 0)
             {
-                if (length + this.Length > Capacity)
-                {
-                    Capacity += length;
-                }
-                if (block == null || block.Length == 0 || length == 0)
-                {
-                    return;
-                }
-                else if (length > block.Length || length < 0)
-                {
-                    length = block.Length;
-                }
-
+                return;
+            }
+            else if (length > block.Length || length < 0)
+            {
+                length = block.Length;
+            }
+            lock (this)
+            {
                 long len = length;
                 if (this.before_is_empty())
                 {
@@ -125,8 +140,14 @@
                     len = length;
                 }
 
-                this.Position = this.w + 1;
-                base.Write(block, offset, (int)len);
+                this.SafePositionSet(this.w + 1);
+                for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
+                {
+                    //防止占堆溢出: memorystream.write方法使用递归调用
+                    if (i + MAX_STACK_LENGTH < len) this.SafeWrite(block, (int)i, MAX_STACK_LENGTH);
+                    else this.SafeWrite(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                }
+                //base.Write(block, offset, (int)len);
                 this.nLength += len;
                 this.w += len;
                 if (this.is_main(this.w))
@@ -142,6 +163,8 @@
                 {
                     this.Enqueue(block, (int)len, (int)(length - len));
                 }
+                //Flush减少内存回收
+                this.Flush();
             }
         }
 
@@ -151,20 +174,20 @@
         /// <param name="block">数据块.</param>
         /// <param name="offset">偏移.</param>
         /// <param name="length">长度.</param>
-        public virtual int Dequeue(ref byte[] block, int offset = 0, int length = -1)
+        public virtual int Dequeue(byte[] block, int offset = 0, int length = -1)
         {
-            lock (this.locker)
+            if (block == null || block.Length == 0 || length == 0 || this.IsEmpty)
             {
-                if (block == null || block.Length == 0 || length == 0 || this.IsEmpty)
-                {
-                    return 0;
-                }
-                else if (length > block.Length || length < 0)
-                {
-                    length = block.Length;
-                }
+                return 0;
+            }
+            else if (length > block.Length || length < 0)
+            {
+                length = block.Length;
+            }
 
-                long len = length;
+            long len = length;
+            lock (this)
+            {
                 if (this.nLength < len)
                 {
                     len = this.nLength;
@@ -198,22 +221,30 @@
                     len = length;
                 }
 
-                this.Position = this.r + 1;
-                var rlt = base.Read(block, offset, (int)len);
+                this.SafePositionSet(this.r + 1);
+                var rlt = 0;
+                for (long i = offset; !IsDisposed && i < len; i += MAX_STACK_LENGTH)
+                {
+                    //防止占堆溢出: memorystream.read方法使用递归调用
+                    if (i + MAX_STACK_LENGTH < len) rlt += this.SafeRead(block, (int)i, MAX_STACK_LENGTH);
+                    else rlt += this.SafeRead(block, (int)i, (int)(len % MAX_STACK_LENGTH));
+                }
                 this.nLength -= len;
                 this.r += len;
 
                 if (length > len)
                 {
-                    this.Dequeue(ref block, (int)len, (int)(length - len));
+                    this.Dequeue(block, (int)len, (int)(length - len));
                 }
 
                 if (this.IsEmpty)
                 {
                     this.x = this.r = this.w = this.enda = this.endb = -1;
-                    this.SetLength(0);
+                    //this.SetLength(0);
                 }
 
+                //Flush减少内存回收
+                this.Flush();
                 return rlt;
             }
         }
@@ -221,11 +252,12 @@
         /// <summary>
         /// 放出队列.
         /// </summary>
+        /// <remarks>可能导致内存泄露</remarks>
         /// <param name="length">长度.</param>
         /// <returns>数据块.</returns>
         public virtual byte[] Dequeue(long length)
         {
-            lock (this.locker)
+            lock (this)
             {
                 if (this.IsEmpty)
                 {
@@ -237,17 +269,14 @@
                 }
 
                 var outbuf = new byte[length];
-                this.Dequeue(ref outbuf);
+                this.Dequeue(outbuf);
                 return outbuf;
             }
         }
 
         public virtual byte DequeueByte()
         {
-            lock (this.locker)
-            {
-                return this.Dequeue(1)[0];
-            }
+            return this.Dequeue(1)[0];
         }
 
         /// <summary>
@@ -256,10 +285,7 @@
         /// <returns>整形.</returns>
         public virtual int DequeueInt32()
         {
-            lock (this.locker)
-            {
-                return BitConverter.ToInt32(this.Dequeue(4), 0);
-            }
+            return BitConverter.ToInt32(this.Dequeue(4), 0);
         }
 
         /// <summary>
@@ -269,10 +295,7 @@
         public virtual Int64 DequeueInt64_32()
         {
             byte[] bytes = new byte[8];
-            lock (this.locker)
-            {
-                this.Dequeue(ref bytes, 0, 4);
-            }
+            this.Dequeue(bytes, 0, 4);
             bytes[4] = bytes[0];
             bytes[0] = bytes[3];
             bytes[3] = bytes[4]; ;
@@ -289,19 +312,13 @@
         /// <param name="data">整形.</param>
         public virtual void EnqueueInt32(int data)
         {
-            lock (this.locker)
-            {
-                this.Enqueue(BitConverter.GetBytes(data));
-            }
+            this.Enqueue(BitConverter.GetBytes(data));
         }
 
         public virtual int DequeueInt32_Reversed()
         {
             byte[] bytes;
-            lock (this.locker)
-            {
-                bytes = this.Dequeue(4);
-            }
+            bytes = this.Dequeue(4);
             var buf = bytes[0];
             bytes[0] = bytes[3];
             bytes[3] = buf;
@@ -318,7 +335,7 @@
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return this.Dequeue(ref buffer, offset, count);
+            return this.Dequeue(buffer, offset, count);
         }
 
         public override void Write(byte[] buffer, int offset, int count)
@@ -337,9 +354,47 @@
             var buffer = new byte[4096];
             while (this.CanRead)
             {
-                var len = this.Dequeue(ref buffer, 0, 4096);
+                var len = this.Dequeue(buffer, 0, 4096);
                 stream.Write(buffer, 0, len);
             }
+        }
+
+        public override void Close()
+        {
+            this.IsClosed = true;
+            base.Close();
+        }
+
+        /// <summary>
+        /// 锁定
+        /// </summary>
+        public void LOCK()
+        {
+            lock (this)
+            {
+                if (!this.locked) this.locked = true;
+            }
+            this.Position = 0;
+            this.Clear();
+            this.Flush();
+        }
+
+        /// <summary>
+        /// 解锁
+        /// </summary>
+        public void UNLOCK()
+        {
+            lock (this)
+                if (locked) this.locked = false;
+        }
+
+        public new void Dispose()
+        {
+            lock (this)
+            {
+                this.IsDisposed = true;
+            }
+            base.Dispose();
         }
 
         private bool is_main(long point) => this.x == -1 || this.x < point;
@@ -347,5 +402,33 @@
         private bool before_is_empty() => this.x == -1 && this.enda == -1 && this.nLength > 0 && this.endb == this.r;
 
         private long before_empty() => this.x - this.r - this.enda;
+
+        /// <summary>
+        /// 安全的写入
+        /// </summary>
+        private void SafeWrite(byte[] buffer, int offset, int count)
+        {
+            //fix: ObjectDisposedException Cannot access a closed Stream
+            if (!this.IsClosed && !this.locked) base.Write(buffer, offset, count);
+        }
+
+        /// <summary>
+        /// 安全的读取
+        /// </summary>
+        private int SafeRead(byte[] buffer, int offset, int count)
+        {
+            //fix: ObjectDisposedException Cannot access a closed Stream
+            if (!this.IsClosed && !this.locked) return base.Read(buffer, offset, count);
+            return 0;
+        }
+
+        /// <summary>
+        /// 安全的指针位置设置
+        /// </summary>
+        /// <param name="position"></param>
+        private void SafePositionSet(long position)
+        {
+            if (!this.IsClosed && !this.locked) this.Position = position;
+        }
     }
 }

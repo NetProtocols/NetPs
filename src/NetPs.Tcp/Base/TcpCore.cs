@@ -11,8 +11,14 @@
     /// </summary>
     public class TcpCore : SocketCore, ITcpConfig
     {
-        private readonly Action<TcpCore> tcp_config;
+        private Action<TcpCore> tcp_config { get; }
         private ITcpConfig X_TcpConfig { get; }
+        public TcpCore()
+        {
+            this.tcp_config = null;
+            X_TcpConfig = this;
+            construct();
+        }
         public TcpCore(Action<TcpCore> tcp_config)
         {
             this.tcp_config = tcp_config;

@@ -60,7 +60,7 @@
             this.disposables = new CompositeDisposable();
             this.PacketReceivedObservable = Observable.FromEvent<DNSReceivedHandler, DnsPacket>(handler => packet => handler(packet), evt => this.PacketReceived += evt, evt => this.PacketReceived -= evt)
                     .Timeout(TimeSpan.FromMilliseconds(TimeoutMillisenconds));
-            host.Rx.Reveiced += Rx_Reveiced;
+            host.Rx.Received += Rx_Received;
             host.Rx.StartReveice();
         }
 
@@ -69,12 +69,13 @@
         public virtual IObservable<DnsPacket> PacketReceivedObservable { get; protected set; }
         public void Dispose()
         {
-            this.disposables?.Dispose();
+            this.disposables.Dispose();
             
             if (host != null)
             {
-                host.Rx.Reveiced -= Rx_Reveiced;
+                host.Rx.Received -= Rx_Received;
                 host.Dispose();
+                host = null;
             }
         }
 
@@ -136,7 +137,7 @@
             return await SendReq(address, DnsPacket.Type_CNAME, name);
         }
 
-        private void Rx_Reveiced(UdpData data)
+        private void Rx_Received(UdpData data)
         {
             var packet = new DnsPacket(data.Data);
             packet.IPEndPoint = data.IP;

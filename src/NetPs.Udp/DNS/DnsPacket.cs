@@ -83,6 +83,9 @@ namespace NetPs.Udp.DNS
 
         public DnsPacket(byte[] data)
         {
+            Answers = new List<DnsAnswer>();
+            AuthoritativeNameservers = new List<DnsAuthoritativeNameserver>();
+            Additionals = new List<DnsAdditional>();
             using (var ms = new MemoryStream(data))
             {
                 var reader = new BinaryReader(ms);
@@ -100,7 +103,6 @@ namespace NetPs.Udp.DNS
                     Read_DnsQuestion(question, reader);
                     Queries.Add(question);
                 }
-                Answers = new List<DnsAnswer>();
                 while (Answers.Count < AnswerRRs)
                 {
                     var answer = new DnsAnswer();
@@ -123,7 +125,6 @@ namespace NetPs.Udp.DNS
                             break;
                     }
                 }
-                AuthoritativeNameservers = new List<DnsAuthoritativeNameserver>();
                 while (AuthoritativeNameservers.Count < AuthorityRRs)
                 {
                     var authoritativeNameserver = new DnsAuthoritativeNameserver();
@@ -152,7 +153,6 @@ namespace NetPs.Udp.DNS
                         }
                     }
                 }
-                Additionals = new List<DnsAdditional>();
                 while (Additionals.Count < AdditionalRRs)
                 {
                     var additional = new DnsAdditional();

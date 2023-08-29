@@ -9,7 +9,7 @@
 			CS8632;
 		</NoWarn>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
 	

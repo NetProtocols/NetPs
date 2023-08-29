@@ -28,7 +28,7 @@
             this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
             {
                 var client = new TcpClient(s, this);
-                lock (this.Connects) this.Connects.Add(client);
+                lock (this.Connects) { this.Connects.Add(client); }
                 accepted?.Invoke(this, client);
             }));
         }
@@ -43,10 +43,13 @@
                 {
                     if (client.Actived)
                     {
-                        lock (this.Connects) this.Connects.Add(client);
-                        client.StartReceive(serverConfig);
+                        lock (this.Connects) { this.Connects.Add(client); }
+                        return;
+                        //client.StartReceive(serverConfig);
                     }
                 }
+                //无效客户端
+                client.Dispose();
             }));
             this.Run(serverConfig.BandAddress);
         }
@@ -54,7 +57,7 @@
         private void construct()
         {
             this.Ax = new TcpAx(this);
-            this.Connects = new List<TcpClient>(64571); // 65535-1024= 64571
+            this.Connects = new List<TcpClient>(); // 65535-1024= 64571
         }
 
         /// <summary>
@@ -147,7 +150,7 @@
             var client = (TcpClient)socket;
             if (client != null)
             {
-                lock (this.Connects) this.Connects.Remove(client);
+                lock (this.Connects) { this.Connects.Remove(client); }
                 client.Dispose();
             }
         }

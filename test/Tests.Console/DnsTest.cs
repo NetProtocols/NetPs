@@ -14,7 +14,7 @@ namespace TestsConsole
     {
         static bool exited = false;
 
-        DnsTest()
+        public DnsTest()
         {
             Console.Write("loading");
             new Thread(new ThreadStart(() => Food.Heating(this))).Start();
@@ -32,7 +32,7 @@ namespace TestsConsole
             var host = "nuget.org";
             var dns = DnsHost.DNS_NETEASE;
             Console.WriteLine(dns);
-            Console.Write("> ");
+            Console.Write("dns-test> ");
             host = Console.ReadLine();
             while (host != "exit")
             {
