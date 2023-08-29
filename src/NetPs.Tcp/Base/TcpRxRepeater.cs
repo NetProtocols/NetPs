@@ -60,11 +60,11 @@ namespace NetPs.Tcp
             if (limit > 0) limit = limit >> 3;
             this.Limit = limit;
         }
-
+        public static int j = 0;
         public override void EndRecevie()
         {
+            j++;
             var send_run = false;
-            var has_cache = false;
             long max_len = 0;
             var i = 0;
             lock (this)
@@ -73,7 +73,7 @@ namespace NetPs.Tcp
                 if (stream == null) return;
                 else if (Running && this.nReceived > 0) stream.Enqueue(this.bBuffer, 0, this.nReceived);
                 send_run = !waiting && !this.Transport.Running && this.stream.Length > 0;
-                has_cache = this.Limit > 0 && stream.Length > Limit;
+                var has_cache = this.Limit > 0 && stream.Length > Limit;
                 if (has_cache)
                 {
                     //has cache, cahce is now
@@ -87,7 +87,6 @@ namespace NetPs.Tcp
                 }
             }
 
-            this.core.Receiving = false;
             if (send_run)
             {
                 var len = 0;
@@ -112,17 +111,20 @@ namespace NetPs.Tcp
                     //耗时不宜lock
                     this.limit_transport(this.bBuffer, 0, len);
                 }
+                bool need_run = false;
                 lock (this)
                 {
                     this.waiting = false;
-                    if (this.Transport != null && !this.Transport.Running) this.WhenTransportEnd(this.Transport);
+                    need_run = this.Transport != null && !this.Transport.Running && this.stream.Length == max_len;
+                    if (!need_run) this.core.Receiving = false;
                 }
+                if (need_run) Task.Factory.StartNew(this.x_StartReceive);
                 return;
             }
 
             if (this.Limit <= 0 || stream.Length < Limit)
             {
-                this.StartReceive();
+                Task.Factory.StartNew(this.x_StartReceive);
                 return;
             }
         }
@@ -148,18 +150,21 @@ namespace NetPs.Tcp
                 this.last_time = now;
             }
         }
-
+        public static int i = 0;
         public void WhenTransportEnd(IDataTransport transport)
         {
+            if (this.core == null || transport.IsDisposed) return;
+            bool run = false;
             lock (this)
             {
-                if (transport.IsDisposed || this.core == null) return;
                 if (!this.Running && !waiting)
                 {
                     this.nReceived = 0;
-                    this.EndRecevie();
+                    i++;
+                    run = true;
                 }
             }
+            if (run) this.EndRecevie();
         }
     }
 }

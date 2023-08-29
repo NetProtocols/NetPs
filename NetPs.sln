@@ -21,6 +21,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetPs.Udp", "src\NetPs.Udp\NetPs.Udp.csproj", "{F3512229-5479-4083-9F80-065C3EB04684}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConsole.Net6", "test\TestConsole.Net6\TestConsole.Net6.csproj", "{F4558487-7BB0-461F-97E2-F83D707DC1BD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +49,10 @@ Global
 		{F3512229-5479-4083-9F80-065C3EB04684}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3512229-5479-4083-9F80-065C3EB04684}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3512229-5479-4083-9F80-065C3EB04684}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4558487-7BB0-461F-97E2-F83D707DC1BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4558487-7BB0-461F-97E2-F83D707DC1BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4558487-7BB0-461F-97E2-F83D707DC1BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4558487-7BB0-461F-97E2-F83D707DC1BD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

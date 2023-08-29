@@ -68,7 +68,7 @@
             }
             catch (SocketException e)
             {
-                if (this.core != null && this.core.Actived) StartAccept(); //忽略 客户端连接错误
+                if (this.core != null && this.core.Actived) Task.Factory.StartNew(StartAccept); //忽略 客户端连接错误
                 else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Accept)) this.core.ThrowException(e);
             }
         }
@@ -83,7 +83,7 @@
                     client = this.core.Socket.EndAccept(asyncResult);
                 }
                 asyncResult.AsyncWaitHandle.Close();
-                this.StartAccept();
+                Task.Factory.StartNew(this.StartAccept);
                 Task.Factory.StartNew(tell_accept, client);
             }
             catch (ObjectDisposedException) { }

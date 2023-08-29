@@ -4,6 +4,7 @@
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading.Tasks;
 #if NET35_CF
     using Array = System.Array2;
 #endif
@@ -59,6 +60,10 @@
         /// </summary>
         public virtual void StartReceive()
         {
+            lock (this)
+            {
+                if (this.core.Receiving) return;
+            }
             this.core.Receiving = true;
             this.x_StartReceive();
         }
@@ -87,10 +92,10 @@
             var data = new byte[this.nReceived];
             Array.Copy(this.bBuffer, data, this.nReceived);
             SendReceived(data);
-            this.x_StartReceive();
+            Task.Factory.StartNew(this.x_StartReceive);
         }
 
-        private void x_StartReceive()
+        protected virtual void x_StartReceive()
         {
             lock (this)
             {
@@ -115,8 +120,6 @@
                 if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
                 else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
-
-            this.core.Receiving = false;
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
@@ -133,9 +136,8 @@
                         this.core.OnLoseConnected();
                         return;
                     }
-
-                    this.EndRecevie();
                 }
+                this.EndRecevie();
                 return;
             }
             //释放
@@ -148,8 +150,6 @@
                 if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
                 else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
-
-            this.core.Receiving = false;
         }
 
     }

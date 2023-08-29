@@ -117,7 +117,13 @@
 
         private void end_transport()
         {
+            if (this.IsDisposed) return;
             lock (this) { this.transporting = false; }
+            Task.Factory.StartNew(tell_transported);
+        }
+
+        private void tell_transported()
+        {
             if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
             if (this.Transported != null) this.Transported.Invoke(this);
         }
@@ -172,7 +178,7 @@
             {
                 lock (this)
                 {
-                    if (this.IsDisposed || this.core == null) return;
+                    if (this.IsDisposed || this.core == null || this.cache == null) return;
                     //fix:ObjectDisposedException;Cannot access a disposed object. Object name: 'System.Net.Sockets.Socket'.”
                     this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
                 }
