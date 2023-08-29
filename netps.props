@@ -1,6 +1,6 @@
 <Project>
 	<PropertyGroup>
-		<Version>1.0.30823</Version>
+		<Version>1.0.30829</Version>
 		<AutoGenerateBindingRedirects>True</AutoGenerateBindingRedirects>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Product>NetPs</Product>
@@ -10,14 +10,19 @@
 		<Copyright>Copyright © 2025</Copyright>
 		<NoWarn>SA1401;SA0001</NoWarn>
 		<RepositoryUrl>https://github.com/NetProtocols/NetPs</RepositoryUrl>
-		<Description>.net network protocols library;</Description>
+		<Description>
+			.net network protocols library;
+			* fix-bug version.
+		</Description>
 		<PackageTags>netstandard, netframework-compact3.5</PackageTags>
+		<!--<PackageLicenseFile>License.txt</PackageLicenseFile>-->
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<None Include="README.md" Pack="true" PackagePath="\"/>
+		<None Include="$(SolutionDir)License.txt" Pack="true" PackagePath="\"/>
 	</ItemGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

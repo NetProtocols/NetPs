@@ -7,21 +7,21 @@
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
 
-    public class UdpTx : IDisposable
+    public class UdpTx : IDisposable, IDataTransport
     {
-        public readonly UdpCore core;
+        public UdpCore core { get; set; }
         protected readonly CompositeDisposable disposables;
 
-        private bool isDisposed = false;
+        private bool is_disposed = false;
 
         private bool transporting = false;
 
-        private QueueStream cache;
+        private QueueStream cache { get; set; }
 
         private int state = 1;
 
         public IPEndPoint RemoteIP { get; }
-
+        private IEndTransport EndTransport { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="UdpTx"/> class.
         /// </summary>
@@ -32,7 +32,7 @@
             this.core = udpCore;
             this.RemoteIP = endPoint;
             this.TransportSize = Consts.TransportBytes;
-            this.cache = new QueueStream();
+            this.cache = SocketCore.StreamPool.GET();
             this.TransportedObservable = Observable.FromEvent<TransportedHandler, UdpTx>(handler => tx => handler(tx), evt => this.Transported += evt, evt => this.Transported -= evt);
         }
 
@@ -74,17 +74,23 @@
 
         private byte[] buffer { get; set; }
 
+        public bool IsDisposed => throw new NotImplementedException();
+
+        public bool Running => throw new NotImplementedException();
+
         /// <inheritdoc/>
         public virtual void Dispose()
         {
-            this.Transported?.Invoke(this);
-            this.Disposables?.Dispose();
-            this.isDisposed = true;
-            this.Transported = null;
-            if (this.cache != null)
+            lock (this)
             {
-                this.cache.Dispose();
-                this.cache = null;
+                this.is_disposed = true;
+                this.Disposables.Dispose();
+                if (this.cache != null)
+                {
+                    SocketCore.StreamPool.PUT(this.cache);
+                    this.cache = null;
+                }
+                this.EndTransport = null;
             }
         }
 
@@ -92,14 +98,17 @@
         /// 发送数据(添加入发送队列)..
         /// </summary>
         /// <param name="data">数据.</param>
-        public virtual void Transport(byte[] data)
+        public virtual void Transport(byte[] data, int offset = 0, int length = -1)
         {
-            if (this.isDisposed)
+            lock (this)
             {
-                return;
-            }
+                if (this.is_disposed)
+                {
+                    return;
+                }
 
-            this.TransportCache.Enqueue(data);
+                this.TransportCache.Enqueue(data, offset, length);
+            }
             this.StartTransport();
         }
 
@@ -108,13 +117,18 @@
         /// </summary>
         public virtual void StartTransport()
         {
-            if (this.transporting)
+            lock (this)
             {
-                return;
+                if (this.transporting || this.is_disposed || (EndTransport == null && !this.core.Receiving)) return;
+                this.transporting = true;
             }
-
-            this.transporting = true;
             this._Transport();
+        }
+        private void end_transport()
+        {
+            lock (this) { this.transporting = false; }
+            if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
+            if (this.Transported != null) this.Transported.Invoke(this);
         }
 
         /// <summary>
@@ -123,76 +137,62 @@
         /// <param name="data">数据.</param>
         protected virtual void _Transport()
         {
-            if (!this.core.Receiving)
+            if (this.is_disposed || this.core.Socket == null) return;
+            else if (!this.TransportCache.IsEmpty)
             {
-                this.transporting = false;
-            }
-            else
-            {
-                if (this.isDisposed)
+                try
                 {
-                    return;
-                }
-
-                if (!this.TransportCache.IsEmpty)
-                {
-                    try
+                    lock (this)
                     {
                         if (this.state > 0)
                         {
+                            if (this.TransportCache == null) return;
                             this.buffer = this.TransportCache.Dequeue(this.TransportSize);
                         }
+                    }
 
-                        //this.core.Socket.BeginSend(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.SendCallback, this.core.Socket);
-                        this.core.Socket.BeginSendTo(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.RemoteIP, this.SendCallback, this.core.Socket);
-                    }
-                    catch (SocketException e)
-                    {
-                        this.transporting = false;
-                        if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write))
-                        {
-                            this.core.ThrowException(e);
-                        }
-                    }
+                    this.core.Socket.BeginSendTo(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.RemoteIP, this.SendCallback, null);
                 }
-                else
+                //已经释放了
+                catch (ObjectDisposedException) { }
+                catch (NullReferenceException) { }
+                catch (SocketException e)
                 {
-                    this.transporting = false;
+                    if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write)) this.core.ThrowException(e);
                 }
             }
+            end_transport();
         }
 
         private void SendCallback(IAsyncResult asyncResult)
         {
-            if (this.isDisposed)
-            {
-                return;
-            }
-
             try
             {
-                var client = (Socket)asyncResult.AsyncState;
-                try
+                lock (this)
                 {
-                    this.state = client.EndSendTo(asyncResult);
-                    asyncResult.AsyncWaitHandle.Close();
+                    if (this.is_disposed || this.core.Socket == null) return;
+                    this.state = this.core.Socket.EndSendTo(asyncResult);
                 }
-                catch (SocketException e)
-                {
-                    this.transporting = false;
-                    if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write))
-                    {
-                        throw e;
-                    }
-                }
-
+                asyncResult.AsyncWaitHandle.Close();
+                //传输完成
                 this._Transport();
+                return;
             }
-            catch (Exception e)
+            //实例释放
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
+            catch (SocketException e)
             {
-                this.transporting = false;
-                this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write)) this.core.ThrowException(e);
             }
+
+
+            end_transport();
+        }
+
+        public void LookEndTransport(IEndTransport endTransport)
+        {
+            this.EndTransport = endTransport;
         }
     }
 }

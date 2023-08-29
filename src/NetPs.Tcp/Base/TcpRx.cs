@@ -15,10 +15,9 @@
     {
         protected TcpCore core { get; }
         protected byte[] bBuffer { get; private set; }
-        protected byte[] bNow { get; set; }
         public int nReceived { get; protected set; }
         private int nBuffersize { get; set; }
-        private bool isDisposed { get; set; }
+        private bool is_disposed = false;
         public bool Running => this.core.Receiving;
 
         /// <summary>
@@ -27,7 +26,6 @@
         /// <param name="tcpCore">.</param>
         public TcpRx(TcpCore tcpCore)
         {
-            this.isDisposed = false;
             this.nReceived = 0;
             this.core = tcpCore;
             this.nBuffersize = Consts.ReceiveBytes;
@@ -68,8 +66,11 @@
         /// <inheritdoc/>
         public virtual void Dispose()
         {
-            this.isDisposed = true;
-            this.core.Receiving = false;
+            lock (this)
+            {
+                this.is_disposed = true;
+                this.core.Receiving = false;
+            }
         }
 
         /// <summary>
@@ -83,36 +84,39 @@
 
         public virtual void EndRecevie()
         {
-            this.bNow = new byte[this.nReceived];
-            Array.Copy(this.bBuffer, this.bNow, this.nReceived);
-            SendReceived(this.bNow);
+            var data = new byte[this.nReceived];
+            Array.Copy(this.bBuffer, data, this.nReceived);
+            SendReceived(data);
             this.x_StartReceive();
         }
 
         private void x_StartReceive()
         {
-            if (this.isDisposed) return;
-            else if (!this.core.Actived)
+            lock (this)
             {
-                this.core.OnLoseConnected();
-                return;
+                if (this.is_disposed || this.core.Socket == null) return;
+                else if (!this.core.Actived)
+                {
+                    this.core.OnLoseConnected();
+                    return;
+                }
             }
 
             try
             {
-                if (this.core != null) this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
+                this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
                 return;
             }
-            catch (NullReferenceException)
-            {
-                //释放
-            }
+            //释放
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
             catch (SocketException e)
             {
                 if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
                 else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
-            
+
+            this.core.Receiving = false;
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
@@ -121,7 +125,7 @@
             {
                 lock (this)
                 {
-                    if (this.isDisposed) return;
+                    if (this.is_disposed) return;
                     this.nReceived = this.core.Socket.EndReceive(asyncResult);
                     asyncResult.AsyncWaitHandle.Close();
                     if (this.nReceived <= 0)
@@ -134,11 +138,9 @@
                 }
                 return;
             }
+            //释放
             catch (ObjectDisposedException) { }
-            catch (NullReferenceException)
-            {
-                //释放
-            }
+            catch (NullReferenceException) { }
             catch (SocketException e)
             {
                 this.nReceived = 0;
@@ -146,6 +148,8 @@
                 if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
                 else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
+
+            this.core.Receiving = false;
         }
 
     }

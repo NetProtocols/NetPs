@@ -1,10 +1,8 @@
-﻿using NetPs.Tcp.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace NetPs.Tcp
+﻿namespace NetPs.Tcp
 {
+    using NetPs.Socket;
+    using System;
+
     public class TcpRepeaterClient : TcpRxTx, IDisposable
     {
         private TcpRxRepeater x_rx { get; set; }

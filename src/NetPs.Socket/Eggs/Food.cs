@@ -3,6 +3,7 @@
     using System;
     using System.Collections;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Reflection;
     using System.Threading;
@@ -22,7 +23,7 @@
             {
                 Assembly a = null;
                 if (string.Empty == ass[ass_i]) continue;
-                try { a = Assembly.Load(ass[ass_i]); } catch { }
+                try { a = Assembly.Load(ass[ass_i]); } catch (FileNotFoundException) { }
                 if (a == null) continue;
                 watch.Heat_Progress();
                 var types = a.GetTypes();

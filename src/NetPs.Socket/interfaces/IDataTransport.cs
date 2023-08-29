@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace NetPs.Tcp.Interfaces
+﻿namespace NetPs.Socket
 {
+    using System;
     /// <summary>
     /// 数据传输
     /// </summary>

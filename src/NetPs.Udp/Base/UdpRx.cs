@@ -6,6 +6,7 @@
     using System.Net.Sockets;
     using System.Reactive.Linq;
     using System.Runtime.Serialization;
+    using System.Threading.Tasks;
 
     [DataContract]
     public struct UdpData
@@ -18,15 +19,15 @@
     }
     public class UdpRx : IDisposable
     {
-        private readonly UdpCore core;
+        private UdpCore core { get; set; }
 
-        private byte[] bBuffer;
+        protected byte[] bBuffer { get; private set; }
 
-        private int nReceived;
+        public int nReceived { get; protected set; }
 
-        private int nBuffersize;
+        private int nBuffersize { get; set; }
 
-        private bool isDisposed = false;
+        private bool is_disposed = false;
 
         private EndPoint remotePoint;
 
@@ -40,7 +41,7 @@
             this.remotePoint = new IPEndPoint(IPAddress.Any, 0);
             this.nBuffersize = Consts.ReceiveBytes;
             this.bBuffer = new byte[this.nBuffersize];
-            this.ReceicedObservable = Observable.FromEvent<ReveicedStreamHandler, UdpData>(handler => data => handler(data), evt => this.Reveiced += evt, evt => this.Reveiced -= evt);
+            this.ReceicedObservable = Observable.FromEvent<ReveicedStreamHandler, UdpData>(handler => data => handler(data), evt => this.Received += evt, evt => this.Received -= evt);
         }
 
         /// <summary>
@@ -57,7 +58,7 @@
         /// <summary>
         /// 接收数据.
         /// </summary>
-        public virtual event ReveicedStreamHandler Reveiced;
+        public virtual event ReveicedStreamHandler Received;
 
         /// <summary>
         /// Gets 接送缓冲区大小.
@@ -69,76 +70,93 @@
         /// </summary>
         public virtual void StartReveice()
         {
-            this._StartReveice();
             this.core.Receiving = true;
+            this.x_StartReveice();
         }
 
         /// <inheritdoc/>
         public virtual void Dispose()
         {
-            this.isDisposed = true;
-            this.Reveiced = null;
-            this.core.Receiving = false;
+            lock(this)
+            {
+                this.is_disposed = true;
+                this.core.Receiving = false;
+            }
         }
 
-        private void _StartReveice()
+        public virtual void SendReceived(byte[] data)
         {
-            if (this.isDisposed)
-            {
-                return;
-            }
+            if (this.Received != null && data != null && data.Length > 0) this.Received.Invoke(new UdpData { Data = data, IP = this.remotePoint as IPEndPoint });
+        }
 
+        public virtual void EndRecevie()
+        {
+            var has_data = this.nReceived > 0;
+            byte[] data = null;
+            if (has_data)
+            {
+                data = new byte[this.nReceived];
+                Array.Copy(this.bBuffer, 0, data, 0, this.nReceived);
+            }
+            if (has_data) SendReceived(data);
+            this.x_StartReveice();
+        }
+
+        private void x_StartReveice()
+        {
             try
             {
-                this.core.Socket?.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, ref remotePoint, this.ReceiveCallback, this.core.Socket);
+                lock (this)
+                {
+                    if (this.is_disposed || this.core.Socket == null) return;
+                }
+                this.core.Socket.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, ref remotePoint, this.ReceiveCallback, null);
+                return;
             }
+            //释放
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
             catch (SocketException e)
             {
-                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read))
+                if (this.core.Socket == null)
                 {
-                    this.core.ThrowException(e);
+                    x_StartReveice(); //忽略 客户端连接错误
+                    return;
                 }
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
+
+            this.core.Receiving = false;
         }
 
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
-            if (this.isDisposed)
-            {
-                return;
-            }
-
             try
             {
-                var client = (Socket)asyncResult.AsyncState;
-                try
+                lock (this)
                 {
-                    this.nReceived = client.EndReceiveFrom(asyncResult, ref this.remotePoint);
-                    asyncResult.AsyncWaitHandle.Close();
+                    if (this.is_disposed || this.core.Socket == null) return;
+                    this.nReceived = this.core.Socket.EndReceiveFrom(asyncResult, ref this.remotePoint);
                 }
-                catch (SocketException e)
-                {
-                    this.nReceived = -1;
-                    if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read))
-                    {
-                        this.core.ThrowException(e);
-                    }
-                }
-
-                if (this.nReceived > 0)
-                {
-                    var buffer = new byte[this.nReceived];
-                    Array.Copy(this.bBuffer, 0, buffer, 0, this.nReceived);
-                    Array.Clear(this.bBuffer, 0, this.nReceived);
-                    this.Reveiced?.Invoke(new UdpData { Data = buffer, IP = this.remotePoint as IPEndPoint });
-                }
-                this._StartReveice();
-
+                asyncResult.AsyncWaitHandle.Close();
+                this.EndRecevie();
+                return;
             }
-            catch (Exception e)
+            //释放
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
+            catch (SocketException e)
             {
-                this.core.ThrowException(e);
+                this.nReceived = -1;
+                if (this.core.Socket == null)
+                {
+                    x_StartReveice(); //忽略 客户端连接错误
+                    return;
+                }
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
+
+            this.core.Receiving = false;
         }
     }
 }

@@ -12,7 +12,6 @@
     /// </summary>
     public class TcpTx : IDisposable, IDataTransport
     {
-        public static int i = 0;
         private TcpCore core { get; set; }
         private bool is_disposed = false;
         private bool transporting = false;
@@ -27,7 +26,6 @@
         /// <param name="tcpCore">.</param>
         public TcpTx(TcpCore tcpCore)
         {
-            i++;
             this.core = tcpCore;
             this.TransportSize = Consts.TransportBytes;
             this.buffer = new byte[this.TransportSize];
@@ -78,7 +76,6 @@
                 this.is_disposed = true;
                 if (this.cache != null)
                 {
-                    i--;
                     SocketCore.StreamPool.PUT(this.cache);
                     this.cache = null;
                 }
