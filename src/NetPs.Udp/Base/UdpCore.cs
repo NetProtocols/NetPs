@@ -40,5 +40,13 @@
         {
             this.Bind(new SocketUri(address));
         }
+
+        protected override void OnConnected()
+        {
+        }
+
+        protected override void OnClosed()
+        {
+        }
     }
 }

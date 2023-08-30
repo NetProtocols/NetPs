@@ -70,5 +70,11 @@
             Hub = new MirrorHub(this, address, limit);
             Hub.Start();
         }
+        protected override void OnClosed()
+        {
+            if (Hub != null) Hub.Close();
+            base.OnClosed();
+            this.Dispose();
+        }
     }
 }

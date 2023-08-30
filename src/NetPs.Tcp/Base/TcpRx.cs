@@ -63,8 +63,8 @@
             lock (this)
             {
                 if (this.core.Receiving) return;
+                this.core.Receiving = true;
             }
-            this.core.Receiving = true;
             this.x_StartReceive();
         }
 
@@ -97,15 +97,7 @@
 
         protected virtual void x_StartReceive()
         {
-            lock (this)
-            {
-                if (this.is_disposed || this.core.Socket == null) return;
-                else if (!this.core.Actived)
-                {
-                    this.core.OnLoseConnected();
-                    return;
-                }
-            }
+            if (this.is_disposed) return;
 
             try
             {
@@ -113,42 +105,40 @@
                 return;
             }
             //释放
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException)
+            {
+            }
             catch (NullReferenceException) { }
             catch (SocketException e)
             {
-                if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
-                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
-
+            if (this.is_disposed) return;
             try
             {
-                lock (this)
+                this.nReceived = this.core.Socket.EndReceive(asyncResult);
+                asyncResult.AsyncWaitHandle.Close();
+                if (this.nReceived <= 0)
                 {
-                    if (this.is_disposed) return;
-                    this.nReceived = this.core.Socket.EndReceive(asyncResult);
-                    asyncResult.AsyncWaitHandle.Close();
-                    if (this.nReceived <= 0)
-                    {
-                        this.core.OnLoseConnected();
-                        return;
-                    }
+                    this.core.Lose();
+                    return;
                 }
                 this.EndRecevie();
                 return;
             }
             //释放
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException)
+            {
+            }
             catch (NullReferenceException) { }
             catch (SocketException e)
             {
                 this.nReceived = 0;
 
-                if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
-                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
         }
 

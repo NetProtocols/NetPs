@@ -32,22 +32,25 @@
         /// </summary>
         public TcpTx Tx { get; protected set; }
 
+
+        protected override void OnClosed()
+        {
+            if (this.Rx != null)
+            {
+                this.Rx.Dispose();
+                this.Rx = null;
+            }
+            if (this.Tx != null)
+            {
+                this.Tx.Dispose();
+                this.Tx = null;
+            }
+            base.OnClosed();
+        }
+
         /// <inheritdoc/>
         public override void Dispose()
         {
-            lock (this)
-            {
-                if (this.Rx != null)
-                {
-                    this.Rx.Dispose();
-                    this.Rx = null;
-                }
-                if (this.Tx != null)
-                {
-                    this.Tx.Dispose();
-                    this.Tx = null;
-                }
-            }
             base.Dispose();
         }
     }

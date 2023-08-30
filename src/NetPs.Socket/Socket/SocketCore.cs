@@ -125,45 +125,53 @@
         /// </summary>
         public virtual void Close()
         {
-            if (this.Socket != null && !this.Closed) this.Socket.Close();
-            this.OnLoseConnected();
+            if (this.Socket != null && this.Socket.Connected)
+            {
+                this.Socket.Close();
+                if (!this.closed) this.Lose();
+            }
         }
 
         public virtual void Shutdown()
         {
-            if (this.Actived)
+            if (this.Socket.Connected)
             {
                 //主动关闭的必要：发送 FIN 包
                 this.Socket.Shutdown(SocketShutdown.Both);
+                if (!this.closed) this.Lose();
             }
         }
 
         /// <inheritdoc/>
         public virtual void Dispose()
         {
-            this.disposed = true;
-            if (this.Socket != null)
+            lock (this)
             {
-                Close();
-                if (this.Actived) Shutdown();
-                if (this.Socket is IDisposable o) o.Dispose();
-                this.Socket = null;
+                this.disposed = true;
+                if (this.Socket != null)
+                {
+                    Shutdown();
+                    Close();
+                    if (this.Socket is IDisposable o) o.Dispose();
+                    this.Socket = null;
+                }
+                this.Disposables.Dispose();
             }
-            this.Disposables.Dispose();
-            //GC.SuppressFinalize(this);
         }
 
         /// <summary>
         /// 当链接丢失.
         /// </summary>
-        public virtual void OnLoseConnected()
+        public virtual void Lose()
         {
-            if (!this.Closed)
+            // 交
+            lock (this)
             {
+                if (this.closed) return;
                 this.closed = true;
-                this.socketLose?.SocketLosed(this);
-                DisConnected?.Invoke(this.IPEndPoint);
             }
+            this.OnClosed();
+            this.tell_lose();
         }
 
         public virtual void WhenLoseConnected(ISocketLose lose)
@@ -183,9 +191,20 @@
         /// <summary>
         /// 当链接开始.
         /// </summary>
-        protected virtual void OnConnected()
+        protected abstract void OnConnected();
+
+        protected abstract void OnClosed();
+
+        private void tell_connected()
         {
+            this.OnConnected();
             if (!this.Closed) this.Connected?.Invoke(this.IPEndPoint);
+        }
+
+        private void tell_lose()
+        {
+            this.socketLose?.SocketLosed(this);
+            DisConnected?.Invoke(this.IPEndPoint);
         }
 
         /// <summary>
@@ -203,9 +222,7 @@
                 var ok = rlt.AsyncWaitHandle.WaitOne(0, false);
                 if (!ok)
                 {
-                    this.Socket.Close();
-                    this.closed = true;
-                    this.OnLoseConnected();
+                    this.Lose();
                 }
             }
         }
@@ -218,25 +235,15 @@
                 asyncResult.AsyncWaitHandle.Close();
                 this.Connecting = false;
                 this.closed = false;
-                this.OnConnected();
+                this.tell_connected();
             }
-            catch (ObjectDisposedException)
-            {
-                this.Connecting = false;
-                if (this.Connecting)
-                {
-                    this.OnLoseConnected();
-                }
-            }
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
             catch (SocketException e)
             {
-                this.Connecting = false;
-                if (!NetPsSocketException.Deal(e, this, NetPsSocketExceptionSource.Connect))
-                {
-                    this.OnLoseConnected();
-                    this.ThrowException(e);
-                }
+                if (!NetPsSocketException.Deal(e, this, NetPsSocketExceptionSource.Connect)) this.ThrowException(e);
             }
+            this.Connecting = false;
         }
 
         //开始监听Accept

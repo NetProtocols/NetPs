@@ -79,7 +79,6 @@
                     SocketCore.StreamPool.PUT(this.cache);
                     this.cache = null;
                 }
-                this.core = null;
                 this.EndTransport = null;
             }
         }
@@ -90,19 +89,18 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data, int offset = 0, int length = -1)
         {
-            lock (this)
-                if (this.is_disposed) end_transport();
-                else
-                {
-                    //fix: NullReferenceException; TransportCache=null
-                    if (this.TransportCache != null) this.TransportCache.Enqueue(data, offset, length);
-                    else
-                    {
-                        end_transport();
-                        return;
-                    }
-                    this.StartTransport();
-                }
+            if (this.is_disposed) return;
+            //fix: NullReferenceException; TransportCache=null
+            if (this.TransportCache != null)
+            {
+                this.TransportCache.Enqueue(data, offset, length);
+            }
+            else
+            {
+                end_transport();
+                return;
+            }
+            this.StartTransport();
         }
 
         /// <summary>
@@ -110,20 +108,24 @@
         /// </summary>
         public virtual void StartTransport()
         {
-            if (this.transporting || this.is_disposed || this.core == null || (EndTransport == null && !this.core.Receiving)) return;
-            this.transporting = true;
+            lock (this)
+            {
+                if (this.transporting || this.is_disposed || (EndTransport == null && !this.core.Receiving)) return;
+                this.transporting = true;
+            }
             x_Transport();
         }
 
         private void end_transport()
         {
-            if (this.IsDisposed) return;
-            lock (this) { this.transporting = false; }
+            if (this.is_disposed) return;
+            this.transporting = false;
             Task.Factory.StartNew(tell_transported);
         }
 
         private void tell_transported()
         {
+            if (this.is_disposed) return;
             if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
             if (this.Transported != null) this.Transported.Invoke(this);
         }
@@ -134,29 +136,29 @@
         /// <param name="data">数据.</param>
         protected virtual void x_Transport()
         {
-            if (this.is_disposed || this.core == null) end_transport();
-            else if (!this.TransportCache.IsEmpty && this.core.Actived)
+            if (this.is_disposed) return;
+            else if (!this.TransportCache.IsEmpty)
             {
                 try
                 {
                     // Socket Poll 判断连接是否可用 this.core.Actived
                     var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
-                    if (poll_ok && this.core != null)
+                    if (poll_ok && !this.is_disposed)
                     {
-                        lock (this)
+                        //发送数据为零，使用上次的缓存进行发送
+                        if (this.state > 0)
                         {
-                            //发送数据为零，使用上次的缓存进行发送
-                            if (this.state > 0)
-                            {
-                                if (this.TransportCache.Length > this.TransportSize) this.real_transport_size = this.TransportSize;
-                                else this.real_transport_size = (int)this.TransportCache.Length;
-                                this.TransportCache.Dequeue(this.buffer, 0, this.real_transport_size);
-                                this.state = 0;
-                            }
+                            if (this.TransportCache.Length > this.TransportSize) this.real_transport_size = this.TransportSize;
+                            else this.real_transport_size = (int)this.TransportCache.Length;
+                            this.TransportCache.Dequeue(this.buffer, 0, this.real_transport_size);
+                            this.state = 0;
                         }
                         this.core.Socket.BeginSend(this.buffer, 0, this.real_transport_size, SocketFlags.None, this.SendCallback, null);
                         return;
                     }
+                }
+                catch (ObjectDisposedException)
+                {
                 }
                 catch (NullReferenceException)
                 {
@@ -167,38 +169,38 @@
                     if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.StartWrite)) this.core.ThrowException(e);
                 }
             }
-            //发送队列空 or 连接失效
-            //socketcore 已经释放，告知传输结束即可
-            end_transport();
+            else
+            {
+                //发送队列空 or 连接失效
+                //socketcore 已经释放，告知传输结束即可
+                end_transport();
+            }
         }
 
         private void SendCallback(IAsyncResult asyncResult)
         {
             try
             {
-                lock (this)
-                {
-                    if (this.IsDisposed || this.core == null || this.cache == null) return;
-                    //fix:ObjectDisposedException;Cannot access a disposed object. Object name: 'System.Net.Sockets.Socket'.”
-                    this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
-                }
+                if (this.is_disposed) return;
+                //fix:ObjectDisposedException;Cannot access a disposed object. Object name: 'System.Net.Sockets.Socket'.”
+                this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
                 asyncResult.AsyncWaitHandle.Close();
                 //传输完成
                 this.x_Transport();
+                end_transport();
                 return;
             }
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException)
+            {
+            }
             catch (NullReferenceException)
             {
                 //释放
             }
             catch (SocketException e)
             {
-                if (this.core == null || !this.core.Actived) this.core.OnLoseConnected();
-                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Writing)) this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Writing)) this.core.ThrowException(e);
             }
-            //释放
-            end_transport();
         }
 
         public void LookEndTransport(IEndTransport endTransport)

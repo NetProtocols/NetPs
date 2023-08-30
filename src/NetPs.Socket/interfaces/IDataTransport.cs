@@ -9,7 +9,6 @@
         bool IsDisposed { get; }
         bool Running { get; }
         void Transport(byte[] data, int offset, int length);
-
         void LookEndTransport(IEndTransport endTransport);
     }
 }

@@ -6,7 +6,7 @@ namespace NetPs.Tcp
 {
     public struct Consts
     {
-        public const int BUFFER_SIZE = 15616;
+        public const int BUFFER_SIZE = (4<<10) +24; //4K +24 tcp header
         //接收缓冲区大小
         public static int ReceiveBytes = BUFFER_SIZE;
         //发送缓冲区大小

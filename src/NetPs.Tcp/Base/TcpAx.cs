@@ -59,7 +59,7 @@
                 {
                     if (this.is_disposed) return;
                 }
-                if (this.core.Socket == null) this.core.OnLoseConnected();
+                if (this.core.Socket == null) this.core.Lose();
                 else this.core.Socket.BeginAccept(this.AcceptCallback, null);
             }
             catch (NullReferenceException)

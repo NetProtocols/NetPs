@@ -146,5 +146,13 @@
             if (OnPingReceived != null) OnPingReceived.Invoke(new PingPacket(buffer) { Address = (endPoint as IPEndPoint)?.Address });
             //receive_from();
         }
+
+        protected override void OnConnected()
+        {
+        }
+
+        protected override void OnClosed()
+        {
+        }
     }
 }

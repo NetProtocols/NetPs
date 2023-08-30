@@ -97,5 +97,13 @@
         {
             if (tcp_config != null) tcp_config.Invoke(core);
         }
+
+        protected override void OnConnected()
+        {
+        }
+
+        protected override void OnClosed()
+        {
+        }
     }
 }

@@ -283,7 +283,7 @@
                 case NetPsSocketExceptionSource.StartWrite:
                 case NetPsSocketExceptionSource.Writing:
                 case NetPsSocketExceptionSource.EndWrite:
-                    socket.OnLoseConnected();
+                    socket.Lose();
                     break;
             }
         }

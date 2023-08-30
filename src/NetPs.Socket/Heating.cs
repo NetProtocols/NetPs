@@ -8,7 +8,18 @@
 
     public sealed class Heat_socket : IHeat
     {
-        private class hot_SocketCore : SocketCore { }
+        private class hot_SocketCore : SocketCore
+        {
+            protected override void OnClosed()
+            {
+                throw new NotImplementedException();
+            }
+
+            protected override void OnConnected()
+            {
+                throw new NotImplementedException();
+            }
+        }
         private const string hot_uri = "127.0.0.1:80";
         public void Start(IHeatingWatch watch)
         {

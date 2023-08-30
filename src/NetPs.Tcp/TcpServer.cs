@@ -3,10 +3,10 @@
     using NetPs.Socket;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// .
@@ -126,19 +126,11 @@
             }
         }
 
+        private Action x_closed { get; set; }
         public void Run(string address, Action closed = null)
         {
             alive = true;
-            Disposables.Add(ConnectedObservable.Subscribe(_ =>
-            {
-                Ax.StartAccept();
-            }));
-            Disposables.Add(LoseConnectedObservable.Subscribe(_ =>
-            {
-                alive = false;
-                Dispose();
-                closed?.Invoke();
-            }));
+            this.x_closed = closed;
             Listen(address);
         }
 
@@ -151,8 +143,21 @@
             if (client != null)
             {
                 lock (this.Connects) { this.Connects.Remove(client); }
-                client.Dispose();
+                //client.Dispose();
             }
+        }
+        protected override void OnConnected()
+        {
+            base.OnConnected();
+            if (alive) Ax.StartAccept();
+        }
+
+        protected override void OnClosed()
+        {
+            alive = false;
+            this.Connects.ToList().ForEach(con => con.Dispose());
+            x_closed?.Invoke();
+            Dispose();
         }
     }
 }
