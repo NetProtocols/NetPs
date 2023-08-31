@@ -17,8 +17,8 @@
         //最近释放时间
         private long last_release_ticks { get; set; }
         private int max_live { get; set; }
-        private bool disposed { get; set; }
-        public bool IsDisposed => this.disposed;
+        private bool is_disposed { get; set; }
+        public bool IsDisposed => this.is_disposed;
         public long Last_Relase_Ticks => this.last_release_ticks;
         public int Max_Live => this.max_live;
         /// <summary>
@@ -27,7 +27,7 @@
         /// <param name="max">最大保留</param>
         public QueueStreamPool(int max)
         {
-            this.disposed = false;
+            this.is_disposed = false;
             max_live = max;
             this.resources = new List<QueueStream>();
         }
@@ -40,7 +40,7 @@
         public void PUT(QueueStream stream)
         {
             if (stream.IsClosed) return;
-            if (this.IsDisposed || this.resources.Count() > this.max_live) stream.Dispose();
+            if (this.is_disposed) stream.Dispose();
             else
             {
                 lock(this) resources.Add(stream);
@@ -96,6 +96,10 @@
         public void Dispose()
         {
             lock(this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             if (resources.Count > 0)
             {
                 foreach (var res in resources.AsEnumerable()) res.Dispose();

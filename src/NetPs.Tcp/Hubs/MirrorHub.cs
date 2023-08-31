@@ -62,17 +62,17 @@
         {
             try
             {
-                this.Closed += Hub_Closed;
                 mirror.Connect(this.Mirror_Address);
             }
             catch (Exception e)
             {
+                this.Close();
                 Hub.ThrowException(e);
             }
         }
-        private void Hub_Closed(object sender, EventArgs e)
+
+        protected override void OnClosed()
         {
-            this.Closed -= Hub_Closed;
             this.tcp.Shutdown();
         }
     }

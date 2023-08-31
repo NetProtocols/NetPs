@@ -35,6 +35,12 @@
 
         protected override void OnClosed()
         {
+            base.OnClosed();
+        }
+
+        /// <inheritdoc/>
+        public override void Dispose()
+        {
             if (this.Rx != null)
             {
                 this.Rx.Dispose();
@@ -45,12 +51,6 @@
                 this.Tx.Dispose();
                 this.Tx = null;
             }
-            base.OnClosed();
-        }
-
-        /// <inheritdoc/>
-        public override void Dispose()
-        {
             base.Dispose();
         }
     }

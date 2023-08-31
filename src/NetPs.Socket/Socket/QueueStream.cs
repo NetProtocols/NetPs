@@ -1,10 +1,7 @@
 ﻿namespace NetPs.Socket
 {
     using System;
-    using System.Drawing;
     using System.IO;
-    using System.Runtime.InteropServices.ComTypes;
-    using System.Threading;
 #if NET35_CF
     using Array = System.Array2;
 #endif
@@ -33,6 +30,7 @@
         private long nLength { get; set; }
 
         private bool locked { get; set; } = false;
+        private byte[] x_buffer { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="QueueStream"/> class.
@@ -54,6 +52,7 @@
         public QueueStream(byte[] bytes) : base(bytes)
         {
             this.Clear();
+            this.x_buffer = bytes;
             nLength = bytes.Length;
         }
 
@@ -65,12 +64,20 @@
         /// <inheritdoc/>
         public override long Length => this.nLength;
 
-        public override bool CanRead => this.Length != 0;
+        public override bool CanRead => this.Length != 0 && base.CanRead;
+        public override bool CanWrite => base.CanWrite;
         public virtual bool is_disposed { get; private set; } = false;
         public virtual bool IsClosed { get; private set; } = false;
         public virtual long WritePosition => this.w + 1;
         public virtual long ReadPosition => this.r + 1;
-        public virtual byte[] Buffer => base.GetBuffer();
+        public virtual byte[] Buffer
+        { 
+            get
+            {
+                if (this.x_buffer != null) return x_buffer;
+                return base.GetBuffer(); 
+            }
+        }
         /// <summary>
         /// 清空队列.
         /// </summary>
@@ -140,58 +147,72 @@
         /// <param name="length">长度.</param>
         public virtual void Enqueue(byte[] block, int offset = 0, int length = -1)
         {
-            if (this.is_disposed || block.Length == 0 || length == 0)
+            try
             {
-                return;
-            }
-            else if (length > block.Length || length < 0)
-            {
-                length = block.Length;
-            }
-            lock (this)
-            {
-                var len = get_record_in_len(length);
+                lock (this)
                 {
-                    //this.SafePositionSet(this.w + 1);
-                    this.ok_length(this.WritePosition + len);
-                    Array.Copy(block, offset, this.Buffer, (int)this.WritePosition, (int)len);
+                    if (this.is_disposed || block.Length == 0 || length == 0 || !base.CanWrite)
+                    {
+                        return;
+                    }
+                    else if (length > block.Length || length < 0)
+                    {
+                        length = block.Length;
+                    }
+                    var len = get_record_in_len(length);
+                    {
+                        //this.SafePositionSet(this.w + 1);
+                        this.ok_length(this.WritePosition + len);
+                        Array.Copy(block, offset, this.Buffer, (int)this.WritePosition, (int)len);
+                    }
+                    record_in(len);
+                    if (length > len)
+                    {
+                        this.Enqueue(block, (int)len, (int)(length - len));
+                    }
+                    //Flush减少内存回收
+                    //this.Flush();
                 }
-                record_in(len);
-                if (length > len)
-                {
-                    this.Enqueue(block, (int)len, (int)(length - len));
-                }
-                //Flush减少内存回收
-                //this.Flush();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                if (!this.is_disposed) throw;
             }
         }
 
         public virtual void CopyTo(QueueStream stream, int length)
         {
-            if (length == 0 || stream.is_disposed || this.is_disposed || this.IsEmpty) return;
-            // 限制最大读取
-            if (length < 0 || length > this.nLength) length = (int)this.nLength;
-
-            long len;
-            lock (this)
+            try
             {
-                lock (stream)
+                long len = length;
+                lock (this)
                 {
-                    len = this.get_record_in_len(length);
-                    var lenb = stream.get_record_out_len(length);
-                    // 如果可读取的长度, 不满足单次可写
-                    if (len < lenb) { len = lenb; }
+                    if (length == 0 || stream.is_disposed || this.is_disposed || this.IsEmpty || !base.CanRead || !stream.CanWrite) return;
+                    // 限制最大读取
+                    if (length < 0 || length > this.nLength) length = (int)this.nLength;
+
+                    lock (stream)
                     {
-                        stream.ok_length(stream.WritePosition + len);
-                        Array.Copy(this.Buffer, (int)this.ReadPosition, stream.Buffer, (int)stream.WritePosition, (int)len);
+                        len = this.get_record_in_len(length);
+                        var lenb = stream.get_record_out_len(length);
+                        // 如果可读取的长度, 不满足单次可写
+                        if (len < lenb) { len = lenb; }
+                        {
+                            stream.ok_length(stream.WritePosition + len);
+                            Array.Copy(this.Buffer, (int)this.ReadPosition, stream.Buffer, (int)stream.WritePosition, (int)len);
+                        }
+                        record_out(len);
+                        stream.record_in(len);
                     }
-                    record_out(len);
-                    stream.record_in(len);
+                }
+                if (length > len)
+                {
+                    this.CopyTo(stream, (int)(length - len));
                 }
             }
-            if (length > len)
-            {
-                this.CopyTo(stream, (int)(length - len));
+            catch (UnauthorizedAccessException)
+            { 
+                if (!this.is_disposed) throw;
             }
         }
 
@@ -247,38 +268,46 @@
         /// <param name="length">长度.</param>
         public virtual int Dequeue(byte[] block, int offset = 0, int length = -1)
         {
-            if (this.is_disposed || block.Length == 0 || length == 0 || this.IsEmpty)
+            try
             {
-                return 0;
+                lock (this)
+                {
+                    if (this.is_disposed || block.Length == 0 || length == 0 || this.IsEmpty || !base.CanRead)
+                    {
+                        return 0;
+                    }
+                    else if (length > block.Length || length < 0)
+                    {
+                        length = block.Length;
+                    }
+
+                    var len = get_record_out_len(length);
+                    {
+                        //this.SafePositionSet(this.r + 1);
+                        Array.Copy(this.Buffer, (int)this.ReadPosition, block, offset, (int)len);
+                    }
+                    record_out(len);
+
+                    if (length > len)
+                    {
+                        len += this.Dequeue(block, (int)len, (int)(length - len));
+                    }
+
+                    if (this.IsEmpty)
+                    {
+                        //this.Clear();
+                        this.x = this.r = this.w = this.enda = this.endb = -1;
+                        //this.SetLength(0);
+                    }
+
+                    return (int)len;
+                }
             }
-            else if (length > block.Length || length < 0)
+            catch (UnauthorizedAccessException)
             {
-                length = block.Length;
+                if (!this.is_disposed) throw;
             }
-
-            lock (this)
-            {
-                var len = get_record_out_len(length);
-                {
-                    //this.SafePositionSet(this.r + 1);
-                    Array.Copy(this.GetBuffer(), (int)this.ReadPosition, block, offset, (int)len);
-                }
-                record_out(len);
-
-                if (length > len)
-                {
-                    len += this.Dequeue(block, (int)len, (int)(length - len));
-                }
-
-                if (this.IsEmpty)
-                {
-                    //this.Clear();
-                    this.x = this.r = this.w = this.enda = this.endb = -1;
-                    //this.SetLength(0);
-                }
-
-                return (int)len;
-            }
+            return 0;
         }
 
         /// <summary>
@@ -382,7 +411,6 @@
 
         public override void WriteTo(Stream stream)
         {
-            var length = (int)this.Length;
             var buffer = new byte[4096];
             while (this.CanRead)
             {
@@ -404,7 +432,8 @@
         {
             lock (this)
             {
-                if (!this.locked) this.locked = true;
+                if (this.locked) return;
+                this.locked = true;
             }
             this.Position = 0;
             this.Clear();
@@ -417,13 +446,17 @@
         public void UNLOCK()
         {
             lock (this)
-                if (locked) this.locked = false;
+            {
+                if (!this.locked) return;
+                this.locked = false;
+            }
         }
 
         public new void Dispose()
         {
             lock (this)
             {
+                if (this.is_disposed) return;
                 this.is_disposed = true;
             }
             base.Dispose();

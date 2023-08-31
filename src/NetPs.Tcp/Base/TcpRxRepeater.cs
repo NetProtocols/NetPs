@@ -11,13 +11,13 @@ namespace NetPs.Tcp
     /// <remarks>
     /// limit 不宜设置太大
     /// </remarks>
-    public class TcpRxRepeater : TcpRx, IEndTransport, IDisposable
+    public class TcpRxRepeater : TcpRx, IDisposable, IEndTransport, ILimit
     {
-        public const int SECOND = 11000000; // 110% loss time 10% 100ms
+        public const int SECOND = 10000000; // 1 second
         private bool is_disposed = false;
+        private bool re_rx = false;
         private bool waiting = false;
-        private bool received = false;
-        private int realtime_count { get; set; }
+        private int transported_count { get; set; }
         private long last_time { get; set; }
         public IDataTransport Transport { get; protected set; }
         public int Limit { get; protected set; } // must gt 0
@@ -26,7 +26,7 @@ namespace NetPs.Tcp
             this.Transport = transport;
             this.Transport.LookEndTransport(this);
             this.Limit = -1;
-            this.realtime_count = 0;
+            this.transported_count = 0;
             this.last_time = DateTime.Now.Ticks;
         }
 
@@ -34,14 +34,15 @@ namespace NetPs.Tcp
         {
             lock (this)
             {
+                if (this.is_disposed) return;
                 this.is_disposed = true;
-                if (this.Transport != null)
-                {
-                    this.Transport.Dispose();
-                    this.Transport = null;
-                }
-                base.Dispose();
             }
+            if (this.Transport != null)
+            {
+                this.Transport.Dispose();
+                this.Transport = null;
+            }
+            base.Dispose();
         }
 
         /// <summary>
@@ -52,60 +53,69 @@ namespace NetPs.Tcp
         {
             this.Limit = limit;
         }
-        public override void EndRecevie()
+        public override void OnRecevied()
         {
-            this.core.Receiving = false;
             if (this.is_disposed || this.nReceived <= 0) return;
-            this.limit_transport(this.bBuffer, 0, this.nReceived);
+            if (this.Limit > 0)
+            {
+                this.limit_transport(this.bBuffer, 0, this.nReceived);
+            }
+            else
+            {
+                this.Transport.Transport(this.bBuffer, 0, this.nReceived);
+            }
         }
 
         private void limit_transport(byte[] data, int offset, int length)
         {
-            if (length <= 0) return;
-            if (this.is_disposed) return;
-            this.received = false;
-            this.Transport.Transport(data, offset, length);
-            this.realtime_count += length - offset;
-
+            this.re_rx = false;
             this.waiting = true;
-            wait_limit();
-            lock (this)
-            {
-                if (this.received || this.Running)
-                {
-                    this.waiting = false;
-                    return;
-                }
-                this.received = true;
-            }
-            //this.StartReceive();
-            Task.Factory.StartNew(this.StartReceive);
+            this.transported_count += length - offset;
+            this.Transport.Transport(data, offset, length);
+            Task.Factory.StartNew(wait_limit, CancellationToken);
         }
         private void wait_limit()
         {
-            if (this.Limit > 0 && this.realtime_count > this.Limit)
+            if (this.transported_count > this.Limit)
             {
-                this.realtime_count = 0;
                 var now = DateTime.Now.Ticks;
                 if (now < SECOND + this.last_time)
                 {
-                    var wait = 1000 - (int)((now - this.last_time) / 10000);
-                    if (wait > 10) Thread.Sleep(wait); //阈值10ms, 小于则不等待
-                    this.last_time = DateTime.Now.Ticks;
+                    var wait =(int)((this.last_time + SECOND - now) / 10000);
+                    if (wait > 10)
+                    {
+                        Thread.Sleep(wait); //阈值10ms, 小于则不等待
+                        this.last_time = now + wait;
+                    }
+                    else
+                    {
+                        this.last_time = now;
+                    }
                 }
+                else
+                {
+                    this.last_time = now;
+                }
+                this.transported_count = 0;
             }
+
+            lock (this)
+            {
+                this.waiting = false;
+                if (this.re_rx) return;
+                this.re_rx = true;
+            }
+            this.restart_receive();
         }
         public void WhenTransportEnd(IDataTransport transport)
         {
             if (this.is_disposed) return;
-            bool run = false;
             lock (this)
             {
-                if (!this.Running && !this.waiting && !this.received)  run = true;
-                this.received = run;
+                if (this.waiting) return;
+                this.re_rx = true;
             }
-            if (run)
-                this.StartReceive();
+            Task.Factory.StartNew(this.restart_receive, CancellationToken);
         }
     }
 }

@@ -9,34 +9,27 @@ namespace NetPs.Tcp
     /// <summary>
     /// 限流的Rx
     /// </summary>
-    public class TcpLimitRx : TcpRx, IDisposable
+    public class TcpLimitRx : TcpRx, IDisposable, ILimit
     {
-        public const int SECOND = 70000000; // 70%
-        private byte[] x_now { get; set; }
-        private bool waiting { get; set; }
-        private int realtime_count { get; set; }
+        public const int SECOND = 10000000; // 1 second
+        private bool is_disposed = false;
         private long last_time { get; set; }
-        public IDataTransport Transport { get; protected set; }
-        public QueueStream stream { get; set; }
+        private int received_count { get; set; }
         public int Limit { get; protected set; } // must gt 0
         public TcpLimitRx(TcpCore tcpCore) : base(tcpCore)
         {
-            this.stream = SocketCore.StreamPool.GET();
-            this.waiting = false;
             this.Limit = 0;
-            this.realtime_count = 0;
+            this.received_count = 0;
             this.last_time = DateTime.Now.Ticks;
         }
         void IDisposable.Dispose()
         {
             lock (this)
             {
-                if (this.stream != null)
-                {
-                    SocketCore.StreamPool.PUT(this.stream);
-                    this.stream = null;
-                }
+                if (this.is_disposed) return;
+                this.is_disposed = true;
             }
+            base.Dispose();
         }
 
         /// <summary>
@@ -45,56 +38,48 @@ namespace NetPs.Tcp
         /// <param name="limit">单位 kb/s</param>
         public void SetLimit(int limit)
         {
-            this.Limit = limit >> 3;
-            x_now = new byte[limit];
+            this.Limit = limit;
         }
 
-        public override void EndRecevie()
+        public override void OnRecevied()
         {
-            lock (this)
+            if (this.is_disposed || this.nReceived <= 0) return;
+            var buffer = new byte[this.nReceived];
+            Array.Copy(this.bBuffer, 0, buffer, 0, this.nReceived);
+            this.SendReceived(buffer);
+            if (this.Limit > 0)
             {
-                if (Running && this.nReceived > 0) stream.Enqueue(this.bBuffer, 0, this.nReceived);
-                this.core.Receiving = false;
-                if (!waiting && this.stream.Length > 0)
-                {
-                    if (this.Limit > 0 && stream.Length > Limit)
-                    {
-                        //has cache, cahce is now
-                        this.stream.Dequeue(x_now);
-                        limit_received(x_now);
-                        return;
-                    }
-                    else
-                    {
-                        // data is now
-                        var now = new byte[this.stream.Length];
-                        this.stream.Dequeue(now);
-                        limit_received(now);
-                        return;
-                    }
-                }
-
-                if (this.Limit <= 0 || stream.Length < Limit) this.StartReceive();
+                received_count += this.nReceived;
+                Task.Factory.StartNew(wait_limit, CancellationToken);
             }
         }
 
-        private void limit_received(byte[] data)
+        private void wait_limit()
         {
-            this.waiting = true;
-
-            Task.Factory.StartNew(() =>
+            if (this.received_count > this.Limit)
             {
-                this.realtime_count += data.Length;
-                if (this.realtime_count > this.Limit)
+                var now = DateTime.Now.Ticks;
+                if (now < this.last_time + SECOND)
                 {
-                    this.realtime_count = 0;
-                    var now = DateTime.Now.Ticks;
-                    if (now - this.last_time > SECOND) Thread.Sleep(1000 - (int)((now - this.last_time) / 10000000));
-                    this.last_time = now;
+                    var wait = (int)((this.last_time + SECOND - now) / 10000);
+                    if (wait > 10)
+                    {
+                        Thread.Sleep(wait);
+                        last_time = now + wait;
+                    }
+                    else
+                    {
+                        last_time = now;
+                    }
                 }
-                this.SendReceived(data);
-                this.waiting = false;
-            });
+                else
+                {
+                    last_time = now;
+                }
+                this.received_count = 0;
+            }
+
+            this.restart_receive();
         }
     }
 }

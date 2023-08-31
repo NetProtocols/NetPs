@@ -46,7 +46,6 @@
                 }
                 tx.Disposables.Add(tx.TransportedObservable.Subscribe(observer =>
                 {
-                    if (this.IsDisposed) return;
                     lock (txs)
                     {
                         this.txs.Remove(tx);
@@ -65,12 +64,23 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
+            this.Rx?.Dispose();
             lock (txs)
             {
-                this.Rx?.Dispose();
-                for (var i = 0; i< txs.Count; i++) txs[i].Dispose();
-                base.Dispose();
+                txs.ForEach(tx => tx.Dispose());
             }
+            base.Dispose();
+        }
+
+        protected override void OnConnected()
+        {
+            base.OnConnected();
+        }
+
+        protected override void OnClosed()
+        {
+            base.OnClosed();
+            this.Dispose();
         }
     }
 }

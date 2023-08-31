@@ -111,12 +111,25 @@
         /// 放置Socket.
         /// </summary>
         /// <param name="socket">Socket.</param>
-        public void PutSocket(Socket socket)
+        public virtual void PutSocket(Socket socket)
         {
             if (this.Socket == null)
             {
-                this.closed = false;
+                lock (this)
+                {
+                    if (!this.closed) return;
+                    this.closed = false;
+                }
                 this.Socket = socket;
+            }
+        }
+
+        public virtual void IsUdp()
+        {
+            lock (this)
+            {
+                if (!this.closed) return;
+                this.closed = false;
             }
         }
 
@@ -147,16 +160,14 @@
         {
             lock (this)
             {
+                if (this.disposed) return;
                 this.disposed = true;
-                if (this.Socket != null)
-                {
-                    Shutdown();
-                    Close();
-                    if (this.Socket is IDisposable o) o.Dispose();
-                    this.Socket = null;
-                }
-                this.Disposables.Dispose();
             }
+            Shutdown();
+            Close();
+            if (this.Socket is IDisposable o) o.Dispose();
+            this.Socket = null;
+            this.Disposables.Dispose();
         }
 
         /// <summary>

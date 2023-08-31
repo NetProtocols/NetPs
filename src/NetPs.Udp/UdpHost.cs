@@ -1,8 +1,6 @@
 ﻿namespace NetPs.Udp
 {
     using System;
-    using System.Collections.Generic;
-    using System.Text;
 
     public class UdpHost : UdpRxTx
     {
@@ -12,6 +10,16 @@
         public UdpHost() : base()
         {
             this.Bind("0.0.0.0:0");
+        }
+
+        protected override void OnClosed()
+        {
+            base.OnClosed();
+        }
+
+        protected override void OnConnected()
+        {
+            base.OnConnected();
         }
     }
 }

@@ -15,13 +15,21 @@ namespace NetPs.Tcp
     }
     public abstract class HubBase {
         private static long id = 1;
+        private bool is_closed = false;
         
         public event EventHandler Closed;
 
         public void Close()
         {
+            lock (this)
+            {
+                if (is_closed) return;
+                this.is_closed = true;
+            }
             Closed?.Invoke(this, EventArgs.Empty);
         }
+
+        protected abstract void OnClosed();
 
         protected static long GetId()
         {

@@ -39,6 +39,7 @@
         public virtual void Bind(string address)
         {
             this.Bind(new SocketUri(address));
+            this.IsUdp();
         }
 
         protected override void OnConnected()

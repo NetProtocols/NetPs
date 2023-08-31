@@ -157,7 +157,8 @@
             alive = false;
             this.Connects.ToList().ForEach(con => con.Dispose());
             x_closed?.Invoke();
-            Dispose();
+            base.OnClosed();
+            this.Dispose();
         }
     }
 }

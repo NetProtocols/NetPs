@@ -1,6 +1,5 @@
 ﻿namespace NetPs.Tcp
 {
-    using NetPs.Socket;
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
@@ -42,8 +41,11 @@
         /// <inheritdoc/>
         public virtual void Dispose()
         {
-            lock(this)
-            this.is_disposed = true;
+            lock (this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             this.Accepted = null;
         }
 
@@ -52,51 +54,40 @@
         /// </summary>
         public virtual void StartAccept()
         {
-            if (this.core.IsDisposed) return;
+            if (this.is_disposed) return;
             try
             {
-                lock (this)
-                {
-                    if (this.is_disposed) return;
-                }
-                if (this.core.Socket == null) this.core.Lose();
-                else this.core.Socket.BeginAccept(this.AcceptCallback, null);
+                this.core.Socket.BeginAccept(this.AcceptCallback, null);
+                return;
             }
-            catch (NullReferenceException)
-            {
-                //释放
-            }
+            catch (ObjectDisposedException) { return; }
+            catch (NullReferenceException) { return; }
             catch (SocketException e)
             {
-                if (this.core != null && this.core.Actived) Task.Factory.StartNew(StartAccept); //忽略 客户端连接错误
-                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Accept)) this.core.ThrowException(e);
+                //忽略 客户端连接错误
+                if (this.is_disposed) return;
             }
+
+            this.StartAccept();
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
+            if (this.is_disposed) return;
             try
             {
                 Socket client = null;
-                lock (this)
-                {
-                    if (this.is_disposed) return;
-                    client = this.core.Socket.EndAccept(asyncResult);
-                }
+                client = this.core.Socket.EndAccept(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
-                Task.Factory.StartNew(this.StartAccept);
                 Task.Factory.StartNew(tell_accept, client);
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException)
-            {
-                //释放
-            }
+            catch (ObjectDisposedException) { return; }
+            catch (NullReferenceException) { return; }
             catch (SocketException e)
             {
-                if (this.core != null && this.core.Actived) StartAccept(); //忽略 客户端连接错误
                 //请求错误不处理
-                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Accept)) this.core.ThrowException(e);
+                if (this.is_disposed) return;
             }
+            this.StartAccept();
         }
         private void tell_accept(object client)
         {

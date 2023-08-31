@@ -1,6 +1,7 @@
 ﻿using NetPs.Tcp;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace TestsConsole
 {
@@ -50,18 +51,24 @@ namespace TestsConsole
 
                     for (; i < int.Parse(len); i++)
                     {
-                        var client = new TcpClient();
-                        client.ConnectedObservable.Subscribe(c =>
+                        Task.Factory.StartNew(() =>
                         {
-                            client.StartReceive();
-                            client.Transport(new byte[] { 1 });
+                            var client = new TcpClient(tcp =>
+                            {
+                                tcp.Socket.SetSocketOption(System.Net.Sockets.SocketOptionLevel.Socket, System.Net.Sockets.SocketOptionName.KeepAlive, false);
+                            });
+                            client.ConnectedObservable.Subscribe(c =>
+                            {
+                                client.StartReceive();
+                                client.Transport(new byte[] { 1 });
+                            });
+                            client.ReceivedObservable.Subscribe(data =>
+                            {
+                                client.Dispose();
+                            });
+                            //client.TransportedObservable.Subscribe(tx => client.Dispose());
+                            client.Connect($"127.0.0.1:8000");
                         });
-                        client.ReceivedObservable.Subscribe(data =>
-                        {
-                            client.Dispose();
-                        });
-                        //client.TransportedObservable.Subscribe(tx => client.Dispose());
-                        client.Connect($"127.0.0.1:8000");
                     }
                     Thread.Sleep(100);
                 }

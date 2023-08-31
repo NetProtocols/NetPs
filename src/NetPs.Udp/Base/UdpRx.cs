@@ -70,7 +70,11 @@
         /// </summary>
         public virtual void StartReveice()
         {
-            this.core.Receiving = true;
+            lock (this.core)
+            {
+                if (this.core.Receiving) return;
+                this.core.Receiving = true;
+            }
             this.x_StartReveice();
         }
 
@@ -79,9 +83,10 @@
         {
             lock(this)
             {
+                if (this.is_disposed) return;
                 this.is_disposed = true;
-                this.core.Receiving = false;
             }
+            this.core.Receiving = false;
         }
 
         public virtual void SendReceived(byte[] data)
@@ -91,25 +96,22 @@
 
         public virtual void EndRecevie()
         {
-            var has_data = this.nReceived > 0;
+            if (this.is_disposed) return;
             byte[] data = null;
-            if (has_data)
+            if (this.nReceived > 0)
             {
                 data = new byte[this.nReceived];
                 Array.Copy(this.bBuffer, 0, data, 0, this.nReceived);
+                SendReceived(data);
             }
-            if (has_data) SendReceived(data);
             this.x_StartReveice();
         }
 
         private void x_StartReveice()
         {
+            if (this.is_disposed) return;
             try
             {
-                lock (this)
-                {
-                    if (this.is_disposed || this.core.Socket == null) return;
-                }
                 this.core.Socket.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, ref remotePoint, this.ReceiveCallback, null);
                 return;
             }
@@ -118,12 +120,12 @@
             catch (NullReferenceException) { }
             catch (SocketException e)
             {
-                if (this.core.Socket == null)
+                if (!this.is_disposed)
                 {
                     x_StartReveice(); //忽略 客户端连接错误
                     return;
                 }
-                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
+                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
 
             this.core.Receiving = false;
@@ -131,13 +133,10 @@
 
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
+            if (this.is_disposed) return;
             try
             {
-                lock (this)
-                {
-                    if (this.is_disposed || this.core.Socket == null) return;
-                    this.nReceived = this.core.Socket.EndReceiveFrom(asyncResult, ref this.remotePoint);
-                }
+                this.nReceived = this.core.Socket.EndReceiveFrom(asyncResult, ref this.remotePoint);
                 asyncResult.AsyncWaitHandle.Close();
                 this.EndRecevie();
                 return;
@@ -148,12 +147,12 @@
             catch (SocketException e)
             {
                 this.nReceived = -1;
-                if (this.core.Socket == null)
+                if (!this.is_disposed)
                 {
                     x_StartReveice(); //忽略 客户端连接错误
                     return;
                 }
-                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
+                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
 
             this.core.Receiving = false;

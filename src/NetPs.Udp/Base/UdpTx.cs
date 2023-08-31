@@ -83,15 +83,16 @@
         {
             lock (this)
             {
+                if (this.is_disposed) return;
                 this.is_disposed = true;
-                this.Disposables.Dispose();
-                if (this.cache != null)
-                {
-                    SocketCore.StreamPool.PUT(this.cache);
-                    this.cache = null;
-                }
-                this.EndTransport = null;
             }
+            this.Disposables.Dispose();
+            if (this.cache != null)
+            {
+                SocketCore.StreamPool.PUT(this.cache);
+                this.cache = null;
+            }
+            this.EndTransport = null;
         }
 
         /// <summary>
@@ -100,15 +101,8 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data, int offset = 0, int length = -1)
         {
-            lock (this)
-            {
-                if (this.is_disposed)
-                {
-                    return;
-                }
-
-                this.TransportCache.Enqueue(data, offset, length);
-            }
+            if (this.is_disposed) return;
+            this.TransportCache.Enqueue(data, offset, length);
             this.StartTransport();
         }
 
@@ -137,21 +131,18 @@
         /// <param name="data">数据.</param>
         protected virtual void _Transport()
         {
-            if (this.is_disposed || this.core.Socket == null) return;
+            if (this.is_disposed) return;
             else if (!this.TransportCache.IsEmpty)
             {
                 try
                 {
-                    lock (this)
+                    if (this.state > 0)
                     {
-                        if (this.state > 0)
-                        {
-                            if (this.TransportCache == null) return;
-                            this.buffer = this.TransportCache.Dequeue(this.TransportSize);
-                        }
+                        this.buffer = this.TransportCache.Dequeue(this.TransportSize);
                     }
 
                     this.core.Socket.BeginSendTo(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.RemoteIP, this.SendCallback, null);
+                    return;
                 }
                 //已经释放了
                 catch (ObjectDisposedException) { }
@@ -166,13 +157,10 @@
 
         private void SendCallback(IAsyncResult asyncResult)
         {
+            if (this.is_disposed) return;
             try
             {
-                lock (this)
-                {
-                    if (this.is_disposed || this.core.Socket == null) return;
-                    this.state = this.core.Socket.EndSendTo(asyncResult);
-                }
+                this.state = this.core.Socket.EndSendTo(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
                 //传输完成
                 this._Transport();

@@ -17,8 +17,8 @@ namespace TestsConsole
         public DnsTest()
         {
             Console.Write("loading");
-            new Thread(new ThreadStart(() => Food.Heating(this))).Start();
-            while (!exited) Thread.Sleep(100);
+            Task.Factory.StartNew(() => Food.Heating(this)).Wait();
+            while (!exited) Thread.Sleep(300);
         }
 
         public void Heat_Progress()
@@ -32,10 +32,13 @@ namespace TestsConsole
             var host = "nuget.org";
             var dns = DnsHost.DNS_NETEASE;
             Console.WriteLine(dns);
-            Console.Write("dns-test> ");
             host = Console.ReadLine();
-            while (host != "exit")
+            while (true)
             {
+                Console.Write("dns-test> ");
+                host = Console.ReadLine();
+                if (string.IsNullOrEmpty(host)) continue;
+                else if (host == "exit") break;
                 var a = host.Split(" ".ToArray(), 2);
                 if (a.Length == 2)
                     switch (a[0])
@@ -49,9 +52,6 @@ namespace TestsConsole
                 {
                     await HostResolver(host, dns);
                 }
-
-                Console.Write("> ");
-                host = Console.ReadLine();
             }
             exited = true;
         }
@@ -60,7 +60,7 @@ namespace TestsConsole
             dns += ":" + port;
             try
             {
-                using (var dns_client = new DnsHost(5000))
+                using (var dns_client = new DnsHost(2000))
                 {
                     var sw = new Stopwatch();
 

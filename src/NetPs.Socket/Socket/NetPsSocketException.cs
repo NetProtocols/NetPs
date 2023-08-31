@@ -12,6 +12,9 @@
         StartWrite = 20,
         Writing = 21,
         EndWrite = 22,
+        WritingUDP = 23,
+        EndWriteUDP = 24,
+        ReadUDP = 33,
     }
     /// <summary>
     /// 异常处理

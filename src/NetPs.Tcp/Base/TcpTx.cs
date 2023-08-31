@@ -5,6 +5,7 @@
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -15,10 +16,11 @@
         private TcpCore core { get; set; }
         private bool is_disposed = false;
         private bool transporting = false;
-        private IEndTransport EndTransport { get; set; }
-        private QueueStream cache { get; set; }
         private int state = 1;
-        private int real_transport_size;
+        protected int nTransported { get; set; }
+        private QueueStream cache { get; set; }
+        private IEndTransport EndTransport { get; set; }
+        protected CancellationToken CancellationToken { get; private set; }
         public bool IsDisposed => this.is_disposed;
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpTx"/> class.
@@ -26,6 +28,7 @@
         /// <param name="tcpCore">.</param>
         public TcpTx(TcpCore tcpCore)
         {
+            this.CancellationToken = new CancellationToken();
             this.core = tcpCore;
             this.TransportSize = Consts.TransportBytes;
             this.buffer = new byte[this.TransportSize];
@@ -73,14 +76,16 @@
         {
             lock (this)
             {
+                if (this.is_disposed) return;
                 this.is_disposed = true;
-                if (this.cache != null)
-                {
-                    SocketCore.StreamPool.PUT(this.cache);
-                    this.cache = null;
-                }
-                this.EndTransport = null;
             }
+            this.CancellationToken.WaitHandle.Close();
+            if (this.cache != null)
+            {
+                SocketCore.StreamPool.PUT(this.cache);
+                this.cache = null;
+            }
+            this.EndTransport = null;
         }
 
         /// <summary>
@@ -89,17 +94,11 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data, int offset = 0, int length = -1)
         {
-            if (this.is_disposed) return;
-            //fix: NullReferenceException; TransportCache=null
-            if (this.TransportCache != null)
-            {
+            lock (this) {
+                if (this.is_disposed) return;
                 this.TransportCache.Enqueue(data, offset, length);
             }
-            else
-            {
-                end_transport();
-                return;
-            }
+
             this.StartTransport();
         }
 
@@ -110,70 +109,73 @@
         {
             lock (this)
             {
-                if (this.transporting || this.is_disposed || (EndTransport == null && !this.core.Receiving)) return;
+                if (this.transporting || (EndTransport == null && !this.core.Receiving)) return;
                 this.transporting = true;
             }
-            x_Transport();
+
+            restart_transport();
         }
 
-        private void end_transport()
-        {
-            if (this.is_disposed) return;
-            this.transporting = false;
-            Task.Factory.StartNew(tell_transported);
-        }
+        protected void restart_transport() => x_Transport();
 
-        private void tell_transported()
+        protected virtual void tell_transported()
         {
             if (this.is_disposed) return;
+            lock (this)
+            {
+                if (!this.transporting) return;
+                this.transporting = false;
+            }
             if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
             if (this.Transported != null) this.Transported.Invoke(this);
+        }
+
+        /// <summary>
+        /// 发送一次buffer 完成
+        /// </summary>
+        protected virtual void OnBufferTransported()
+        {
+            Task.Factory.StartNew(this.restart_transport, CancellationToken);
+        }
+
+        /// <summary>
+        /// 发送队列完成
+        /// </summary>
+        protected virtual void OnTransported()
+        {
+            this.tell_transported();
         }
 
         /// <summary>
         /// 发送数据.
         /// </summary>
         /// <param name="data">数据.</param>
-        protected virtual void x_Transport()
+        private void x_Transport()
         {
             if (this.is_disposed) return;
-            else if (!this.TransportCache.IsEmpty)
+            try
             {
-                try
+                // Socket Poll 判断连接是否可用 this.core.Actived
+                var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
+                if (poll_ok && !this.is_disposed)
                 {
-                    // Socket Poll 判断连接是否可用 this.core.Actived
-                    var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
-                    if (poll_ok && !this.is_disposed)
+                    //发送数据为零，使用上次的缓存进行发送
+                    if (this.state > 0)
                     {
-                        //发送数据为零，使用上次的缓存进行发送
-                        if (this.state > 0)
-                        {
-                            if (this.TransportCache.Length > this.TransportSize) this.real_transport_size = this.TransportSize;
-                            else this.real_transport_size = (int)this.TransportCache.Length;
-                            this.TransportCache.Dequeue(this.buffer, 0, this.real_transport_size);
-                            this.state = 0;
-                        }
-                        this.core.Socket.BeginSend(this.buffer, 0, this.real_transport_size, SocketFlags.None, this.SendCallback, null);
-                        return;
+                        if (this.cache.Length > this.TransportSize) this.nTransported = this.TransportSize;
+                        else this.nTransported = (int)this.cache.Length;
+                        this.cache.Dequeue(this.buffer, 0, this.nTransported);
+                        this.state = 0;
                     }
-                }
-                catch (ObjectDisposedException)
-                {
-                }
-                catch (NullReferenceException)
-                {
-                    //释放
-                }
-                catch (SocketException e)
-                {
-                    if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.StartWrite)) this.core.ThrowException(e);
+                    this.core.Socket.BeginSend(this.buffer, 0, this.nTransported, SocketFlags.None, this.SendCallback, null);
+                    return;
                 }
             }
-            else
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
+            catch (SocketException e)
             {
-                //发送队列空 or 连接失效
-                //socketcore 已经释放，告知传输结束即可
-                end_transport();
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.StartWrite)) this.core.ThrowException(e);
             }
         }
 
@@ -186,17 +188,19 @@
                 this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
                 asyncResult.AsyncWaitHandle.Close();
                 //传输完成
-                this.x_Transport();
-                end_transport();
+                if (this.cache == null) return;
+                else if (this.cache.IsEmpty)
+                {
+                    this.OnTransported();
+                }
+                else
+                {
+                    this.OnBufferTransported();
+                }
                 return;
             }
-            catch (ObjectDisposedException)
-            {
-            }
-            catch (NullReferenceException)
-            {
-                //释放
-            }
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
             catch (SocketException e)
             {
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Writing)) this.core.ThrowException(e);
