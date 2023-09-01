@@ -141,18 +141,18 @@
             if (this.Socket != null && this.Socket.Connected)
             {
                 this.Socket.Close();
-                if (!this.closed) this.Lose();
             }
+            if (!this.closed) this.Lose();
         }
 
         public virtual void Shutdown()
         {
-            if (this.Socket.Connected)
+            if (this.Socket != null && this.Socket.Connected)
             {
                 //主动关闭的必要：发送 FIN 包
                 this.Socket.Shutdown(SocketShutdown.Both);
-                if (!this.closed) this.Lose();
             }
+            if (!this.closed) this.Lose();
         }
 
         /// <inheritdoc/>

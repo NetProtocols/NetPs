@@ -1,11 +1,9 @@
 ﻿namespace NetPs.Tcp
 {
     using NetPs.Socket;
-    using NetPs.Tcp.Interfaces;
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
-    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -16,19 +14,19 @@
         private TcpCore core { get; set; }
         private bool is_disposed = false;
         private bool transporting = false;
-        private int state = 1;
+        private int state { get; set; }
         protected int nTransported { get; set; }
         private QueueStream cache { get; set; }
         private IEndTransport EndTransport { get; set; }
-        protected CancellationToken CancellationToken { get; private set; }
         public bool IsDisposed => this.is_disposed;
+        protected TaskFactory Task { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpTx"/> class.
         /// </summary>
         /// <param name="tcpCore">.</param>
         public TcpTx(TcpCore tcpCore)
         {
-            this.CancellationToken = new CancellationToken();
+            this.Task = new TaskFactory(TaskScheduler.Default);
             this.core = tcpCore;
             this.TransportSize = Consts.TransportBytes;
             this.buffer = new byte[this.TransportSize];
@@ -79,12 +77,12 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            this.CancellationToken.WaitHandle.Close();
             if (this.cache != null)
             {
                 SocketCore.StreamPool.PUT(this.cache);
                 this.cache = null;
             }
+            this.buffer = null;
             this.EndTransport = null;
         }
 
@@ -111,16 +109,29 @@
             {
                 if (this.transporting || (EndTransport == null && !this.core.Receiving)) return;
                 this.transporting = true;
+                this.state = 1;
             }
 
             restart_transport();
         }
 
-        protected void restart_transport() => x_Transport();
+        protected virtual void restart_transport()
+        {
+            if (this.is_disposed || !this.core.Actived)
+            {
+                lock (this)
+                {
+                    if (!this.transporting) return;
+                    this.transporting = false;
+                }
+                return;
+            }
+
+            Task.StartNew(x_Transport);
+        }
 
         protected virtual void tell_transported()
         {
-            if (this.is_disposed) return;
             lock (this)
             {
                 if (!this.transporting) return;
@@ -135,7 +146,7 @@
         /// </summary>
         protected virtual void OnBufferTransported()
         {
-            Task.Factory.StartNew(this.restart_transport, CancellationToken);
+            this.restart_transport();
         }
 
         /// <summary>
@@ -143,7 +154,7 @@
         /// </summary>
         protected virtual void OnTransported()
         {
-            this.tell_transported();
+            Task.StartNew(this.tell_transported);
         }
 
         /// <summary>
@@ -152,44 +163,52 @@
         /// <param name="data">数据.</param>
         private void x_Transport()
         {
-            if (this.is_disposed) return;
             try
             {
+                if (this.is_disposed) return;
+                //发送数据为零，使用上次的缓存进行发送
+                if (this.state > 0)
+                {
+                    if (this.cache.Length > this.TransportSize) this.nTransported = this.TransportSize;
+                    else this.nTransported = (int)this.cache.Length;
+                    this.cache.Dequeue(this.buffer, 0, this.nTransported);
+                    this.state = 0;
+                }
+                if (this.is_disposed || !this.core.Actived) return;
                 // Socket Poll 判断连接是否可用 this.core.Actived
                 var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
-                if (poll_ok && !this.is_disposed)
+                if (poll_ok)
                 {
-                    //发送数据为零，使用上次的缓存进行发送
-                    if (this.state > 0)
-                    {
-                        if (this.cache.Length > this.TransportSize) this.nTransported = this.TransportSize;
-                        else this.nTransported = (int)this.cache.Length;
-                        this.cache.Dequeue(this.buffer, 0, this.nTransported);
-                        this.state = 0;
-                    }
+                    if (this.is_disposed) return;
                     this.core.Socket.BeginSend(this.buffer, 0, this.nTransported, SocketFlags.None, this.SendCallback, null);
-                    return;
                 }
+                else
+                {
+                    if (this.is_disposed) return;
+                    this.state = 0;
+                    restart_transport();
+                }
+                return;
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch (ObjectDisposedException) {  }
+            catch (NullReferenceException) {  }
             catch (SocketException e)
             {
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.StartWrite)) this.core.ThrowException(e);
             }
+            if (!this.is_disposed) this.core.Lose();
         }
 
         private void SendCallback(IAsyncResult asyncResult)
         {
             try
             {
-                if (this.is_disposed) return;
-                //fix:ObjectDisposedException;Cannot access a disposed object. Object name: 'System.Net.Sockets.Socket'.”
+                if (this.is_disposed || !this.core.Actived) return;
                 this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
                 asyncResult.AsyncWaitHandle.Close();
+                if (this.is_disposed) return;
                 //传输完成
-                if (this.cache == null) return;
-                else if (this.cache.IsEmpty)
+                if (this.cache.IsEmpty)
                 {
                     this.OnTransported();
                 }
@@ -199,12 +218,14 @@
                 }
                 return;
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch (ObjectDisposedException) {  }
+            catch (NullReferenceException) {  }
             catch (SocketException e)
             {
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Writing)) this.core.ThrowException(e);
+                return;
             }
+            if (!this.is_disposed) this.core.Lose();
         }
 
         public void LookEndTransport(IEndTransport endTransport)

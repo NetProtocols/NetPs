@@ -72,25 +72,43 @@
             return stream;
         }
 
+        private bool releasing = false;
         /// <summary>
         /// 释放资源
         /// </summary>
         /// <param name="save_count">保留的实例数</param>
         public void Release(int save_count)
         {
-            if (save_count < 0 || this.resources.Count <= save_count) return;
-            if (this.IsDisposed) return;
-            var now = DateTime.Now.Ticks;
-            if (now - last_release_ticks < MIN_RELEASE_DELAY) return;
-            last_release_ticks = now;
             lock (this)
             {
-                foreach(var res in resources.OrderBy(res => res.Capacity).Take(resources.Count - save_count))
+                if (releasing) return;
+                releasing = true;
+            }
+            if (save_count < 0 || this.resources.Count <= save_count)
+            {
+            }
+            else if (this.IsDisposed)
+            {
+            }
+            else
+            {
+
+                var now = DateTime.Now.Ticks;
+                if (now - last_release_ticks < MIN_RELEASE_DELAY) { }
+                else
                 {
-                    res.Dispose();
-                    this.resources.Remove(res);
+                    last_release_ticks = now;
+                    lock (this)
+                    {
+                        foreach (var res in resources.OrderBy(res => res.Capacity).Take(resources.Count - save_count))
+                        {
+                            res.Dispose();
+                            this.resources.Remove(res);
+                        }
+                    }
                 }
             }
+            releasing = false;
         }
 
         public void Dispose()

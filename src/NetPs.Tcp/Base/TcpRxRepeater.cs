@@ -13,14 +13,15 @@ namespace NetPs.Tcp
     /// </remarks>
     public class TcpRxRepeater : TcpRx, IDisposable, IEndTransport, ILimit
     {
-        public const int SECOND = 10000000; // 1 second
         private bool is_disposed = false;
         private bool re_rx = false;
         private bool waiting = false;
+        private bool has_limit = false;
         private int transported_count { get; set; }
         private long last_time { get; set; }
         public IDataTransport Transport { get; protected set; }
-        public int Limit { get; protected set; } // must gt 0
+        public int Limit { get; protected set; }
+        public long LastTime => this.last_time;
         public TcpRxRepeater(TcpCore tcpCore, IDataTransport transport) : base(tcpCore)
         {
             this.Transport = transport;
@@ -56,7 +57,9 @@ namespace NetPs.Tcp
         public override void OnRecevied()
         {
             if (this.is_disposed || this.nReceived <= 0) return;
-            if (this.Limit > 0)
+            this.re_rx = false;
+            this.has_limit = this.Limit > 0;
+            if (this.has_limit)
             {
                 this.limit_transport(this.bBuffer, 0, this.nReceived);
             }
@@ -68,24 +71,23 @@ namespace NetPs.Tcp
 
         private void limit_transport(byte[] data, int offset, int length)
         {
-            this.re_rx = false;
             this.waiting = true;
             this.transported_count += length - offset;
             this.Transport.Transport(data, offset, length);
-            Task.Factory.StartNew(wait_limit, CancellationToken);
+            wait_limit();
         }
         private void wait_limit()
         {
             if (this.transported_count > this.Limit)
             {
                 var now = DateTime.Now.Ticks;
-                if (now < SECOND + this.last_time)
+                if (!this.HasSecondPassed(now))
                 {
-                    var wait =(int)((this.last_time + SECOND - now) / 10000);
+                    var wait =this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
                         Thread.Sleep(wait); //阈值10ms, 小于则不等待
-                        this.last_time = now + wait;
+                        this.last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else
                     {
@@ -102,8 +104,7 @@ namespace NetPs.Tcp
             lock (this)
             {
                 this.waiting = false;
-                if (this.re_rx) return;
-                this.re_rx = true;
+                if (!this.re_rx) return;
             }
             this.restart_receive();
         }
@@ -112,10 +113,14 @@ namespace NetPs.Tcp
             if (this.is_disposed) return;
             lock (this)
             {
-                if (this.waiting) return;
-                this.re_rx = true;
+                if (this.re_rx) return;
+                else if (this.has_limit)
+                {
+                    this.re_rx = true;
+                    if (this.waiting) return;
+                }
             }
-            Task.Factory.StartNew(this.restart_receive, CancellationToken);
+            restart_receive();
         }
     }
 }

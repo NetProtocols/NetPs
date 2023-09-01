@@ -44,31 +44,28 @@ namespace TestsConsole
                     break;
                 }
 
-                //var times = DateTime.Now;
+                var times = DateTime.Now;
                 //while (DateTime.Now.Ticks - times.Ticks < TimeSpan.FromSeconds(5).Ticks)
                 {
                     var i = 0;
 
                     for (; i < int.Parse(len); i++)
                     {
-                        Task.Factory.StartNew(() =>
+                        var client = new TcpClient(tcp =>
                         {
-                            var client = new TcpClient(tcp =>
-                            {
-                                tcp.Socket.SetSocketOption(System.Net.Sockets.SocketOptionLevel.Socket, System.Net.Sockets.SocketOptionName.KeepAlive, false);
-                            });
-                            client.ConnectedObservable.Subscribe(c =>
-                            {
-                                client.StartReceive();
-                                client.Transport(new byte[] { 1 });
-                            });
-                            client.ReceivedObservable.Subscribe(data =>
-                            {
-                                client.Dispose();
-                            });
-                            //client.TransportedObservable.Subscribe(tx => client.Dispose());
-                            client.Connect($"127.0.0.1:8000");
+                            //tcp.Socket.SetSocketOption(System.Net.Sockets.SocketOptionLevel.Socket, System.Net.Sockets.SocketOptionName.Linger, new System.Net.Sockets.LingerOption(false, 0));
                         });
+                        client.ConnectedObservable.Subscribe(c =>
+                        {
+                            client.StartReceive();
+                            client.Transport(new byte[] { 1 });
+                        });
+                        client.ReceivedObservable.Subscribe(data =>
+                        {
+                            client.Shutdown();
+                        });
+                        //client.TransportedObservable.Subscribe(tx => client.Dispose());
+                        client.Connect($"127.0.0.1:8000");
                     }
                     Thread.Sleep(100);
                 }

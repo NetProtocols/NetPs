@@ -10,13 +10,13 @@ NetPs.TCP基于NetPs.Socket，对TCP数据数据传输提供便捷。
 该库支持提前预热来加快首次运行速度，可以通过调用方法进行使用 `NetPs.Socket.Eggs.Food.Heating();`
 ## How To Use?
 
-- **TcpServer**
+### 01. TcpServer
   
-  当 `"0.0.0.0:0"` 中端口为 `"0"` 值时，会生成可使用的端口，你可以通过`server.Address`、`server.IPEndPoint` 查看。
+当 `"0.0.0.0:0"` 中端口为 `"0"` 值时，会生成可使用的端口，你可以通过`server.Address`、`server.IPEndPoint` 查看。
   
-  你可以通过的两种快捷方式创建该实例。
+你可以通过的两种快捷方式创建该实例。
   
-*1. parament*
+- *1. parament*
 ```csharp
 var server = new TcpServer((server, client) =>
 {
@@ -27,7 +27,7 @@ var server = new TcpServer((server, client) =>
 server.Run("0.0.0.0:7070", () =>  Environment.Exit(0));
 ```
 
-*2. interface* 
+- *2. interface* 
 ```csharp
 class Server : ITcpServerConfig, IDisposable
 {
@@ -56,8 +56,7 @@ class Server : ITcpServerConfig, IDisposable
 ```
 
 
-- **TcpClient**
-
+### 02.TcpClient
 ```csharp
 var client = new TcpClient();
 client.ReceivedObservable.Subscribe(data => {
@@ -68,7 +67,9 @@ client.Connect("127.0.0.1:12345");
 client.Transport(new byte[] {1,2,3});
 ```
 
-- **TcpRepeaterClient**
+### 03.TcpRepeaterClient
+- **Limit**：可限制流速，如1秒最大转发10M ```client.SetLimit(10<<20);``` 。
+
 ```
 // A, B之间转发数据
 var A = new TcpClient();

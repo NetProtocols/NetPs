@@ -19,6 +19,7 @@
             {
                 watch.Heat_Progress();
                 client.Transport(test_data);
+                serv.Dispose();
             }));
             client.Disposables.Add(client.TransportedObservable.Subscribe(tx => client.Dispose()));
             client.Connect($"127.0.0.1:{serv.Address.Port}");
@@ -27,7 +28,6 @@
             static_val = Consts.SocketPollTime;
             static_val = Consts.TransportBytes;
             watch.Heat_Progress();
-            serv.Dispose();
         }
 
         public string BandAddress => "0.0.0.0:0";

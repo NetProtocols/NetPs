@@ -23,29 +23,33 @@
             this.tcp.Limit(limit);
             mirror.DisConnected += Mirror_DisConnected;
             this.tcp.DisConnected += Mirror_DisConnected;
-            this.mirror.Disposables.Add(mirror.ConnectedObservable.Subscribe(_ =>
-            {
-                mirror.Rx.StartReceive();
-                this.tcp.Rx.StartReceive();
-            }));
+            mirror.Connected += Mirror_Connected;
+        }
+
+        private void Mirror_Connected(System.Net.IPEndPoint iPEndPoint)
+        {
+            mirror.Rx.StartReceive();
+            this.tcp.Rx.StartReceive();
         }
 
         private void Mirror_DisConnected(System.Net.IPEndPoint iPEndPoint)
         {
-            lock (this)
-            {
-                if (!is_disposed) this.Dispose();
-            }
+            if (!is_disposed) this.Dispose();
         }
 
         public long ID => this.id;
 
         public void Dispose()
         {
-            this.is_disposed = true;
+            lock (this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             this.Close();
             if (this.mirror != null)
             {
+                mirror.Connected -= Mirror_Connected;
                 mirror.DisConnected -= Mirror_DisConnected;
                 this.mirror.Dispose();
                 this.mirror = null;

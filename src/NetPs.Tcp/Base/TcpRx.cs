@@ -21,6 +21,7 @@
         private int nBuffersize { get; set; }
         private bool is_disposed = false;
         public bool Running => this.core.Receiving;
+        protected TaskFactory Task { get; private set; }
         protected CancellationToken CancellationToken { get; private set; }
 
         /// <summary>
@@ -29,6 +30,7 @@
         /// <param name="tcpCore">.</param>
         public TcpRx(TcpCore tcpCore)
         {
+            this.Task = new TaskFactory();
             this.CancellationToken = new CancellationToken();
             this.nReceived = 0;
             this.core = tcpCore;
@@ -82,7 +84,11 @@
                 this.is_disposed = true;
                 this.core.Receiving = false;
             }
-            CancellationToken.WaitHandle.Close();
+            this.bBuffer = null;
+            if (CancellationToken.IsCancellationRequested)
+            {
+                CancellationToken.WaitHandle.Close();
+            }
         }
 
         /// <summary>
@@ -99,17 +105,16 @@
             var data = new byte[this.nReceived];
             Array.Copy(this.bBuffer, data, this.nReceived);
             SendReceived(data);
-            Task.Factory.StartNew(restart_receive, CancellationToken);
+            Task.StartNew(restart_receive, CancellationToken);
         }
 
-        protected void restart_receive() => this.x_StartReceive();
+        protected void restart_receive() => Task.StartNew(this.x_StartReceive);
 
         private void x_StartReceive()
         {
-            if (this.is_disposed) return;
-
             try
             {
+                if (this.is_disposed|| !this.core.Actived) return;
                 this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
                 return;
             }
@@ -120,19 +125,23 @@
             {
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
+
+            if (!this.is_disposed) this.core.Lose();
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
-            if (this.is_disposed) return;
             try
             {
+                if (this.is_disposed || !this.core.Actived) return;
                 this.nReceived = this.core.Socket.EndReceive(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.nReceived <= 0)
                 {
+                    if (this.is_disposed || !this.core.Actived) return;
                     this.core.Lose();
                     return;
                 }
+                if (this.is_disposed) return;
                 this.OnRecevied();
                 return;
             }
@@ -145,6 +154,7 @@
 
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
+            if (!this.is_disposed) this.core.Lose();
         }
 
     }

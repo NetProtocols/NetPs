@@ -12,12 +12,14 @@
     {
         private bool is_disposed = false;
         private TcpCore core { get; }
+        protected TaskFactory Task { get; private set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpAx"/> class.
         /// </summary>
         /// <param name="tcpCore">.</param>
         public TcpAx(TcpCore tcpCore)
         {
+            this.Task = new TaskFactory();
             this.core = tcpCore;
             this.AcceptObservable = Observable.FromEvent<TcpAx.AcceptSocketHandler, Socket>(handler => socket => handler(socket), evt => this.Accepted += evt, evt => this.Accepted -= evt);
         }
@@ -62,13 +64,13 @@
             }
             catch (ObjectDisposedException) { return; }
             catch (NullReferenceException) { return; }
-            catch (SocketException e)
+            catch (SocketException)
             {
                 //忽略 客户端连接错误
                 if (this.is_disposed) return;
             }
 
-            this.StartAccept();
+            Task.StartNew(this.StartAccept);
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
@@ -78,16 +80,18 @@
                 Socket client = null;
                 client = this.core.Socket.EndAccept(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
-                Task.Factory.StartNew(tell_accept, client);
+                Task.StartNew(StartAccept);
+                Task.StartNew(tell_accept, client);
+                return;
             }
             catch (ObjectDisposedException) { return; }
             catch (NullReferenceException) { return; }
-            catch (SocketException e)
+            catch (SocketException)
             {
                 //请求错误不处理
                 if (this.is_disposed) return;
             }
-            this.StartAccept();
+            Task.StartNew(StartAccept);
         }
         private void tell_accept(object client)
         {

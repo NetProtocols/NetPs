@@ -3,15 +3,14 @@
     using NetPs.Socket;
     using System;
     using System.Threading;
-    using System.Threading.Tasks;
 
     public class TcpLimitTx : TcpTx, IDisposable, ILimit
     {
-        public const int SECOND = 10000000; // 1 second
         private bool is_disposed = false;
         private long last_time { get; set; }
         private int transported_count { get; set; }
         public int Limit { get; protected set; } // must gt 0
+        public long LastTime => this.last_time;
         public TcpLimitTx(TcpCore tcpCore) : base(tcpCore)
         {
             this.Limit = -1;
@@ -40,11 +39,11 @@
             if (this.Limit > 0)
             {
                 this.transported_count += this.nTransported;
-                Task.Factory.StartNew(wait_limit, CancellationToken);
+                Task.StartNew(wait_limit);
             }
             else
             {
-                Task.Factory.StartNew(base.restart_transport, CancellationToken);
+                Task.StartNew(base.restart_transport);
             }
         }
 
@@ -53,13 +52,13 @@
             if (transported_count > this.Limit)
             {
                 var now = DateTime.Now.Ticks;
-                if (now < this.last_time + SECOND)
+                if (!this.HasSecondPassed(now))
                 {
-                    var wait = (int)((this.last_time + SECOND - now) / 10000);
+                    var wait = this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
                         Thread.Sleep(wait);
-                        last_time = now + wait;
+                        last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else
                     {

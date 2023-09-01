@@ -22,8 +22,19 @@
 
         public void Limit(int limit) => this.x_rx.SetLimit(limit);
 
-        void IDisposable.Dispose()
+        protected override void OnClosed()
         {
+            base.OnClosed();
+        }
+
+        private bool is_disposed = false;
+        public override void Dispose()
+        {
+            lock (this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             if (this.tcpClient != null)
             {
                 this.tcpClient.Dispose();
@@ -34,7 +45,11 @@
                 x_rx.Dispose();
                 x_rx = null;
             }
-            if (this.Tx != null) this.Tx.Dispose();
+            if (this.Tx != null)
+            {
+                this.Tx.Dispose();
+                this.Tx = null;
+            }
             base.Dispose();
         }
     }

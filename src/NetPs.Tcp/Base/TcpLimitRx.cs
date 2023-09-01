@@ -11,11 +11,11 @@ namespace NetPs.Tcp
     /// </summary>
     public class TcpLimitRx : TcpRx, IDisposable, ILimit
     {
-        public const int SECOND = 10000000; // 1 second
         private bool is_disposed = false;
         private long last_time { get; set; }
         private int received_count { get; set; }
         public int Limit { get; protected set; } // must gt 0
+        public long LastTime => this.last_time;
         public TcpLimitRx(TcpCore tcpCore) : base(tcpCore)
         {
             this.Limit = 0;
@@ -50,7 +50,7 @@ namespace NetPs.Tcp
             if (this.Limit > 0)
             {
                 received_count += this.nReceived;
-                Task.Factory.StartNew(wait_limit, CancellationToken);
+                wait_limit();
             }
         }
 
@@ -59,13 +59,13 @@ namespace NetPs.Tcp
             if (this.received_count > this.Limit)
             {
                 var now = DateTime.Now.Ticks;
-                if (now < this.last_time + SECOND)
+                if (!this.HasSecondPassed(now))
                 {
-                    var wait = (int)((this.last_time + SECOND - now) / 10000);
+                    var wait = this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
                         Thread.Sleep(wait);
-                        last_time = now + wait;
+                        last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else
                     {

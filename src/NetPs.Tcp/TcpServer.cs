@@ -14,6 +14,7 @@
     public class TcpServer : TcpCore, IDisposable, ISocketLose
     {
         private bool alive = false;
+        private Action<TcpServer, TcpClient> accept;
 
         public TcpServer(Action<TcpCore> tcp_config = null) : base(tcp_config)
         {
@@ -25,14 +26,14 @@
         public TcpServer(Action<TcpServer, TcpClient> accepted, Action<TcpCore> tcp_config = null) : base(tcp_config)
         {
             construct();
-            this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
-            {
-                var client = new TcpClient(s, this);
-                lock (this.Connects) { this.Connects.Add(client); }
-                accepted?.Invoke(this, client);
-            }));
+            this.accept = accepted;
+            this.Ax.Accepted += Ax_Accepted;
         }
 
+        protected virtual void OnAccepted(object client)
+        {
+            accept?.Invoke(this, client as TcpClient);
+        }
         public TcpServer(ITcpServerConfig serverConfig) : base(serverConfig)
         {
             construct();
@@ -78,7 +79,8 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
-            this.Ax?.Dispose();
+            this.Ax.Accepted -= Ax_Accepted;
+            this.Ax.Dispose();
             base.Dispose();
         }
 
@@ -134,6 +136,13 @@
             Listen(address);
         }
 
+        private void Ax_Accepted(Socket socket)
+        {
+            var client = new TcpClient(socket, this);
+            lock (this.Connects) { this.Connects.Add(client); }
+            OnAccepted(client);
+        }
+
         /// <summary>
         /// 客户端丢失
         /// </summary>
@@ -143,8 +152,22 @@
             if (client != null)
             {
                 lock (this.Connects) { this.Connects.Remove(client); }
+                clear_socket();
                 //client.Dispose();
             }
+        }
+        private void clear_socket()
+        {
+            IList<TcpClient> loses;
+            lock (this.Connects)
+            {
+                loses = this.Connects.Where(con => !con.Actived).ToList();
+                foreach(var lose in loses)
+                {
+                    this.Connects.Remove(lose);
+                }
+            }
+            foreach (var lose in loses) lose.Dispose();
         }
         protected override void OnConnected()
         {
@@ -158,7 +181,6 @@
             this.Connects.ToList().ForEach(con => con.Dispose());
             x_closed?.Invoke();
             base.OnClosed();
-            this.Dispose();
         }
     }
 }
