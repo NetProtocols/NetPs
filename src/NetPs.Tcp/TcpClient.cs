@@ -13,7 +13,7 @@
         /// Initializes a new instance of the <see cref="TcpClient"/> class.
         /// </summary>
         /// <param name="tcp_config">Socket配置.</param>
-        public TcpClient(Action<TcpCore> tcp_config = null): base(tcp_config)
+        public TcpClient(TcpConfigFunction tcp_config = null): base(tcp_config)
         {
         }
 

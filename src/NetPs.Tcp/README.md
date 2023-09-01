@@ -76,6 +76,8 @@ var A = new TcpClient();
 var B = new TcpClient();
 var repeater_client1 = new TcpRepeaterClient(B, B.Tx);
 var repeater_client2 = new TcpRepeaterClient(A, A.Tx);
+repeater_client1.Limit(10 << 20);
+repeater_client2.Limit(10 << 20);
 
 repeater_client1.Disposables.Add(repeater_client1.ConnectedObservable.Subscribe(_ =>
 {
@@ -83,40 +85,6 @@ repeater_client1.Disposables.Add(repeater_client1.ConnectedObservable.Subscribe(
     repeater_client2.Rx.StartReceive();
 }));
 ```
-
-## Tests
-### ./ethr -c 127.0.0.1 -port 8000 -t pi -d 5m
-```
------------------------------------------------------------------------------------------
-TCP connect statistics for [127.0.0.1]:8000:
-  Sent = 300, Received = 300, Lost = 0
------------------------------------------------------------------------------------------
-      Avg       Min       50%       90%       95%       99%     99.9%    99.99%       Max
-305.793us 146.100us 256.200us 496.900us 548.300us 735.000us 756.800us 756.800us 871.400us
------------------------------------------------------------------------------------------
-Ethr done, duration: 5m0s.
-```
-
-
-### ./ethr -c 127.0.0.1 -port 8000 -t c -n 0 -p tcp -d 5s
-
-```
-Using destination: 127.0.0.1, ip: 127.0.0.1, port: 8000
-- - - - - - - - - - - - - - - - - -
-Protocol    Interval      Conn/s
-  TCP      050-051 sec    20.13K
-  TCP      051-052 sec    21.27K
-  TCP      052-053 sec    21.30K
-  TCP      053-054 sec    20.16K
-  TCP      054-055 sec    20.56K
-  TCP      055-056 sec    21.07K
-  TCP      056-057 sec       21K
-  TCP      057-058 sec    20.89K
-  TCP      058-059 sec    20.23K
-  TCP      059-060 sec    20.56K
-Ethr done, duration: 1m0s.
-```
-
 
 
 *<u>NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。</u>*

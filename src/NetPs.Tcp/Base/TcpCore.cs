@@ -6,12 +6,14 @@
     using System.Net.Sockets;
     using System.Reactive.Linq;
 
+    public delegate void TcpConfigFunction(TcpCore tcpCore);
+
     /// <summary>
     /// .
     /// </summary>
     public class TcpCore : SocketCore, ITcpConfig
     {
-        private Action<TcpCore> tcp_config { get; }
+        private TcpConfigFunction tcp_config { get; }
         private ITcpConfig X_TcpConfig { get; }
         public TcpCore()
         {
@@ -19,7 +21,7 @@
             X_TcpConfig = this;
             construct();
         }
-        public TcpCore(Action<TcpCore> tcp_config)
+        public TcpCore(TcpConfigFunction tcp_config)
         {
             this.tcp_config = tcp_config;
             X_TcpConfig = this;
@@ -38,7 +40,6 @@
             this.LoseConnectedObservable = Observable.FromEvent<SateChangeHandler, IPEndPoint>(handler => ip => handler(ip), evt => this.DisConnected += evt, evt => this.DisConnected -= evt);
         }
 
-        public virtual Action<TcpCore> Tcp_config => this.tcp_config;
         /// <summary>
         /// Gets or sets a value indicating whether 正在接收.
         /// </summary>
@@ -93,7 +94,7 @@
             }
         }
 
-        public void TcpConfigure(TcpCore core)
+        public virtual void TcpConfigure(TcpCore core)
         {
             if (tcp_config != null) tcp_config.Invoke(core);
         }

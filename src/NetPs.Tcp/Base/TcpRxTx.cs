@@ -11,7 +11,7 @@
         /// Initializes a new instance of the <see cref="TcpRxTx"/> class.
         /// </summary>
         /// <param name="tcp_config">配置.</param>
-        public TcpRxTx(Action<TcpCore> tcp_config)
+        public TcpRxTx(TcpConfigFunction tcp_config)
             : base(tcp_config)
         {
             this.Rx = new TcpRx(this);

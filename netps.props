@@ -1,6 +1,6 @@
 <Project>
 	<PropertyGroup>
-		<Version>1.0.30829</Version>
+		<Version>1.0.30901</Version>
 		<AutoGenerateBindingRedirects>True</AutoGenerateBindingRedirects>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Product>NetPs</Product>
@@ -12,7 +12,6 @@
 		<RepositoryUrl>https://github.com/NetProtocols/NetPs</RepositoryUrl>
 		<Description>
 			.net network protocols library;
-			* fix-bug version.
 		</Description>
 		<PackageTags>netstandard, netframework-compact3.5</PackageTags>
 		<!--<PackageLicenseFile>License.txt</PackageLicenseFile>-->
