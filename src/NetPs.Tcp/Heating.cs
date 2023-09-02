@@ -3,9 +3,6 @@
     using NetPs.Socket.Eggs;
     using NetPs.Tcp;
     using System;
-    using System.Diagnostics;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// 加热类
@@ -19,8 +16,7 @@
             serv.WhenClientLosed(c =>
             {
                 c.FIN();
-                Thread.Sleep(1000);
-                Task.Factory.StartNew(serv.Dispose);
+                serv.Close();
             });
             watch.Heat_Progress();
             var client = new TcpClient();
@@ -42,7 +38,6 @@
             static_val = Consts.SocketPollTime;
             static_val = Consts.TransportBytes;
             watch.Heat_Progress();
-            Thread.Sleep(50000);
         }
 
         public string BandAddress => "0.0.0.0:0";

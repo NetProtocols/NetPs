@@ -88,7 +88,7 @@
                 this.is_disposed = true;
                 this.core.Receiving = false;
             }
-            if (AsyncResult != null && this.core.Actived)
+            if (AsyncResult != null)
             {
                 this.core.Socket.EndReceive(AsyncResult);
                 AsyncResult.AsyncWaitHandle.Close();

@@ -148,8 +148,11 @@
         {
             if (this.Socket != null && this.Actived)
             {
-                //主动关闭的必要：发送 FIN 包
-                this.Socket.Shutdown(SocketShutdown.Both);
+                if (!(this.Socket.Blocking && this.Socket.Connected))
+                {
+                    //主动关闭的必要：发送 FIN 包
+                    this.Socket.Shutdown(SocketShutdown.Both);
+                }
             }
             if (!this.closed) this.Lose();
         }
@@ -163,9 +166,13 @@
                 this.disposed = true;
             }
             this.Disposables.Dispose();
-            this.Socket.Close();
-            if (this.Socket is IDisposable o) o.Dispose();
-            this.Socket = null;
+            if (this.Socket != null)
+            {
+                //防止未初始化socket的情况
+                this.Socket.Close();
+                if (this.Socket is IDisposable o) o.Dispose();
+                this.Socket = null;
+            }
         }
 
         /// <summary>

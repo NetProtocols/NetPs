@@ -78,7 +78,7 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            if (this.AsyncResult != null && this.core.Actived)
+            if (this.AsyncResult != null)
             {
                 this.core.Socket.EndSend(AsyncResult);
                 this.AsyncResult = null;
@@ -186,7 +186,7 @@
                 if (poll_ok)
                 {
                     if (this.is_disposed) return;
-                    this.core.Socket.BeginSend(this.buffer, 0, this.nTransported, SocketFlags.None, this.SendCallback, null);
+                    AsyncResult = this.core.Socket.BeginSend(this.buffer, 0, this.nTransported, SocketFlags.None, this.SendCallback, null);
                 }
                 else
                 {

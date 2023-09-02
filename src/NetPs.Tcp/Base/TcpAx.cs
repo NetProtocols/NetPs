@@ -50,7 +50,7 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            if (AsyncResult != null && this.core.Actived)
+            if (AsyncResult != null)
             {
                 //必要的end操作
                 this.core.Socket.EndAccept(AsyncResult);
@@ -62,7 +62,8 @@
         /// <summary>
         /// 开始接受Client.
         /// </summary>
-        public virtual void StartAccept()
+        public virtual void StartAccept() => Task.StartNew(this.start_accept);
+        private void start_accept()
         {
             if (this.is_disposed) return;
             try
@@ -78,7 +79,7 @@
                 if (this.is_disposed) return;
             }
 
-            Task.StartNew(this.StartAccept);
+            StartAccept();
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
@@ -88,7 +89,7 @@
                 Socket client = null;
                 client = this.core.Socket.EndAccept(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
-                Task.StartNew(StartAccept);
+                StartAccept();
                 Task.StartNew(tell_accept, client);
                 return;
             }
@@ -99,7 +100,7 @@
                 //请求错误不处理
                 if (this.is_disposed) return;
             }
-            Task.StartNew(StartAccept);
+            StartAccept();
         }
         private void tell_accept(object client)
         {

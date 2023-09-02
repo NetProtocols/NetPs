@@ -8,7 +8,7 @@ namespace TestConsole.Net6
     {
         static void Main(string[] args)
         {
-            //Food.Heating();
+            Food.Heating();
             while (true)
             {
                 var host = new TcpServer((s, c) =>
