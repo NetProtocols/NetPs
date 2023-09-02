@@ -3,6 +3,7 @@
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -13,6 +14,7 @@
         private bool is_disposed = false;
         private TcpCore core { get; }
         protected TaskFactory Task { get; private set; }
+        private IAsyncResult AsyncResult { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpAx"/> class.
         /// </summary>
@@ -48,6 +50,12 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
+            if (AsyncResult != null && this.core.Actived)
+            {
+                //必要的end操作
+                this.core.Socket.EndAccept(AsyncResult);
+                AsyncResult.AsyncWaitHandle.Close();
+            }
             this.Accepted = null;
         }
 
@@ -59,7 +67,7 @@
             if (this.is_disposed) return;
             try
             {
-                this.core.Socket.BeginAccept(this.AcceptCallback, null);
+                AsyncResult = this.core.Socket.BeginAccept(this.AcceptCallback, null);
                 return;
             }
             catch (ObjectDisposedException) { return; }

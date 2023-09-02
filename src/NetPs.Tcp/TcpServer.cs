@@ -10,6 +10,7 @@
 
     public delegate void TcpAcceptedFunction(TcpServer tcpServer, TcpClient tcpClient);
     public delegate void TcpClosedFunction();
+    public delegate void TcpClientLosedFunction(TcpClient tcpClient);
     /// <summary>
     /// Tcp server.
     /// </summary>
@@ -18,6 +19,7 @@
         private bool alive = false;
         private TcpAcceptedFunction accepted_function { get; set; }
         private TcpClosedFunction closed_function { get; set; }
+        private TcpClientLosedFunction losed_function { get; set; }
 
         public TcpServer(TcpConfigFunction tcp_config = null) : base(tcp_config)
         {
@@ -43,6 +45,8 @@
                 {
                     if (client.Actived)
                     {
+                        client.WhenLoseConnected(this);
+                        client.Rx.WhenReceived(serverConfig);
                         lock (this.Connects) { this.Connects.Add(client); }
                         return;
                         //client.StartReceive(serverConfig);
@@ -142,23 +146,35 @@
         private void Ax_Accepted(Socket socket)
         {
             var client = new TcpClient(socket, this);
+            client.WhenLoseConnected(this);
             lock (this.Connects) { this.Connects.Add(client); }
             OnAccepted(client);
         }
 
         /// <summary>
+        /// 当丢失客户端
+        /// </summary>
+        /// <param name="losed">处理函数</param>
+        public virtual void WhenClientLosed(TcpClientLosedFunction losed)
+        {
+            this.losed_function = losed;
+        }
+
+        /// <summary>
         /// 客户端丢失
         /// </summary>
-        public virtual void SocketLosed(object socket)
+        public virtual void OnSocketLosed(object socket)
         {
             var client = (TcpClient)socket;
             if (client != null)
             {
                 lock (this.Connects) { this.Connects.Remove(client); }
-                clear_socket();
+                //clear_socket();
                 //client.Dispose();
+                if(this.losed_function != null) losed_function.Invoke(client);
             }
         }
+
 
         protected virtual void OnAccepted(object client)
         {
@@ -177,6 +193,7 @@
             this.Connects.ToList().ForEach(con => con.Dispose());
             closed_function?.Invoke();
             base.OnClosed();
+            this.Dispose();
         }
         private void clear_socket()
         {

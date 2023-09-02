@@ -133,21 +133,20 @@
             }
         }
 
+        public virtual void FIN() => Shutdown();
+
         /// <summary>
         /// 关闭连接.
         /// </summary>
         public virtual void Close()
         {
-            if (this.Socket != null && this.Socket.Connected)
-            {
-                this.Socket.Close();
-            }
             if (!this.closed) this.Lose();
         }
 
+
         public virtual void Shutdown()
         {
-            if (this.Socket != null && this.Socket.Connected)
+            if (this.Socket != null && this.Actived)
             {
                 //主动关闭的必要：发送 FIN 包
                 this.Socket.Shutdown(SocketShutdown.Both);
@@ -163,11 +162,10 @@
                 if (this.disposed) return;
                 this.disposed = true;
             }
-            Shutdown();
-            Close();
+            this.Disposables.Dispose();
+            this.Socket.Close();
             if (this.Socket is IDisposable o) o.Dispose();
             this.Socket = null;
-            this.Disposables.Dispose();
         }
 
         /// <summary>
@@ -214,7 +212,7 @@
 
         private void tell_lose()
         {
-            this.socketLose?.SocketLosed(this);
+            this.socketLose?.OnSocketLosed(this);
             DisConnected?.Invoke(this.IPEndPoint);
         }
 

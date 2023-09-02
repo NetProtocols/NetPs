@@ -1,13 +1,14 @@
-﻿using NetPs.Socket.Eggs;
+﻿using NetPs.Socket;
+using NetPs.Socket.Eggs;
 using NetPs.Tcp;
 
 namespace TestConsole.Net6
 {
-    internal class Program
+    internal class Program : IHeatingWatch
     {
         static void Main(string[] args)
         {
-            Food.Heating();
+            //Food.Heating();
             while (true)
             {
                 var host = new TcpServer((s, c) =>
@@ -18,6 +19,14 @@ namespace TestConsole.Net6
                 Console.ReadLine();
                 host.Dispose();
             }
+        }
+
+        public void Heat_End()
+        {
+        }
+
+        public void Heat_Progress()
+        {
         }
     }
 }

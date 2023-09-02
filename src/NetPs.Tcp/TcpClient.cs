@@ -19,7 +19,6 @@
 
         public TcpClient(Socket socket, ISocketLose lose = null) : base(null)
         {
-            this.WhenLoseConnected(lose);
             PutSocket(socket);
         }
 

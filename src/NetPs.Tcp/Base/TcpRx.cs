@@ -22,7 +22,8 @@
         private bool is_disposed = false;
         public bool Running => this.core.Receiving;
         protected TaskFactory Task { get; private set; }
-        protected CancellationToken CancellationToken { get; private set; }
+        private ITcpReceive receive { get; set; }
+        private IAsyncResult AsyncResult { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpRx"/> class.
@@ -31,7 +32,6 @@
         public TcpRx(TcpCore tcpCore)
         {
             this.Task = new TaskFactory();
-            this.CancellationToken = new CancellationToken();
             this.nReceived = 0;
             this.core = tcpCore;
             this.nBuffersize = Consts.ReceiveBytes;
@@ -60,6 +60,10 @@
         /// </summary>
         public virtual int ReceiveBufferSize => this.nBuffersize;
 
+        public virtual void WhenReceived(ITcpReceive tcp_receive)
+        {
+            this.receive = tcp_receive;
+        }
         /// <summary>
         /// 开始接收.
         /// </summary>
@@ -84,11 +88,12 @@
                 this.is_disposed = true;
                 this.core.Receiving = false;
             }
-            this.bBuffer = null;
-            if (CancellationToken.IsCancellationRequested)
+            if (AsyncResult != null && this.core.Actived)
             {
-                CancellationToken.WaitHandle.Close();
+                this.core.Socket.EndReceive(AsyncResult);
+                AsyncResult.AsyncWaitHandle.Close();
             }
+            this.bBuffer = null;
         }
 
         /// <summary>
@@ -97,7 +102,11 @@
         /// <param name="data"></param>
         public virtual void SendReceived(byte[] data)
         {
-            if (this.Received != null && data != null && data.Length > 0) this.Received.Invoke(data);
+            if (data != null && data.Length > 0)
+            {
+                if (this.receive != null) receive.TcpReceive(data, this.core as TcpClient);
+                if (this.Received != null) this.Received.Invoke(data);
+            }
         }
 
         public virtual void OnRecevied()
@@ -105,7 +114,7 @@
             var data = new byte[this.nReceived];
             Array.Copy(this.bBuffer, data, this.nReceived);
             SendReceived(data);
-            Task.StartNew(restart_receive, CancellationToken);
+            Task.StartNew(restart_receive);
         }
 
         protected void restart_receive() => Task.StartNew(this.x_StartReceive);
@@ -114,8 +123,8 @@
         {
             try
             {
-                if (this.is_disposed|| !this.core.Actived) return;
-                this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
+                if (this.is_disposed || !this.core.Actived) return;
+                this.AsyncResult = this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
                 return;
             }
             //释放
@@ -137,7 +146,13 @@
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.nReceived <= 0)
                 {
-                    if (this.is_disposed || !this.core.Actived) return;
+                    //if (this.is_disposed) return;
+                    if (this.core.Socket.Poll(1000, SelectMode.SelectRead))
+                    {
+                        // 接收到 FIN
+                        this.core.FIN();
+                        return;
+                    }
                     this.core.Lose();
                     return;
                 }

@@ -20,6 +20,7 @@
         private IEndTransport EndTransport { get; set; }
         public bool IsDisposed => this.is_disposed;
         protected TaskFactory Task { get; set; }
+        private IAsyncResult AsyncResult { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpTx"/> class.
         /// </summary>
@@ -76,6 +77,11 @@
             {
                 if (this.is_disposed) return;
                 this.is_disposed = true;
+            }
+            if (this.AsyncResult != null && this.core.Actived)
+            {
+                this.core.Socket.EndSend(AsyncResult);
+                this.AsyncResult = null;
             }
             if (this.cache != null)
             {
