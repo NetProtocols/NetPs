@@ -90,7 +90,10 @@
             }
             if (AsyncResult != null)
             {
-                this.core.Socket.EndReceive(AsyncResult);
+                if (this.core.CanEnd)
+                {
+                    this.core.Socket.EndReceive(AsyncResult);
+                }
                 AsyncResult.AsyncWaitHandle.Close();
             }
             this.bBuffer = null;
@@ -123,8 +126,11 @@
         {
             try
             {
-                if (this.is_disposed || !this.core.Actived) return;
-                this.AsyncResult = this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
+                if (this.core.CanBegin)
+                {
+                    if (this.is_disposed) return;
+                    this.AsyncResult = this.core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
+                }
                 return;
             }
             //释放
@@ -141,8 +147,15 @@
         {
             try
             {
-                if (this.is_disposed || !this.core.Actived) return;
-                this.nReceived = this.core.Socket.EndReceive(asyncResult);
+                if (this.is_disposed) return;
+                if (this.core.CanEnd)
+                {
+                    this.nReceived = this.core.Socket.EndReceive(asyncResult);
+                }
+                else
+                {
+                    this.nReceived = 0;
+                }
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.nReceived <= 0)
                 {

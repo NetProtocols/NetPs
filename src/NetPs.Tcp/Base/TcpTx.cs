@@ -80,7 +80,11 @@
             }
             if (this.AsyncResult != null)
             {
-                this.core.Socket.EndSend(AsyncResult);
+                if (this.core.CanEnd)
+                {
+                    this.core.Socket.EndSend(AsyncResult);
+                }
+                AsyncResult.AsyncWaitHandle.Close();
                 this.AsyncResult = null;
             }
             if (this.cache != null)
@@ -185,8 +189,11 @@
                 var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
                 if (poll_ok)
                 {
-                    if (this.is_disposed) return;
-                    AsyncResult = this.core.Socket.BeginSend(this.buffer, 0, this.nTransported, SocketFlags.None, this.SendCallback, null);
+                    if (this.core.CanBegin)
+                    {
+                        if (this.is_disposed) return;
+                        AsyncResult = this.core.Socket.BeginSend(this.buffer, 0, this.nTransported, SocketFlags.None, this.SendCallback, null);
+                    }
                 }
                 else
                 {
@@ -210,7 +217,15 @@
             try
             {
                 if (this.is_disposed || !this.core.Actived) return;
-                this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
+                if (this.core.CanEnd)
+                {
+                    this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
+                }
+                else
+                {
+                    if (!this.is_disposed) this.core.Lose();
+                    return;
+                }
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.is_disposed) return;
                 //传输完成

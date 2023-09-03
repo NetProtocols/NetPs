@@ -14,13 +14,13 @@
     /// <summary>
     /// Tcp server.
     /// </summary>
-    public class TcpServer : TcpCore, IDisposable, ISocketLose
+    public class TcpServer : TcpCore, IDisposable, ISocketLose, ITcpServer
     {
         private bool alive = false;
         private TcpAcceptedFunction accepted_function { get; set; }
         private TcpClosedFunction closed_function { get; set; }
         private TcpClientLosedFunction losed_function { get; set; }
-
+        private ITcpServerEvents events { get; set; }
         public TcpServer(TcpConfigFunction tcp_config = null) : base(tcp_config)
         {
             construct();
@@ -35,7 +35,7 @@
             this.Ax.Accepted += Ax_Accepted;
         }
 
-        public TcpServer(ITcpServerConfig serverConfig) : base(serverConfig)
+        public TcpServer(ITcpServerConfig serverConfig) : base(serverConfig.OnConfiguration)
         {
             construct();
             this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
@@ -91,6 +91,11 @@
         /// 连接终端.
         /// </summary>
         public virtual IList<TcpClient> Connects { get; set; }
+
+        public void BindEvents(ITcpServerEvents events)
+        {
+            this.events = events;
+        }
 
         /// <summary>
         /// 监听.
@@ -166,6 +171,7 @@
         public virtual void OnSocketLosed(object socket)
         {
             var client = (TcpClient)socket;
+            this.events?.OnSocketLosed(this, client);
             if (client != null)
             {
                 lock (this.Connects) { this.Connects.Remove(client); }
@@ -175,15 +181,15 @@
             }
         }
 
-
         protected virtual void OnAccepted(object client)
         {
             accepted_function?.Invoke(this, client as TcpClient);
+            this.events?.OnAccepted(this, client as TcpClient);
         }
 
-        protected override void OnConnected()
+        protected virtual void OnListened()
         {
-            base.OnConnected();
+            this.events?.OnListened(this);
             if (alive) Ax.StartAccept();
         }
 
@@ -193,7 +199,14 @@
             this.Connects.ToList().ForEach(con => con.Dispose());
             closed_function?.Invoke();
             base.OnClosed();
+            this.events.OnClosed(this);
             this.Dispose();
+        }
+
+        protected override void OnConfiguration()
+        {
+            base.OnConfiguration();
+            this.events.OnConfiguration(this);
         }
         private void clear_socket()
         {

@@ -16,10 +16,5 @@
         {
             base.OnClosed();
         }
-
-        protected override void OnConnected()
-        {
-            base.OnConnected();
-        }
     }
 }

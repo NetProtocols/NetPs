@@ -172,7 +172,7 @@
                     break;
                 case 10054:
                     //this.ErrorCode = SocketErrorCode.ConnectionReset;
-                    tell_lose(socket, source);
+                    if (socket != null && !socket.IsClosed) tell_lose(socket, source);
                     handled = true;
                     break;
                 case 10055:

@@ -26,13 +26,13 @@
             mirror.Connected += Mirror_Connected;
         }
 
-        private void Mirror_Connected(System.Net.IPEndPoint iPEndPoint)
+        private void Mirror_Connected(object source)
         {
             mirror.Rx.StartReceive();
             this.tcp.Rx.StartReceive();
         }
 
-        private void Mirror_DisConnected(System.Net.IPEndPoint iPEndPoint)
+        private void Mirror_DisConnected(object source)
         {
             if (!is_disposed) this.Dispose();
         }
@@ -62,11 +62,15 @@
             }
         }
 
-        public void Start()
+        public async void Start()
         {
             try
             {
-                mirror.Connect(this.Mirror_Address);
+                var ok = await mirror.ConnectAsync(this.Mirror_Address);
+                if (!ok)
+                {
+                    this.Close();
+                }
             }
             catch (Exception e)
             {
@@ -77,7 +81,7 @@
 
         protected override void OnClosed()
         {
-            this.tcp.Shutdown();
+            this.tcp.FIN();
         }
     }
 }

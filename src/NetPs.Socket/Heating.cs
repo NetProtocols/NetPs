@@ -15,7 +15,7 @@
                 throw new NotImplementedException();
             }
 
-            protected override void OnConnected()
+            protected override void OnLosed()
             {
                 throw new NotImplementedException();
             }

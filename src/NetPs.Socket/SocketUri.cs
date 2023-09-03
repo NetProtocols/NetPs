@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Reactive.Linq.ObservableImpl;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -74,6 +75,16 @@ namespace NetPs.Socket
                 default:
                     return IPAddress.Parse(host);
             }
+        }
+
+        public virtual bool Equal(IPEndPoint ip)
+        {
+            return ip.Address == this.IP && (ip.Port == this.Port || this.Port == 0);
+        }
+
+        public virtual bool Equal(SocketUri host)
+        {
+            return IP == host.IP && (Port == host.Port || Port == 0 || host.Port == 0);
         }
     }
 }

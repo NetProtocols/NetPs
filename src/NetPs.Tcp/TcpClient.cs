@@ -7,14 +7,20 @@
     /// <summary>
     /// Tcp 客户端.
     /// </summary>
-    public class TcpClient : TcpRxTx
+    public class TcpClient : TcpRxTx, ITcpClient
     {
+        private ITcpClientEvents events { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpClient"/> class.
         /// </summary>
         /// <param name="tcp_config">Socket配置.</param>
         public TcpClient(TcpConfigFunction tcp_config = null): base(tcp_config)
         {
+        }
+
+        public TcpClient(ITcpClientEvents events) : base(null)
+        {
+            this.events = events;
         }
 
         public TcpClient(Socket socket, ISocketLose lose = null) : base(null)
@@ -51,6 +57,10 @@
             this.Disposables.Add(this.Rx.ReceivedObservable.Subscribe(data => receive.TcpReceive(data, this)));
             this.Rx.StartReceive();
         }
+        public void BindEvents(ITcpClientEvents events)
+        {
+            this.events = events;
+        }
 
         /// <inheritdoc/>
         public override void Dispose()
@@ -73,7 +83,29 @@
         {
             if (Hub != null) Hub.Close();
             base.OnClosed();
+            this.events?.OnClosed(this);
             this.Dispose();
+        }
+        protected override void OnConfiguration()
+        {
+            base.OnConfiguration();
+            this.events?.OnConfiguration(this);
+        }
+
+        protected override void OnConnected()
+        {
+            base.OnConnected();
+            this.events?.OnConnected(this);
+        }
+        protected override void OnDisconnected()
+        {
+            base.OnDisconnected();
+            this.events?.OnDisconnected(this);
+        }
+        protected override void OnLosed()
+        {
+            base.OnLosed();
+            this.events?.OnLosed(this);
         }
     }
 }

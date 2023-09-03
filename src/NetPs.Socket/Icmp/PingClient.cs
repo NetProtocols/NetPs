@@ -147,11 +147,11 @@
             //receive_from();
         }
 
-        protected override void OnConnected()
+        protected override void OnClosed()
         {
         }
 
-        protected override void OnClosed()
+        protected override void OnLosed()
         {
         }
     }

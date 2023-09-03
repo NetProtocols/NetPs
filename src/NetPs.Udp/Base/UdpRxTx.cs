@@ -72,11 +72,6 @@
             base.Dispose();
         }
 
-        protected override void OnConnected()
-        {
-            base.OnConnected();
-        }
-
         protected override void OnClosed()
         {
             base.OnClosed();

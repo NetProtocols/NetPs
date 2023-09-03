@@ -4,13 +4,12 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Disposables;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// 状态改变.
     /// </summary>
     /// <param name="iPEndPoint">ip.</param>
-    public delegate void SateChangeHandler(IPEndPoint iPEndPoint);
+    public delegate void SateChangeHandle(object source);
 
     /// <summary>
     /// 处理异常.
@@ -19,7 +18,7 @@
     public delegate void SocketExceptionHandler(Exception exception);
 
     /// <summary>
-    /// .
+    /// 套接字基类
     /// </summary>
     public abstract class SocketCore : IDisposable
     {
@@ -33,11 +32,12 @@
         /// </remarks>
         public static readonly QueueStreamPool StreamPool = new QueueStreamPool(0x4);
         private ISocketLose socketLose { get; set; }
-        private bool disposed = false;
-        private bool closed = true;
+        private bool is_disposed = false;
+        private bool is_closed = true;
 
         protected readonly CompositeDisposable h_disposables;
-        public bool IsDisposed => disposed;
+        public bool IsDisposed => is_disposed;
+        private IAsyncResult AsyncResult { get; set; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
@@ -47,20 +47,12 @@
             this.h_disposables = new CompositeDisposable();
         }
 
+        public event SateChangeHandle Closed;
+
         /// <summary>
         /// Gets 取消订阅清单.
         /// </summary>
         public virtual CompositeDisposable Disposables => this.h_disposables;
-
-        /// <summary>
-        /// 连接.
-        /// </summary>
-        public virtual event SateChangeHandler Connected;
-
-        /// <summary>
-        /// 丢失连接.
-        /// </summary>
-        public virtual event SateChangeHandler DisConnected;
 
         /// <summary>
         /// 处理异常.
@@ -83,29 +75,31 @@
         public virtual IPEndPoint IPEndPoint { get; protected set; }
 
         /// <summary>
-        /// Gets or sets 连接超时毫秒(ms).
-        /// </summary>
-        public virtual int ConnectTimeout { get; set; } = 3600;
-
-        /// <summary>
         /// Gets a value indicating whether 存活.
         /// </summary>
-        public virtual bool Actived => !this.Closed && (this.Socket?.Connected ?? false);
+        public virtual bool Actived => !this.IsClosed;
+        /// <summary>
+        /// 可以结束
+        /// </summary>
+        public virtual bool CanEnd => (this.Socket.Connected == this.Socket.Blocking) || (this.Socket.Connected && !this.Socket.Blocking);
+        /// <summary>
+        /// 可以Poll
+        /// </summary>
+        public virtual bool CanFIN => !(this.Socket.Blocking && this.Socket.Connected);
+        /// <summary>
+        /// 可以开始
+        /// </summary>
+        public virtual bool CanBegin => !(!(this.Socket?.Blocking ?? false) && !(this.Socket?.Connected?? false));
 
         /// <summary>
         /// Gets a value indicating whether gets 链接已关闭.
         /// </summary>
-        public virtual bool Closed => this.closed;
+        public virtual bool IsClosed => this.is_closed;
 
         /// <summary>
         /// Gets 地址.
         /// </summary>
         public EndPoint IP => this.Socket?.RemoteEndPoint;
-
-        /// <summary>
-        /// Gets or sets a value indicating whether gets or sets 正在连接.
-        /// </summary>
-        public virtual bool Connecting { get; protected set; }
 
         /// <summary>
         /// 放置Socket.
@@ -117,55 +111,61 @@
             {
                 lock (this)
                 {
-                    if (!this.closed) return;
-                    this.closed = false;
+                    if (!this.is_closed) return;
+                    this.is_closed = false;
                 }
                 this.Socket = socket;
             }
         }
 
-        public virtual void IsUdp()
+        public virtual void IsUdp() => to_opened();
+
+        protected virtual bool to_closed()
         {
             lock (this)
             {
-                if (!this.closed) return;
-                this.closed = false;
+                if (this.is_closed) return false;
+                this.is_closed = true;
             }
+            return true;
         }
 
-        public virtual void FIN() => Shutdown();
+        protected virtual bool to_opened()
+        {
+            lock (this)
+            {
+                if (!this.is_closed) return false;
+                this.is_closed = false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// 关闭连接.
         /// </summary>
         public virtual void Close()
         {
-            if (!this.closed) this.Lose();
+            if (!this.is_closed) this.Lose();
         }
 
-
-        public virtual void Shutdown()
-        {
-            if (this.Socket != null && this.Actived)
-            {
-                if (!(this.Socket.Blocking && this.Socket.Connected))
-                {
-                    //主动关闭的必要：发送 FIN 包
-                    this.Socket.Shutdown(SocketShutdown.Both);
-                }
-            }
-            if (!this.closed) this.Lose();
-        }
 
         /// <inheritdoc/>
         public virtual void Dispose()
         {
             lock (this)
             {
-                if (this.disposed) return;
-                this.disposed = true;
+                if (this.is_disposed) return;
+                this.is_disposed = true;
             }
             this.Disposables.Dispose();
+            if (this.AsyncResult != null)
+            {
+                if (this.CanEnd)
+                {
+                    this.Socket.EndConnect(AsyncResult);
+                }
+                this.AsyncResult.AsyncWaitHandle.Close();
+            }
             if (this.Socket != null)
             {
                 //防止未初始化socket的情况
@@ -180,14 +180,14 @@
         /// </summary>
         public virtual void Lose()
         {
+            if (this.is_disposed) return;
             // 交
-            lock (this)
+            if (this.to_closed())
             {
-                if (this.closed) return;
-                this.closed = true;
+                this.OnClosed();
+                this.Closed?.Invoke(this);
+                this.tell_lose();
             }
-            this.OnClosed();
-            this.tell_lose();
         }
 
         public virtual void WhenLoseConnected(ISocketLose lose)
@@ -205,75 +205,26 @@
         }
 
         /// <summary>
-        /// 当链接开始.
+        /// 当关闭
         /// </summary>
-        protected abstract void OnConnected();
-
         protected abstract void OnClosed();
 
-        private void tell_connected()
-        {
-            this.OnConnected();
-            if (!this.Closed) this.Connected?.Invoke(this.IPEndPoint);
-        }
-
-        private void tell_lose()
-        {
-            this.socketLose?.OnSocketLosed(this);
-            DisConnected?.Invoke(this.IPEndPoint);
-        }
-
         /// <summary>
-        /// 开始连接.
+        /// 当丢失
         /// </summary>
-        /// <param name="timeout">超时毫秒数.</param>
-        protected virtual async void StartConnect(int timeout)
-        {
-            this.closed = true;
+        protected abstract void OnLosed();
 
-            var rlt = this.Socket.BeginConnect(this.IPEndPoint, this.ConnectCallback, this.Socket);
-            await Task.Delay(timeout);
-            if (!rlt.IsCompleted)
-            {
-                var ok = rlt.AsyncWaitHandle.WaitOne(0, false);
-                if (!ok)
-                {
-                    this.Lose();
-                }
-            }
-        }
-        private void ConnectCallback(IAsyncResult asyncResult)
+        protected virtual void tell_lose()
         {
-            var client = (Socket)asyncResult.AsyncState;
-            try
-            {
-                client.EndConnect(asyncResult);
-                asyncResult.AsyncWaitHandle.Close();
-                this.Connecting = false;
-                this.closed = false;
-                this.tell_connected();
-            }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
-            catch (SocketException e)
-            {
-                if (!NetPsSocketException.Deal(e, this, NetPsSocketExceptionSource.Connect)) this.ThrowException(e);
-            }
-            this.Connecting = false;
-        }
-
-        //开始监听Accept
-        public virtual void Listen(int backlog)
-        {
-            this.Socket.Listen(backlog);
-            this.closed = false;
+            this.OnLosed();
+            this.socketLose?.OnSocketLosed(this);
         }
 
         //绑定到IPEndPoint
         public virtual void Bind()
         {
             this.Socket.Bind(this.IPEndPoint);
-            this.closed = false;
+            this.is_closed = false;
         }
     }
 }

@@ -48,11 +48,12 @@
             return true;
         }
 
-        public void TcpConfigure(TcpCore core)
+
+        public void TcpReceive(byte[] data, TcpClient tcp)
         {
         }
 
-        public void TcpReceive(byte[] data, TcpClient tcp)
+        public void OnConfiguration(TcpCore core)
         {
         }
     }

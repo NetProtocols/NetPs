@@ -4,6 +4,6 @@
 
     public interface ITcpConfig
     {
-        void TcpConfigure(TcpCore core);
+        void OnConfiguration(TcpCore core);
     }
 }
