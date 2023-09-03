@@ -287,6 +287,7 @@
             if (this.is_disposed) return;
             this.is_connecting = false;
             this.is_connected = true;
+            base.to_opened();
             this.OnConnected();
             this.Connected?.Invoke(this);
         }
@@ -296,6 +297,7 @@
             if (this.is_disposed) return;
             this.is_connecting = false;
             this.is_connected = false;
+            base.to_closed();
             this.OnDisconnected();
             this.DisConnected?.Invoke(this);
         }

@@ -82,30 +82,30 @@
         protected override void OnClosed()
         {
             if (Hub != null) Hub.Close();
-            base.OnClosed();
             this.events?.OnClosed(this);
+            base.OnClosed();
             this.Dispose();
         }
         protected override void OnConfiguration()
         {
-            base.OnConfiguration();
             this.events?.OnConfiguration(this);
+            base.OnConfiguration();
         }
 
         protected override void OnConnected()
         {
-            base.OnConnected();
             this.events?.OnConnected(this);
+            base.OnConnected();
         }
         protected override void OnDisconnected()
         {
-            base.OnDisconnected();
             this.events?.OnDisconnected(this);
+            base.OnDisconnected();
         }
         protected override void OnLosed()
         {
-            base.OnLosed();
             this.events?.OnLosed(this);
+            base.OnLosed();
         }
     }
 }

@@ -132,7 +132,7 @@
                         IPEndPoint.Port = ip.Port;
                     }
                 }
-                this.OnConnected();
+                this.OnListened();
             }
         }
 
@@ -198,15 +198,15 @@
             alive = false;
             this.Connects.ToList().ForEach(con => con.Dispose());
             closed_function?.Invoke();
+            this.events?.OnClosed(this);
             base.OnClosed();
-            this.events.OnClosed(this);
             this.Dispose();
         }
 
         protected override void OnConfiguration()
         {
+            this.events?.OnConfiguration(this);
             base.OnConfiguration();
-            this.events.OnConfiguration(this);
         }
         private void clear_socket()
         {
