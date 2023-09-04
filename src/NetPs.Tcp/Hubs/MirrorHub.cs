@@ -66,13 +66,13 @@
                 var ok = await mirror.ConnectAsync(this.Mirror_Address);
                 if (!ok)
                 {
-                    mirror.Lose();
                     this.Close();
                 }
+                return;
             }
             catch (Exception e)
             {
-                mirror.Lose();
+                //mirror.Lose();
                 this.Close();
                 Hub.ThrowException(e);
             }

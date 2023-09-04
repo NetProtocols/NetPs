@@ -56,7 +56,7 @@
             }
             if (this.tcpClient != null)
             {
-                this.tcpClient.Dispose();
+                this.tcpClient.Lose();
                 this.tcpClient = null;
             }
             if (x_rx != null)

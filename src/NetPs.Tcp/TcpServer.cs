@@ -4,7 +4,6 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
 
@@ -40,7 +39,7 @@
             construct();
             this.Disposables.Add(this.AcceptObservable.Subscribe(s =>
             {
-                var client = new TcpClient(s, this);
+                var client = new TcpClient(s);
                 if (serverConfig.TcpAccept(this, client))
                 {
                     if (client.Actived)
@@ -83,8 +82,8 @@
         public override void Dispose()
         {
             this.Ax.Accepted -= Ax_Accepted;
-            this.Ax.Dispose();
             base.Dispose();
+            this.Ax.Dispose();
         }
 
         /// <summary>
@@ -116,22 +115,8 @@
         {
             if (address != null)
             {
-                this.Address = address;
-                this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
-                this.Socket = new Socket(address.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                this.TcpConfigure(this);
-                this.Bind();
+                this.Bind(address);
                 this.Listen(Consts.MaxAcceptClient);
-                if (address.Port == 0)
-                {
-                    // 端口由socket 分配
-                    var ip = Socket.LocalEndPoint as IPEndPoint;
-                    if (ip != null)
-                    {
-                        Address = new SocketUri($"{Address.Scheme}{SocketUri.SchemeDelimiter}{Address.Host}{SocketUri.PortDelimiter}{ip.Port}");
-                        IPEndPoint.Port = ip.Port;
-                    }
-                }
                 this.OnListened();
             }
         }
@@ -150,7 +135,7 @@
 
         private void Ax_Accepted(Socket socket)
         {
-            var client = new TcpClient(socket, this);
+            var client = new TcpClient(socket);
             client.WhenLoseConnected(this);
             lock (this.Connects) { this.Connects.Add(client); }
             OnAccepted(client);
@@ -210,19 +195,6 @@
         {
             this.events?.OnConfiguration(this);
             base.OnConfiguration();
-        }
-        private void clear_socket()
-        {
-            IList<TcpClient> loses;
-            lock (this.Connects)
-            {
-                loses = this.Connects.Where(con => !con.Actived).ToList();
-                foreach (var lose in loses)
-                {
-                    this.Connects.Remove(lose);
-                }
-            }
-            foreach (var lose in loses) lose.Dispose();
         }
     }
 }

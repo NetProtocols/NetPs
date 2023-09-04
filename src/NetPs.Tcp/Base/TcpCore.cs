@@ -5,6 +5,7 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public delegate void TcpConfigFunction(TcpCore tcpCore);
@@ -15,6 +16,7 @@
     public class TcpCore : SocketCore
     {
         private TcpConfigFunction tcp_config { get; set; }
+        private CancellationToken CancellationToken { get; set; }
         private IAsyncResult AsyncResult { get; set; }
         private bool is_disposed = false;
         private bool is_connecting = false;
@@ -82,6 +84,16 @@
         public virtual bool IsConnected => this.is_connected;
 
         /// <summary>
+        /// 连接的地址
+        /// </summary>
+        public virtual SocketUri RemoteAddress { get; protected set; }
+
+        /// <summary>
+        /// 连接的地址
+        /// </summary>
+        public virtual IPEndPoint RemoteIPEndPoint { get; protected set; }
+
+        /// <summary>
         /// Gets or sets 连接.
         /// </summary>
         public virtual IObservable<object> ConnectedObservable { get; protected set; }
@@ -127,16 +139,22 @@
                 {
                     if (this.is_connecting)
                     {
-                        if (address.Equal(this.IPEndPoint)) return false;
+                        if (address.Equal(this.RemoteIPEndPoint)) return false;
                         throw new NetPsSocketException(SocketErrorCode.ConnectionRefused, "is connecting");
                     }
                     this.is_connecting = true;
                 }
-                this.Address = address;
-                this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
-                this.Socket = new Socket(address.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                this.Socket.Blocking = false;
-                this.OnConfiguration();
+                this.RemoteAddress = address;
+                this.RemoteIPEndPoint = new IPEndPoint(address.IP, address.Port);
+                if (Address == null)
+                {
+                    this.Address = address;
+                    this.OnConfiguration();
+                }
+                else
+                {
+                    this.Bind(this.Address);
+                }
                 return true;
             }
             return false;
@@ -172,9 +190,10 @@
             if (!base.IsClosed) this.Lose();
         }
 
-        public virtual void TcpConfigure(TcpCore core)
+        public override void Bind()
         {
-            if (tcp_config != null) tcp_config.Invoke(core);
+            this.OnConfiguration();
+            base.Bind();
         }
 
         /// <summary>
@@ -184,7 +203,12 @@
         /// <summary>
         /// 当socket配置时
         /// </summary>
-        protected virtual void OnConfiguration() { }
+        protected virtual void OnConfiguration()
+        {
+            this.Socket = new Socket(this.Address.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            //this.Socket.Blocking = false;
+            if (tcp_config != null) tcp_config.Invoke(this);
+        }
         /// <summary>
         /// 当连接结束
         /// </summary>
@@ -200,15 +224,16 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
+            if (this.CancellationToken != null)
+            {
+                this.CancellationToken.WaitHandle.Close();
+            }
             if (this.AsyncResult != null)
             {
-                try
+                SocketCore.WaitHandle(AsyncResult, () =>
                 {
-                    AsyncResult.AsyncWaitHandle.Close();
-                    this.Socket.EndConnect(this.AsyncResult);
-                }
-                catch (ObjectDisposedException) { }
-                catch (SocketException) { }
+                    this.Socket.EndConnect(AsyncResult);
+                });
                 this.AsyncResult = null;
             }
             base.Dispose();
@@ -224,11 +249,16 @@
             if (this.is_disposed) return false;
             try
             {
+                if (CancellationToken == null) CancellationToken = new CancellationToken();
                 //var rep = this.ConnectedObservable.Timeout(TimeSpan.FromMilliseconds(timeout)).FirstOrDefaultAsync();
                 //var task = rep.GetAwaiter();
                 this.just_start_connect();
                 //var o = await task;
-                if (this.AsyncResult.AsyncWaitHandle.WaitOne(timeout, true))
+                if (!this.CancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(timeout, CancellationToken);
+                }
+                if (this.is_connected)
                 {
                     return true;
                 }
@@ -238,13 +268,13 @@
             //超时释放
             if (this.AsyncResult != null)
             {
-                try
+                SocketCore.WaitHandle(AsyncResult, () =>
                 {
-                    AsyncResult.AsyncWaitHandle.Close();
-                    this.Socket.EndConnect(this.AsyncResult);
-                }
-                catch (ObjectDisposedException) { }
-                catch (SocketException) { }
+                    if (this.CanEnd)
+                    {
+                        this.Socket.EndConnect(AsyncResult);
+                    }
+                });
                 this.AsyncResult = null;
             }
             tell_disconnected();
@@ -257,7 +287,7 @@
             try
             {
                 to_opened();
-                AsyncResult = this.Socket.BeginConnect(this.IPEndPoint, this.connect_callback, null);
+                AsyncResult = this.Socket.BeginConnect(this.RemoteIPEndPoint, this.connect_callback, null);
                 return;
             }
             catch (ObjectDisposedException) { }
@@ -286,17 +316,27 @@
         private void tell_connected()
         {
             if (this.is_disposed) return;
-            this.is_connecting = false;
-            this.is_connected = true;
+            lock (this)
+            {
+                this.is_connecting = false;
+                if (this.is_connected) return;
+                this.is_connected = true;
+            }
             this.OnConnected();
+            CancellationToken.WaitHandle.Close();
+            CancellationToken = new CancellationToken();
             this.Connected?.Invoke(this);
         }
 
         private void tell_disconnected()
         {
             if (this.is_disposed) return;
-            this.is_connecting = false;
-            this.is_connected = false;
+            lock (this)
+            {
+                if (!this.is_connecting) return;
+                this.is_connecting = false;
+                this.is_connected = false;
+            }
             this.OnDisconnected();
             this.DisConnected?.Invoke(this);
         }

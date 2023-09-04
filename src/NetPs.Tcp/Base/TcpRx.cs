@@ -90,18 +90,13 @@
             }
             if (AsyncResult != null)
             {
-                try
+                SocketCore.WaitHandle(AsyncResult, () =>
                 {
-                    AsyncResult.AsyncWaitHandle.Close();
                     if (this.core.CanEnd)
                     {
-                        AsyncResult.AsyncWaitHandle.WaitOne(0, true);
-                        //this.core.Socket.EndReceive(AsyncResult);
+                        this.core.Socket.EndReceive(AsyncResult);
                     }
-                    //AsyncResult.AsyncWaitHandle.Close();
-                }
-                catch (ObjectDisposedException) { }
-                catch (SocketException) { }
+                });
                 this.AsyncResult = null;
             }
             this.bBuffer = null;

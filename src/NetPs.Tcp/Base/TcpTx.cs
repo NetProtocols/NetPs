@@ -81,19 +81,13 @@
             }
             if (this.AsyncResult != null)
             {
-                try
+                SocketCore.WaitHandle(AsyncResult, () =>
                 {
-                    AsyncResult.AsyncWaitHandle.Close();
                     if (this.core.CanEnd)
                     {
-                        AsyncResult.AsyncWaitHandle.WaitOne(0, true);
-                        //this.core.Socket.EndSend(AsyncResult);
+                        this.core.Socket.EndSend(AsyncResult);
                     }
-                    //AsyncResult.AsyncWaitHandle.Close();
-                    //AsyncResult.AsyncWaitHandle.Dispose();
-                }
-                catch (ObjectDisposedException) { }
-                catch (SocketException) { }
+                });
                 this.AsyncResult = null;
             }
             if (this.cache != null)

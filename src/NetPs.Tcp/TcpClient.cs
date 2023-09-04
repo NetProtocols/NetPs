@@ -23,9 +23,11 @@
             this.events = events;
         }
 
-        public TcpClient(Socket socket, ISocketLose lose = null) : base(null)
+        public TcpClient(Socket socket) : base(null)
         {
             PutSocket(socket);
+            this.RemoteIPEndPoint = socket.RemoteEndPoint as global::System.Net.IPEndPoint;
+            this.RemoteAddress = new SocketUri(SocketUri.UriSchemeNetTcp, this.RemoteIPEndPoint.Address.ToString(), this.RemoteIPEndPoint.Port);
         }
 
         /// <summary>
@@ -87,8 +89,9 @@
         }
         protected override void OnConfiguration()
         {
-            this.events?.OnConfiguration(this);
             base.OnConfiguration();
+            this.Socket.Blocking = false;
+            this.events?.OnConfiguration(this);
         }
 
         protected override void OnConnected()

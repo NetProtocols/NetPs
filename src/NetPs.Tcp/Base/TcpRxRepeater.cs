@@ -76,7 +76,7 @@
         {
             this.waiting = true;
             this.transported_count += length - offset;
-            this.Transport.Transport(data, offset, length);
+            this.Transport?.Transport(data, offset, length);
             Task.StartNew(wait_limit, CancellationToken);
         }
         private async Task wait_limit()
@@ -89,7 +89,9 @@
                     var wait =this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
+                        if (CancellationToken.IsCancellationRequested) return;
                         await global::System.Threading.Tasks.Task.Delay(wait, CancellationToken); //阈值10ms, 小于则不等待
+                        if (CancellationToken.IsCancellationRequested) return;
                         this.last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else

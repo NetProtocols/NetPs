@@ -1,5 +1,6 @@
 ﻿namespace NetPs.Tcp
 {
+    using NetPs.Socket;
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
@@ -15,6 +16,7 @@
         private TcpCore core { get; }
         protected TaskFactory Task { get; private set; }
         private IAsyncResult AsyncResult { get; set; }
+        private AsyncCallback AsyncCallback { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpAx"/> class.
         /// </summary>
@@ -52,13 +54,10 @@
             }
             if (AsyncResult != null)
             {
-                try
+                SocketCore.WaitHandle(AsyncResult, () =>
                 {
-                    AsyncResult.AsyncWaitHandle.Close();
-                    //必要的end操作
                     this.core.Socket.EndAccept(AsyncResult);
-                }
-                catch (ObjectDisposedException) { }
+                });
                 this.AsyncResult = null;
             }
             this.Accepted = null;
@@ -73,7 +72,8 @@
             if (this.is_disposed) return;
             try
             {
-                AsyncResult = this.core.Socket.BeginAccept(this.AcceptCallback, null);
+                AsyncCallback = new AsyncCallback(this.AcceptCallback);
+                AsyncResult = this.core.Socket.BeginAccept(AsyncCallback, null);
                 return;
             }
             catch (ObjectDisposedException) { return; }
@@ -88,7 +88,6 @@
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
-            AsyncResult = null;
             if (this.is_disposed) return;
             try
             {

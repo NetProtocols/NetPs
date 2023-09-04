@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Reactive.Linq.ObservableImpl;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -14,6 +15,11 @@ namespace NetPs.Socket
 
 
         public SocketUri(string uriString) : base(InitializationUriString(uriString))
+        {
+            Initialization();
+        }
+
+        public SocketUri(string protol, string host, int port): base(InitializationUriString(protol, host, port))
         {
             Initialization();
         }
@@ -33,6 +39,11 @@ namespace NetPs.Socket
             this.IP = ParseIP(Host);
         }
 
+        private static string InitializationUriString(string protol, string host, int port)
+        {
+            return $"{protol}{Uri.SchemeDelimiter}{host}{PortDelimiter}{port}";
+        }
+
         private static string InitializationUriString(string uriString)
         {
             var protol = GetProtol(uriString);
@@ -40,7 +51,7 @@ namespace NetPs.Socket
             {
                 return uriString;
             }
-            return $"{protol}://{uriString}";
+            return $"{protol}{Uri.SchemeDelimiter}{uriString}";
         }
 
         public static string GetProtol(string uriString)

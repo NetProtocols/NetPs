@@ -4,6 +4,10 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Disposables;
+    using System.Reactive.Linq.ObservableImpl;
+    using System.Runtime.CompilerServices;
+    using System.Threading;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// 状态改变.
@@ -149,7 +153,7 @@
                 //防止未初始化socket的情况
                 this.Socket.Close();
                 //if (this.Socket is IDisposable o) o.Dispose();
-                this.Socket = null;
+                //this.Socket = null;
             }
         }
 
@@ -203,6 +207,64 @@
         {
             this.Socket.Bind(this.IPEndPoint);
             this.is_closed = false;
+            if (this.Address.Port == 0)
+            {
+                // 端口由socket 分配
+                var ip = Socket.LocalEndPoint as IPEndPoint;
+                if (ip != null)
+                {
+                    Address = new SocketUri($"{Address.Scheme}{SocketUri.SchemeDelimiter}{Address.Host}{SocketUri.PortDelimiter}{ip.Port}");
+                    IPEndPoint.Port = ip.Port;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 允许复用地址
+        /// </summary>
+        /// <remarks>
+        /// * 需要管理员权限
+        /// <br/>！这个范围被约束在同一进程并且配置复用的情况下。
+        /// <br/><br/>用于多个socket 使用相同的地址端口绑定的情况。
+        /// </remarks>
+        public virtual void AllowReuseAddress() { 
+            this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+        }
+
+        public virtual void Bind(SocketUri address)
+        {
+            this.ChangeAddress(address);
+            this.Bind();
+        }
+
+        public virtual void ChangeAddress(SocketUri address)
+        {
+            this.Address = address;
+            this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
+        }
+
+        public static void WaitHandle(IAsyncResult asyncResult, Action end_function)
+        {
+            try
+            {
+                if (!asyncResult.IsCompleted)
+                {
+                    //等待操作完成, 无法等待则直接close socket
+                    asyncResult.AsyncWaitHandle.WaitOne(100, true);
+                    if (asyncResult.IsCompleted)
+                    {
+                        asyncResult.AsyncWaitHandle.Close();
+                    }
+                }
+                else
+                {
+                    end_function();
+                    asyncResult.AsyncWaitHandle.Close();
+                }
+            }
+            catch (NullReferenceException) { }
+            catch (ObjectDisposedException) { }
+            catch (SocketException) { }
         }
     }
 }
