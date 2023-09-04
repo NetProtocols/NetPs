@@ -84,7 +84,6 @@
             if (Hub != null) Hub.Close();
             this.events?.OnClosed(this);
             base.OnClosed();
-            this.Dispose();
         }
         protected override void OnConfiguration()
         {
@@ -101,11 +100,13 @@
         {
             this.events?.OnDisconnected(this);
             base.OnDisconnected();
+            this.Dispose();
         }
         protected override void OnLosed()
         {
             this.events?.OnLosed(this);
             base.OnLosed();
+            this.OnDisconnected();
         }
     }
 }

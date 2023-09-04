@@ -90,11 +90,19 @@
             }
             if (AsyncResult != null)
             {
-                if (this.core.CanEnd)
+                try
                 {
-                    this.core.Socket.EndReceive(AsyncResult);
+                    AsyncResult.AsyncWaitHandle.Close();
+                    if (this.core.CanEnd)
+                    {
+                        AsyncResult.AsyncWaitHandle.WaitOne(0, true);
+                        //this.core.Socket.EndReceive(AsyncResult);
+                    }
+                    //AsyncResult.AsyncWaitHandle.Close();
                 }
-                AsyncResult.AsyncWaitHandle.Close();
+                catch (ObjectDisposedException) { }
+                catch (SocketException) { }
+                this.AsyncResult = null;
             }
             this.bBuffer = null;
         }
@@ -138,6 +146,7 @@
             catch (NullReferenceException) { }
             catch (SocketException e)
             {
+                AsyncResult = null;
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
 
@@ -145,6 +154,7 @@
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
+            AsyncResult = null;
             try
             {
                 if (this.is_disposed) return;

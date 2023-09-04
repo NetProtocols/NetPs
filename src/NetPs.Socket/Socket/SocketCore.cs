@@ -37,8 +37,6 @@
 
         protected readonly CompositeDisposable h_disposables;
         public bool IsDisposed => is_disposed;
-        private IAsyncResult AsyncResult { get; set; }
-
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
         /// </summary>
@@ -78,18 +76,6 @@
         /// Gets a value indicating whether 存活.
         /// </summary>
         public virtual bool Actived => !this.IsClosed;
-        /// <summary>
-        /// 可以结束
-        /// </summary>
-        public virtual bool CanEnd => (this.Socket.Connected == this.Socket.Blocking) || (this.Socket.Connected && !this.Socket.Blocking);
-        /// <summary>
-        /// 可以Poll
-        /// </summary>
-        public virtual bool CanFIN => !(this.Socket.Blocking && this.Socket.Connected);
-        /// <summary>
-        /// 可以开始
-        /// </summary>
-        public virtual bool CanBegin => !(!(this.Socket?.Blocking ?? false) && !(this.Socket?.Connected?? false));
 
         /// <summary>
         /// Gets a value indicating whether gets 链接已关闭.
@@ -158,19 +144,11 @@
                 this.is_disposed = true;
             }
             this.Disposables.Dispose();
-            if (this.AsyncResult != null)
-            {
-                if (this.CanEnd)
-                {
-                    this.Socket.EndConnect(AsyncResult);
-                }
-                this.AsyncResult.AsyncWaitHandle.Close();
-            }
             if (this.Socket != null)
             {
                 //防止未初始化socket的情况
                 this.Socket.Close();
-                if (this.Socket is IDisposable o) o.Dispose();
+                //if (this.Socket is IDisposable o) o.Dispose();
                 this.Socket = null;
             }
         }

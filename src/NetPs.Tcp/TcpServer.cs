@@ -200,9 +200,12 @@
             closed_function?.Invoke();
             this.events?.OnClosed(this);
             base.OnClosed();
+        }
+        protected override void OnLosed()
+        {
+            base.OnLosed();
             this.Dispose();
         }
-
         protected override void OnConfiguration()
         {
             this.events?.OnConfiguration(this);

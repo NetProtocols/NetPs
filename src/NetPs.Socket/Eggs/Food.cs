@@ -11,7 +11,7 @@
     public static class Food
     {
         public const char Delimiter = ';';
-        public const string Assemblys = "NetPs.Tcp;NetPs.Udp;NetPs.Webdav";
+        public const string Assemblys = "NetPs.Tcp;NetPs.Udp;";
         public static void Heating(IHeatingWatch watch = null)
         {
             if (watch == null) watch = new NoneWatch();

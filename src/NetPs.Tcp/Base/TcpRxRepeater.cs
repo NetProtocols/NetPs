@@ -1,10 +1,10 @@
-﻿using NetPs.Socket;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace NetPs.Tcp
+﻿namespace NetPs.Tcp
 {
+    using NetPs.Socket;
+    using System;
+    using System.Threading;
+    using System.Threading.Tasks;
+
     /// <summary>
     /// 转发器
     /// </summary>
@@ -22,8 +22,10 @@ namespace NetPs.Tcp
         public IDataTransport Transport { get; protected set; }
         public int Limit { get; protected set; }
         public long LastTime => this.last_time;
+        private CancellationToken CancellationToken { get; set; }
         public TcpRxRepeater(TcpCore tcpCore, IDataTransport transport) : base(tcpCore)
         {
+            this.CancellationToken = new CancellationToken();
             this.Transport = transport;
             this.Transport.LookEndTransport(this);
             this.Limit = -1;
@@ -43,6 +45,7 @@ namespace NetPs.Tcp
                 this.Transport.Dispose();
                 this.Transport = null;
             }
+            this.CancellationToken.WaitHandle.Close();
             base.Dispose();
         }
 
@@ -74,9 +77,9 @@ namespace NetPs.Tcp
             this.waiting = true;
             this.transported_count += length - offset;
             this.Transport.Transport(data, offset, length);
-            wait_limit();
+            Task.StartNew(wait_limit, CancellationToken);
         }
-        private void wait_limit()
+        private async Task wait_limit()
         {
             if (this.transported_count > this.Limit)
             {
@@ -86,7 +89,7 @@ namespace NetPs.Tcp
                     var wait =this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
-                        Thread.Sleep(wait); //阈值10ms, 小于则不等待
+                        await global::System.Threading.Tasks.Task.Delay(wait, CancellationToken); //阈值10ms, 小于则不等待
                         this.last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else

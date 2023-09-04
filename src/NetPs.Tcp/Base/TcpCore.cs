@@ -64,15 +64,15 @@
         /// <summary>
         /// 可以结束
         /// </summary>
-        public override bool CanEnd => (this.Socket.Connected == this.Socket.Blocking) || (this.Socket.Connected && !this.Socket.Blocking);
+        public virtual bool CanEnd => (this.Socket.Connected == this.Socket.Blocking) || (this.Socket.Connected && !this.Socket.Blocking);
         /// <summary>
         /// 可以Poll
         /// </summary>
-        public override bool CanFIN => !(this.Socket.Blocking && this.Socket.Connected);
+        public virtual bool CanFIN => !(this.Socket.Blocking && this.Socket.Connected);
         /// <summary>
         /// 可以开始
         /// </summary>
-        public override bool CanBegin => !(!(this.Socket?.Blocking ?? false) && !(this.Socket?.Connected ?? false));
+        public virtual bool CanBegin => !(!(this.Socket?.Blocking ?? false) && !(this.Socket?.Connected ?? false));
 
         /// <summary>
         /// Gets or sets a value indicating whether gets or sets 正在连接.
@@ -155,11 +155,7 @@
         /// </remarks>
         public virtual void Shutdown(SocketShutdown how)
         {
-            lock (this)
-            {
-                if (this.is_disposed) return;
-                this.is_disposed = true;
-            }
+            if (this.is_disposed) return;
             if (this.Socket != null)
             {
                 if (CanFIN)
@@ -169,6 +165,7 @@
                         //主动关闭的必要：发送 FIN 包
                         this.Socket.Shutdown(how);
                     }
+                    catch (ObjectDisposedException) { }
                     catch (SocketException) { }
                 }
             }
@@ -191,12 +188,9 @@
         /// <summary>
         /// 当连接结束
         /// </summary>
-        protected virtual void OnDisconnected() { }
-        protected override void OnClosed() { }
-        protected override void OnLosed()
+        protected virtual void OnDisconnected()
         {
-            this.OnDisconnected();
-            DisConnected?.Invoke(this.IPEndPoint);
+            DisConnected?.Invoke(this);
         }
 
         public override void Dispose()
@@ -208,8 +202,14 @@
             }
             if (this.AsyncResult != null)
             {
-                this.Socket.EndConnect(this.AsyncResult);
-                this.AsyncResult.AsyncWaitHandle.Close();
+                try
+                {
+                    AsyncResult.AsyncWaitHandle.Close();
+                    this.Socket.EndConnect(this.AsyncResult);
+                }
+                catch (ObjectDisposedException) { }
+                catch (SocketException) { }
+                this.AsyncResult = null;
             }
             base.Dispose();
         }
@@ -224,29 +224,29 @@
             if (this.is_disposed) return false;
             try
             {
-                var rep = this.ConnectedObservable.Timeout(TimeSpan.FromMilliseconds(timeout)).FirstOrDefaultAsync();
-                var task = rep.GetAwaiter();
+                //var rep = this.ConnectedObservable.Timeout(TimeSpan.FromMilliseconds(timeout)).FirstOrDefaultAsync();
+                //var task = rep.GetAwaiter();
                 this.just_start_connect();
-                var o = await task;
-                if (this.is_disposed) return false;
-                if (o == this)
+                //var o = await task;
+                if (this.AsyncResult.AsyncWaitHandle.WaitOne(timeout, true))
                 {
                     return true;
                 }
+                if (this.is_disposed) return false;
             }
             catch (TimeoutException) { }
-            try
+            //超时释放
+            if (this.AsyncResult != null)
             {
-                //超时释放
-                if (this.AsyncResult != null)
+                try
                 {
+                    AsyncResult.AsyncWaitHandle.Close();
                     this.Socket.EndConnect(this.AsyncResult);
-                    this.AsyncResult.AsyncWaitHandle.Close();
                 }
+                catch (ObjectDisposedException) { }
+                catch (SocketException) { }
+                this.AsyncResult = null;
             }
-            catch (NullReferenceException) { }
-            catch (ObjectDisposedException) { }
-            catch (SocketException) { }
             tell_disconnected();
             return false;
         }
@@ -256,6 +256,7 @@
             if (this.is_disposed) return;
             try
             {
+                to_opened();
                 AsyncResult = this.Socket.BeginConnect(this.IPEndPoint, this.connect_callback, null);
                 return;
             }
@@ -263,23 +264,23 @@
             catch (NullReferenceException) { }
             //防止 SocketErr: 10045
             catch (SocketException) { }
+            AsyncResult = null;
             this.tell_disconnected();
         }
         private void connect_callback(IAsyncResult asyncResult)
         {
+            AsyncResult = null;
             if (this.is_disposed) return;
             try
             {
                 this.Socket.EndConnect(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
-                this.tell_connected();
+                if (this.Socket.Connected) this.tell_connected();
                 return;
             }
             catch (ObjectDisposedException) { }
             catch (NullReferenceException) { }
-            catch (SocketException)
-            {
-            }
+            catch (SocketException) { }
             this.tell_disconnected();
         }
         private void tell_connected()
@@ -287,7 +288,6 @@
             if (this.is_disposed) return;
             this.is_connecting = false;
             this.is_connected = true;
-            base.to_opened();
             this.OnConnected();
             this.Connected?.Invoke(this);
         }
@@ -297,9 +297,16 @@
             if (this.is_disposed) return;
             this.is_connecting = false;
             this.is_connected = false;
-            base.to_closed();
             this.OnDisconnected();
             this.DisConnected?.Invoke(this);
+        }
+
+        protected override void OnClosed()
+        {
+        }
+
+        protected override void OnLosed()
+        {
         }
     }
 }

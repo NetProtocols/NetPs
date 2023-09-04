@@ -48,13 +48,13 @@
             {
                 mirror.Connected -= Mirror_Connected;
                 mirror.DisConnected -= Mirror_DisConnected;
-                this.mirror.Dispose();
+                this.mirror.Lose();
                 this.mirror = null;
             }
             if (this.tcp != null)
             {
                 this.tcp.DisConnected -= Mirror_DisConnected;
-                this.tcp.Dispose();
+                this.tcp.Lose();
                 this.tcp = null;
             }
         }
@@ -66,11 +66,13 @@
                 var ok = await mirror.ConnectAsync(this.Mirror_Address);
                 if (!ok)
                 {
+                    mirror.Lose();
                     this.Close();
                 }
             }
             catch (Exception e)
             {
+                mirror.Lose();
                 this.Close();
                 Hub.ThrowException(e);
             }

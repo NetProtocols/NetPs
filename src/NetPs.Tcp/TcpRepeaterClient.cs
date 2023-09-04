@@ -26,6 +26,25 @@
         {
             base.OnClosed();
         }
+        protected override void OnConfiguration()
+        {
+            base.OnConfiguration();
+        }
+
+        protected override void OnConnected()
+        {
+            base.OnConnected();
+        }
+        protected override void OnDisconnected()
+        {
+            base.OnDisconnected();
+            this.Dispose();
+        }
+        protected override void OnLosed()
+        {
+            base.OnLosed();
+            this.OnDisconnected();
+        }
 
         private bool is_disposed = false;
         public override void Dispose()

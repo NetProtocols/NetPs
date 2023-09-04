@@ -5,6 +5,7 @@
     using System.Net.Sockets;
     using System.Reactive.Linq;
     using System.Threading.Tasks;
+    using System.Threading;
 
     /// <summary>
     /// tcp 发送控制.
@@ -80,11 +81,19 @@
             }
             if (this.AsyncResult != null)
             {
-                if (this.core.CanEnd)
+                try
                 {
-                    this.core.Socket.EndSend(AsyncResult);
+                    AsyncResult.AsyncWaitHandle.Close();
+                    if (this.core.CanEnd)
+                    {
+                        AsyncResult.AsyncWaitHandle.WaitOne(0, true);
+                        //this.core.Socket.EndSend(AsyncResult);
+                    }
+                    //AsyncResult.AsyncWaitHandle.Close();
+                    //AsyncResult.AsyncWaitHandle.Dispose();
                 }
-                AsyncResult.AsyncWaitHandle.Close();
+                catch (ObjectDisposedException) { }
+                catch (SocketException) { }
                 this.AsyncResult = null;
             }
             if (this.cache != null)
@@ -102,7 +111,8 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data, int offset = 0, int length = -1)
         {
-            lock (this) {
+            lock (this)
+            {
                 if (this.is_disposed) return;
                 this.TransportCache.Enqueue(data, offset, length);
             }
@@ -203,10 +213,11 @@
                 }
                 return;
             }
-            catch (ObjectDisposedException) {  }
-            catch (NullReferenceException) {  }
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
             catch (SocketException e)
             {
+                AsyncResult = null;
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.StartWrite)) this.core.ThrowException(e);
             }
             if (!this.is_disposed) this.core.Lose();
@@ -214,6 +225,7 @@
 
         private void SendCallback(IAsyncResult asyncResult)
         {
+            AsyncResult = null;
             try
             {
                 if (this.is_disposed || !this.core.Actived) return;
@@ -223,6 +235,7 @@
                 }
                 else
                 {
+                    asyncResult.AsyncWaitHandle.Close();
                     if (!this.is_disposed) this.core.Lose();
                     return;
                 }
@@ -239,8 +252,8 @@
                 }
                 return;
             }
-            catch (ObjectDisposedException) {  }
-            catch (NullReferenceException) {  }
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
             catch (SocketException e)
             {
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Writing)) this.core.ThrowException(e);

@@ -52,9 +52,14 @@
             }
             if (AsyncResult != null)
             {
-                //必要的end操作
-                this.core.Socket.EndAccept(AsyncResult);
-                AsyncResult.AsyncWaitHandle.Close();
+                try
+                {
+                    AsyncResult.AsyncWaitHandle.Close();
+                    //必要的end操作
+                    this.core.Socket.EndAccept(AsyncResult);
+                }
+                catch (ObjectDisposedException) { }
+                this.AsyncResult = null;
             }
             this.Accepted = null;
         }
@@ -83,6 +88,7 @@
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
+            AsyncResult = null;
             if (this.is_disposed) return;
             try
             {
