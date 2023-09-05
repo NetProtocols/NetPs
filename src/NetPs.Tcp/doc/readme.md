@@ -1,4 +1,4 @@
-﻿# lifetime
+﻿# Lifetime
 
 ## 01.TcpClient
 
@@ -8,7 +8,7 @@
 
 ![image](TcpServer.png)
 
-# base
+# Base
 
 ## 01. TcpTx
 
@@ -23,7 +23,7 @@
 
 ![image](TcpRx.png)
 
-# limit speed
+# Limit speed
 
 ## 01. TcpRxRepeater
 

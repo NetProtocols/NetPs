@@ -5,11 +5,17 @@
     /// <summary>
     /// 速度控制
     /// </summary>
+    /// <remarks>
+    /// 用于限制传输速度。以秒为单位，当大于限制流量则Wait该秒结束。
+    /// </remarks>
     public interface ISpeedLimit
     {
         /// <summary>
         /// 限制值
         /// </summary>
+        /// <remarks>
+        /// 单位byte; 1M则为 1&#60;&#60;20 个单位。
+        /// </remarks>
         int Limit { get; }
         /// <summary>
         /// 最近周期开始时间

@@ -16,9 +16,9 @@
         private bool transporting = false;
         private int state { get; set; }
         protected int nTransported { get; set; }
+        private byte[] buffer { get; set; }
         private IQueueStream cache { get; set; }
         private IEndTransport EndTransport { get; set; }
-        public bool IsDisposed => this.is_disposed;
         protected TaskFactory Task { get; set; }
         private IAsyncResult AsyncResult { get; set; }
         private ITcpTxEvents events { get; set; }
@@ -56,6 +56,10 @@
         /// Gets 发送队列.
         /// </summary>
         public virtual IQueueStream TransportCache => this.cache;
+        /// <summary>
+        /// 是否释放
+        /// </summary>
+        public bool IsDisposed => this.is_disposed;
 
         /// <summary>
         /// Gets 发送数据块大小.
@@ -66,9 +70,9 @@
         /// Gets a value indicating whether 正在发送.
         /// </summary>
         public virtual bool Transporting => this.transporting;
-
-        private byte[] buffer { get; set; }
-
+        /// <summary>
+        /// 运行状态
+        /// </summary>
         public bool Running => this.transporting;
 
         /// <inheritdoc/>
