@@ -2,7 +2,6 @@
 using NetPs.Socket.Eggs;
 using NetPs.Tcp;
 using NetPs.Tcp.Hole;
-using System.Runtime.CompilerServices;
 
 namespace TestConsole.Net6
 {

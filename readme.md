@@ -1,17 +1,21 @@
 # NetPs(Net protocols)
+[![NetPs v1.0](https://github.com/NetProtocols/NetPs/actions/workflows/dotnet-desktop.yml/badge.svg)](https://github.com/NetProtocols/NetPs/actions/workflows/dotnet-desktop.yml)
 
 *NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。*
 
-
-
-### How to Use?
+### How Use?
 
 ```powershell
 NuGet\Install-Package NetPs.Udp
 NuGet\Install-Package NetPs.Tcp
 ```
 
+### How Can?
+- **转发**：将tcp\udp 转发到任意实现 ```IDataTransport``` 的实例中。
+- **限流**：限制接收、发送、转发的网络速度。
 
+### Flows
+**Tcp**: [基础功能流程图](src\NetPs.Tcp\doc\readme.md)、[未来功能](src\NetPs.Tcp\doc\feture.md)
 
 ### Next Plan
 

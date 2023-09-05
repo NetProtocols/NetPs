@@ -62,7 +62,7 @@ namespace TestsConsole
                         });
                         client.ReceivedObservable.Subscribe(data =>
                         {
-                            client.Shutdown();
+                            client.FIN();
                         });
                         //client.TransportedObservable.Subscribe(tx => client.Dispose());
                         client.Connect($"127.0.0.1:8000");
