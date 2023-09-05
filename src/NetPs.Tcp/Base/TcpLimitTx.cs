@@ -4,7 +4,7 @@
     using System;
     using System.Threading;
 
-    public class TcpLimitTx : TcpTx, IDisposable, ILimit
+    public class TcpLimitTx : TcpTx, IDisposable, ISpeedLimit
     {
         private bool is_disposed = false;
         private long last_time { get; set; }

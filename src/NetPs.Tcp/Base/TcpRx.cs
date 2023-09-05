@@ -4,7 +4,6 @@
     using System;
     using System.Net.Sockets;
     using System.Reactive.Linq;
-    using System.Threading;
     using System.Threading.Tasks;
 #if NET35_CF
     using Array = System.Array2;
@@ -13,7 +12,7 @@
     /// <summary>
     /// tcp 接收控制.
     /// </summary>
-    public class TcpRx : IDisposable
+    public class TcpRx : IDisposable, ITcpRx
     {
         protected TcpCore core { get; }
         protected byte[] bBuffer { get; private set; }
@@ -24,7 +23,7 @@
         protected TaskFactory Task { get; private set; }
         private ITcpReceive receive { get; set; }
         private IAsyncResult AsyncResult { get; set; }
-
+        private ITcpRxEvents events { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpRx"/> class.
         /// </summary>
@@ -56,10 +55,19 @@
         public virtual event ReceivedStreamHandler Received;
 
         /// <summary>
+        /// 缓冲区
+        /// </summary>
+        public virtual byte[] Buffer => bBuffer;
+
+        /// <summary>
+        /// 接收数据大小
+        /// </summary>
+        public virtual int ReceivedSize => this.nReceived;
+
+        /// <summary>
         /// Gets 接送缓冲区大小.
         /// </summary>
-        public virtual int ReceiveBufferSize => this.nBuffersize;
-
+        public virtual int BufferSize => this.nBuffersize;
         public virtual void WhenReceived(ITcpReceive tcp_receive)
         {
             this.receive = tcp_receive;
@@ -76,6 +84,7 @@
                 this.core.Receiving = true;
             }
 
+            this.events?.OnReceiving(this);
             this.restart_receive();
         }
 
@@ -88,6 +97,7 @@
                 this.is_disposed = true;
                 this.core.Receiving = false;
             }
+            this.events?.OnDisposed(this);
             if (AsyncResult != null)
             {
                 SocketCore.WaitHandle(AsyncResult, () =>
@@ -164,6 +174,7 @@
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.nReceived <= 0)
                 {
+                    this.events?.OnShutdown(this);
                     //if (this.is_disposed) return;
                     if (this.core.Socket.Poll(1000, SelectMode.SelectRead))
                     {
@@ -175,6 +186,7 @@
                     return;
                 }
                 if (this.is_disposed) return;
+                this.events?.OnReceived(this);
                 this.OnRecevied();
                 return;
             }
@@ -190,5 +202,9 @@
             if (!this.is_disposed) this.core.Lose();
         }
 
+        public void BindEvents(ITcpRxEvents events)
+        {
+            this.events = events;
+        }
     }
 }

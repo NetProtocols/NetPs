@@ -4,10 +4,6 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Disposables;
-    using System.Reactive.Linq.ObservableImpl;
-    using System.Runtime.CompilerServices;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     /// <summary>
     /// 状态改变.
@@ -35,7 +31,7 @@
         /// * 需要保证流的带宽不能无限大，这可能导致内存过大。
         /// </remarks>
         public static readonly QueueStreamPool StreamPool = new QueueStreamPool(0x4);
-        private ISocketLose socketLose { get; set; }
+        private ISocketLosed socketLose { get; set; }
         private bool is_disposed = false;
         private bool is_closed = true;
 
@@ -172,7 +168,7 @@
             }
         }
 
-        public virtual void WhenLoseConnected(ISocketLose lose)
+        public virtual void WhenLoseConnected(ISocketLosed lose)
         {
             this.socketLose = lose;
         }

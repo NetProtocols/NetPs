@@ -5,23 +5,23 @@
     using System.Net.Sockets;
     using System.Reactive.Linq;
     using System.Threading.Tasks;
-    using System.Threading;
 
     /// <summary>
     /// tcp 发送控制.
     /// </summary>
-    public class TcpTx : IDisposable, IDataTransport
+    public class TcpTx : IDisposable, ITcpTx
     {
         private TcpCore core { get; set; }
         private bool is_disposed = false;
         private bool transporting = false;
         private int state { get; set; }
         protected int nTransported { get; set; }
-        private QueueStream cache { get; set; }
+        private IQueueStream cache { get; set; }
         private IEndTransport EndTransport { get; set; }
         public bool IsDisposed => this.is_disposed;
         protected TaskFactory Task { get; set; }
         private IAsyncResult AsyncResult { get; set; }
+        private ITcpTxEvents events { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpTx"/> class.
         /// </summary>
@@ -55,7 +55,7 @@
         /// <summary>
         /// Gets 发送队列.
         /// </summary>
-        public virtual QueueStream TransportCache => this.cache;
+        public virtual IQueueStream TransportCache => this.cache;
 
         /// <summary>
         /// Gets 发送数据块大小.
@@ -90,9 +90,9 @@
                 });
                 this.AsyncResult = null;
             }
-            if (this.cache != null)
+            if (this.cache != null && this.cache is QueueStream queue)
             {
-                SocketCore.StreamPool.PUT(this.cache);
+                SocketCore.StreamPool.PUT(queue);
                 this.cache = null;
             }
             this.buffer = null;
@@ -109,6 +109,7 @@
             {
                 if (this.is_disposed) return;
                 this.TransportCache.Enqueue(data, offset, length);
+                this.events?.OnTransportEnqueue(this);
             }
 
             this.StartTransport();
@@ -126,6 +127,7 @@
                 this.state = 1;
             }
 
+            this.events?.OnTransporting(this);
             restart_transport();
         }
 
@@ -151,6 +153,7 @@
                 if (!this.transporting) return;
                 this.transporting = false;
             }
+            this.events?.OnDisposed(this);
             if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
             if (this.Transported != null) this.Transported.Invoke(this);
         }
@@ -238,10 +241,12 @@
                 //传输完成
                 if (this.cache.IsEmpty)
                 {
+                    this.events?.OnTransported(this);
                     this.OnTransported();
                 }
                 else
                 {
+                    this.events?.OnBufferTransported(this);
                     this.OnBufferTransported();
                 }
                 return;
@@ -259,6 +264,11 @@
         public void LookEndTransport(IEndTransport endTransport)
         {
             this.EndTransport = endTransport;
+        }
+
+        public void BindEvents(ITcpTxEvents events)
+        {
+            this.events = events;
         }
     }
 }

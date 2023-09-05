@@ -23,22 +23,24 @@
         public IPAddress Address { get; set; }
         public byte Type { get; private set; }
         public byte Code { get; private set; }
-        public ushort Checksum { get; private set; }
-        public ushort Identifier { get; private set; }
-        public ushort SequenceNumber { get; private set; }
+        public int Checksum { get; private set; }
+        public int Identifier { get; private set; }
+        public int SequenceNumber { get; private set; }
         public byte[] Data { get; private set; }
 
         public PingPacket(byte[] data, PingPacketKind kind = PingPacketKind.Request)
         {
             switch (kind)
             {
-                case PingPacketKind.Request: this.Type = 0b1000;
+                case PingPacketKind.Request:
+                    this.Type = 0b1000;
                     break;
-                default: this.Type = 0b0;
+                default:
+                    this.Type = 0b0;
                     break;
             }
             this.Checksum = 0;
-            this.Identifier = this.GetCurrentProcessID();
+            this.Identifier = GetCurrentProcessID();
             this.SequenceNumber = 1;
             this.Data = data;
         }
@@ -66,10 +68,10 @@
 
             x_data[0] = this.Type;
             x_data[1] = this.Code;
-            BitConverter.GetBytes(this.GetCurrentProcessID()).CopyTo(x_data, 4);
+            BitConverter.GetBytes(GetCurrentProcessID()).CopyTo(x_data, 4);
             BitConverter.GetBytes(this.SequenceNumber).CopyTo(x_data, 6);
             Data.CopyTo(x_data, 8);
-            BitConverter.GetBytes(this.MakeCheckSum(x_data, len)).CopyTo(x_data, 2);
+            BitConverter.GetBytes((short)this.MakeCheckSum(x_data, len)).CopyTo(x_data, 2);
             return x_data;
         }
 
@@ -88,7 +90,7 @@
         }
 
 
-        public virtual ushort MakeCheckSum(byte[] packet_data, int size)
+        public virtual int MakeCheckSum(byte[] packet_data, int size)
         {
             var x_out = 0;
             var counter = 0;
@@ -105,12 +107,12 @@
             return (ushort)(~x_out);
         }
 
-        public virtual ushort GetCurrentProcessID()
+        public static int GetCurrentProcessID()
         {
             try
             {
                 var process = Process.GetCurrentProcess();
-                return (ushort)process.Id;
+                return process.Id;
             }
             catch
             {

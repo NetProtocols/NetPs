@@ -12,7 +12,7 @@
     public sealed class Heat_udp : IHeat
     {
         private readonly byte[] test_data = { 0 } ;
-        public async void Start(IHeatingWatch watch)
+        public void Start(IHeatingWatch watch)
         {
             //var udp = new UdpHost();
             //var dns = new DnsHost(1, 1);

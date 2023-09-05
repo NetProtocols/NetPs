@@ -11,7 +11,7 @@
     /// <remarks>
     /// limit 不宜设置太大
     /// </remarks>
-    public class TcpRxRepeater : TcpRx, IDisposable, IEndTransport, ILimit
+    public class TcpRxRepeater : TcpRx, IDisposable, IEndTransport, ISpeedLimit
     {
         private bool is_disposed = false;
         private bool re_rx = false;

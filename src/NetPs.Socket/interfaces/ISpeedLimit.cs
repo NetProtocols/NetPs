@@ -2,7 +2,10 @@
 {
     using System;
 
-    public interface ILimit
+    /// <summary>
+    /// 速度控制
+    /// </summary>
+    public interface ISpeedLimit
     {
         /// <summary>
         /// 限制值
@@ -19,23 +22,23 @@
         void SetLimit(int value);
     }
 
-    public static class ILimitExtra
+    public static class ISpeedLimitExtra
     {
         /// <summary>
         /// 一秒
         /// </summary>
         public const int SECOND = 10000000;
 
-        public static bool HasSecondPassed(this ILimit limit, long now)
+        public static bool HasSecondPassed(this ISpeedLimit limit, long now)
         {
             return now > limit.LastTime + SECOND;
         }
-        public static int GetWaitMillisecond(this ILimit limit, long now)
+        public static int GetWaitMillisecond(this ISpeedLimit limit, long now)
         {
             return (int)((limit.LastTime + SECOND - now) / 10000);
         }
 
-        public static long GetMillisecondTicks(this ILimit limit, int time)
+        public static long GetMillisecondTicks(this ISpeedLimit limit, int time)
         {
             return time * 10000;
         }

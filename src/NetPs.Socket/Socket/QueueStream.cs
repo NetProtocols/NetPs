@@ -9,7 +9,7 @@
     /// <summary>
     /// 队列 Stream.
     /// </summary>
-    public class QueueStream : MemoryStream, IDisposable
+    public class QueueStream : MemoryStream, IDisposable, IQueueStream
     {
         public const int MAX_STACK_LENGTH = 10240; //80K，可扩大
         // 读取点s

@@ -1,4 +1,4 @@
-﻿namespace NetPs.Tcp.Interfaces
+﻿namespace NetPs.Tcp
 {
     using System;
     /// <summary>

@@ -1,15 +1,13 @@
 ﻿using NetPs.Socket;
-using NetPs.Tcp.Interfaces;
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace NetPs.Tcp
 {
     /// <summary>
     /// 限流的Rx
     /// </summary>
-    public class TcpLimitRx : TcpRx, IDisposable, ILimit
+    public class TcpLimitRx : TcpRx, IDisposable, ISpeedLimit
     {
         private bool is_disposed = false;
         private long last_time { get; set; }

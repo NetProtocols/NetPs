@@ -8,9 +8,9 @@
         public IPAddress Address { get; }
         byte Type { get; }
         byte Code { get; }
-        ushort Checksum { get; }
-        ushort Identifier { get; }
-        ushort SequenceNumber { get; }
+        int Checksum { get; }
+        int Identifier { get; }
+        int SequenceNumber { get; }
         byte[] Data { get; }
 
         byte[] GET();

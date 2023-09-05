@@ -13,7 +13,7 @@
     /// <summary>
     /// Tcp server.
     /// </summary>
-    public class TcpServer : TcpCore, IDisposable, ISocketLose, ITcpServer
+    public class TcpServer : TcpCore, IDisposable, ISocketLosed, ITcpServer
     {
         private bool alive = false;
         private TcpAcceptedFunction accepted_function { get; set; }
