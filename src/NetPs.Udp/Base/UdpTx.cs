@@ -6,22 +6,23 @@
     using System.Net.Sockets;
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
+    using System.Threading.Tasks;
 
-    public class UdpTx : IDisposable, IDataTransport
+    public class UdpTx : IDisposable, ITx
     {
         public UdpCore core { get; set; }
-        protected readonly CompositeDisposable disposables;
-
         private bool is_disposed = false;
-
         private bool transporting = false;
-
-        private QueueStream cache { get; set; }
-
-        private int state = 1;
-
+        private int state { get; set; }
         public IPEndPoint RemoteIP { get; }
         private IEndTransport EndTransport { get; set; }
+        private ITxEvents events { get; set; }
+        private IAsyncResult AsyncResult { get; set; }
+        protected TaskFactory Task { get; set; }
+        private byte[] buffer { get; set; }
+        private int offset { get; set; }
+        private int length { get; set; }
+        protected readonly CompositeDisposable disposables;
         /// <summary>
         /// Initializes a new instance of the <see cref="UdpTx"/> class.
         /// </summary>
@@ -29,17 +30,12 @@
         public UdpTx(UdpCore udpCore, IPEndPoint endPoint)
         {
             this.disposables = new CompositeDisposable();
+            this.Task = new TaskFactory();
             this.core = udpCore;
             this.RemoteIP = endPoint;
-            this.TransportSize = Consts.TransportBytes;
-            this.cache = SocketCore.StreamPool.GET();
+            this.TransportBufferSize = Consts.TransportBytes;
             this.TransportedObservable = Observable.FromEvent<TransportedHandler, UdpTx>(handler => tx => handler(tx), evt => this.Transported += evt, evt => this.Transported -= evt);
         }
-
-        /// <summary>
-        /// Gets 取消订阅清单.
-        /// </summary>
-        public virtual CompositeDisposable Disposables => this.disposables;
 
         /// <summary>
         /// Gets or sets 发送完成.
@@ -58,25 +54,20 @@
         public virtual event TransportedHandler Transported;
 
         /// <summary>
-        /// Gets 发送队列.
-        /// </summary>
-        public virtual QueueStream TransportCache => this.cache;
-
-        /// <summary>
         /// Gets 发送数据块大小.
         /// </summary>
-        public virtual int TransportSize { get; }
+        public virtual int TransportBufferSize { get; }
 
         /// <summary>
         /// Gets a value indicating whether 正在发送.
         /// </summary>
         public virtual bool Transporting => this.transporting;
 
-        private byte[] buffer { get; set; }
+        public virtual CompositeDisposable Disposables => this.disposables;
 
-        public bool IsDisposed => throw new NotImplementedException();
+        public bool IsDisposed => this.is_disposed;
 
-        public bool Running => throw new NotImplementedException();
+        public bool Running => this.Transporting;
 
         /// <inheritdoc/>
         public virtual void Dispose()
@@ -87,12 +78,16 @@
                 this.is_disposed = true;
             }
             this.Disposables.Dispose();
-            if (this.cache != null)
+            if (this.AsyncResult != null)
             {
-                SocketCore.StreamPool.PUT(this.cache);
-                this.cache = null;
+                SocketCore.WaitHandle(AsyncResult, () =>
+                {
+                    this.core.Socket.EndSend(AsyncResult);
+                });
+                this.AsyncResult = null;
             }
             this.EndTransport = null;
+            this.events?.OnDisposed(this);
         }
 
         /// <summary>
@@ -101,69 +96,103 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data, int offset = 0, int length = -1)
         {
-            if (this.is_disposed) return;
-            this.TransportCache.Enqueue(data, offset, length);
-            this.StartTransport();
+            if (this.is_disposed || length == 0) return;
+            if (length < 0 || length > data.Length) length = data.Length;
+            if (length > this.TransportBufferSize) throw new ArgumentException("tcp tx buffer length overflow.");
+
+            if (this.to_start())
+            {
+                this.events?.OnTransporting(this);
+                this.StartTransport(data, offset, length);
+            }
         }
 
         /// <summary>
         /// 开始发送.
         /// </summary>
-        public virtual void StartTransport()
+        public virtual void StartTransport(byte[] data, int offset, int length)
+        {
+            this.buffer = data;
+            this.offset = offset;
+            this.length = length;
+
+            this.retart_transport();
+        }
+        protected virtual bool to_start()
         {
             lock (this)
             {
-                if (this.transporting || this.is_disposed || (EndTransport == null && !this.core.Receiving)) return;
+                if (this.transporting) return false;
                 this.transporting = true;
             }
-            this._Transport();
+            return true;
         }
-        private void end_transport()
+        protected virtual bool to_end()
         {
-            lock (this) { this.transporting = false; }
-            if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
-            if (this.Transported != null) this.Transported.Invoke(this);
+            lock (this)
+            {
+                if (!this.transporting) return false;
+                this.transporting = false;
+            }
+            return true;
+        }
+
+        protected virtual void retart_transport()
+        {
+            if (this.is_disposed)
+            {
+                to_end();
+                return;
+            }
+
+            Task.StartNew(x_Transport);
+        }
+        protected virtual void tell_transported()
+        {
+            if (to_end())
+            {
+                this.events?.OnTransported(this);
+                if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
+                if (this.Transported != null) this.Transported.Invoke(this);
+            }
+        }
+
+        protected virtual void OnTransported()
+        {
+            Task.StartNew(tell_transported);
         }
 
         /// <summary>
         /// 发送数据.
         /// </summary>
         /// <param name="data">数据.</param>
-        protected virtual void _Transport()
+        private void x_Transport()
         {
-            if (this.is_disposed) return;
-            else if (!this.TransportCache.IsEmpty)
+            try
             {
-                try
-                {
-                    if (this.state > 0)
-                    {
-                        this.buffer = this.TransportCache.Dequeue(this.TransportSize);
-                    }
-
-                    this.core.Socket.BeginSendTo(this.buffer, 0, this.buffer.Length, SocketFlags.None, this.RemoteIP, this.SendCallback, null);
-                    return;
-                }
-                //已经释放了
-                catch (ObjectDisposedException) { }
-                catch (NullReferenceException) { }
-                catch (SocketException e)
-                {
-                    if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write)) this.core.ThrowException(e);
-                }
+                if (this.is_disposed) return;
+                this.AsyncResult = this.core.Socket.BeginSendTo(this.buffer, this.offset, this.length, SocketFlags.None, this.RemoteIP, this.SendCallback, null);
+                return;
             }
-            end_transport();
+            //已经释放了
+            catch (ObjectDisposedException) { }
+            catch (NullReferenceException) { }
+            catch (SocketException e)
+            {
+                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write)) this.core.ThrowException(e);
+            }
         }
 
         private void SendCallback(IAsyncResult asyncResult)
         {
             if (this.is_disposed) return;
+            AsyncResult = null;
             try
             {
                 this.state = this.core.Socket.EndSendTo(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
                 //传输完成
-                this._Transport();
+                this.OnTransported();
                 return;
             }
             //实例释放
@@ -173,14 +202,16 @@
             {
                 if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write)) this.core.ThrowException(e);
             }
-
-
-            end_transport();
         }
 
         public void LookEndTransport(IEndTransport endTransport)
         {
             this.EndTransport = endTransport;
+        }
+
+        public void BindEvents(ITxEvents events)
+        {
+            this.events = events;
         }
     }
 }

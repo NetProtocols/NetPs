@@ -15,7 +15,7 @@ NuGet\Install-Package NetPs.Tcp
 - **限流**：限制接收、发送、转发的网络速度。
 
 ### Flows
-**Tcp**: [基础功能流程图](src\NetPs.Tcp\doc\readme.md)、[未来功能](src\NetPs.Tcp\doc\feture.md)
+**Tcp**: [基础功能流程图](src/NetPs.Tcp/doc/readme.md)、[未来功能](src/NetPs.Tcp/doc/feture.md)
 
 ### Next Plan
 

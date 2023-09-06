@@ -23,6 +23,9 @@
         /// 可写性
         /// </summary>
         bool CanWrite { get; }
+        byte[] Buffer { get; }
+        long WritePosition { get; }
+        long ReadPosition { get; }
         /// <summary>
         /// 清空队列
         /// </summary>
@@ -35,5 +38,7 @@
         /// 退出
         /// </summary>
         int Dequeue(byte[] block, int offset, int length);
+        int RequestRead(int length);
+        void RecordRead(int length);
     }
 }

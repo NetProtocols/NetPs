@@ -4,14 +4,14 @@
     using System;
     using System.Threading;
 
-    public class TcpLimitTx : TcpTx, IDisposable, ISpeedLimit
+    public class TcpLimitQueueTx : TcpQueueTx, IDisposable, ISpeedLimit
     {
         private bool is_disposed = false;
         private long last_time { get; set; }
         private int transported_count { get; set; }
         public int Limit { get; protected set; } // must gt 0
         public long LastTime => this.last_time;
-        public TcpLimitTx(TcpCore tcpCore) : base(tcpCore)
+        public TcpLimitQueueTx(TcpCore tcpCore) : base(tcpCore)
         {
             this.Limit = -1;
             this.last_time = DateTime.Now.Ticks;
@@ -43,7 +43,7 @@
             }
             else
             {
-                Task.StartNew(base.restart_transport);
+                Task.StartNew(base.OnBufferTransported);
             }
         }
 

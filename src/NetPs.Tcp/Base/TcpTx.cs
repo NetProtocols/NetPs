@@ -9,19 +9,20 @@
     /// <summary>
     /// tcp 发送控制.
     /// </summary>
-    public class TcpTx : IDisposable, ITcpTx
+    public class TcpTx : IDisposable, ITx
     {
         private TcpCore core { get; set; }
         private bool is_disposed = false;
         private bool transporting = false;
         private int state { get; set; }
         protected int nTransported { get; set; }
-        private byte[] buffer { get; set; }
-        private IQueueStream cache { get; set; }
         private IEndTransport EndTransport { get; set; }
         protected TaskFactory Task { get; set; }
         private IAsyncResult AsyncResult { get; set; }
-        private ITcpTxEvents events { get; set; }
+        private ITxEvents events { get; set; }
+        private byte[] buffer { get; set; }
+        private int offset { get; set; }
+        private int length { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpTx"/> class.
         /// </summary>
@@ -30,9 +31,7 @@
         {
             this.Task = new TaskFactory(TaskScheduler.Default);
             this.core = tcpCore;
-            this.TransportSize = Consts.TransportBytes;
-            this.buffer = new byte[this.TransportSize];
-            this.cache = SocketCore.StreamPool.GET();
+            this.TransportBufferSize = Consts.TransportBytes;
             this.TransportedObservable = Observable.FromEvent<TransportedHandler, TcpTx>(handler => tx => handler(tx), evt => this.Transported += evt, evt => this.Transported -= evt);
         }
 
@@ -53,10 +52,6 @@
         public virtual event TransportedHandler Transported;
 
         /// <summary>
-        /// Gets 发送队列.
-        /// </summary>
-        public virtual IQueueStream TransportCache => this.cache;
-        /// <summary>
         /// 是否释放
         /// </summary>
         public bool IsDisposed => this.is_disposed;
@@ -64,7 +59,7 @@
         /// <summary>
         /// Gets 发送数据块大小.
         /// </summary>
-        public virtual int TransportSize { get; }
+        public virtual int TransportBufferSize { get; }
 
         /// <summary>
         /// Gets a value indicating whether 正在发送.
@@ -94,13 +89,8 @@
                 });
                 this.AsyncResult = null;
             }
-            if (this.cache != null && this.cache is QueueStream queue)
-            {
-                SocketCore.StreamPool.PUT(queue);
-                this.cache = null;
-            }
-            this.buffer = null;
             this.EndTransport = null;
+            this.events?.OnDisposed(this);
         }
 
         /// <summary>
@@ -109,41 +99,53 @@
         /// <param name="data">数据.</param>
         public virtual void Transport(byte[] data, int offset = 0, int length = -1)
         {
-            lock (this)
-            {
-                if (this.is_disposed) return;
-                this.TransportCache.Enqueue(data, offset, length);
-                this.events?.OnTransportEnqueue(this);
-            }
+            if (this.is_disposed || length == 0) return;
+            if (length < 0 || length > data.Length) length = data.Length;
+            if (length > this.TransportBufferSize) throw new ArgumentException("tcp tx buffer length overflow.");
 
-            this.StartTransport();
+            if (this.to_start())
+            {
+                this.events?.OnTransporting(this);
+                this.StartTransport(data, offset, length);
+            }
         }
 
         /// <summary>
         /// 开始发送.
         /// </summary>
-        public virtual void StartTransport()
+        protected virtual void StartTransport(byte[] data, int offset, int length)
+        {
+            this.buffer = data;
+            this.offset = offset;
+            this.length = length;
+
+            restart_transport();
+        }
+
+        protected virtual bool to_start()
         {
             lock (this)
             {
-                if (this.transporting || (EndTransport == null && !this.core.Receiving)) return;
+                if (this.transporting || (EndTransport == null && !this.core.Receiving)) return false;
                 this.transporting = true;
-                this.state = 1;
             }
-
-            this.events?.OnTransporting(this);
-            restart_transport();
+            return true;
+        }
+        protected virtual bool to_end()
+        {
+            lock (this)
+            {
+                if (!this.transporting) return false;
+                this.transporting = false;
+            }
+            return true;
         }
 
         protected virtual void restart_transport()
         {
             if (this.is_disposed || !this.core.Actived)
             {
-                lock (this)
-                {
-                    if (!this.transporting) return;
-                    this.transporting = false;
-                }
+                to_end();
                 return;
             }
 
@@ -152,22 +154,12 @@
 
         protected virtual void tell_transported()
         {
-            lock (this)
+            if (to_end())
             {
-                if (!this.transporting) return;
-                this.transporting = false;
+                this.events?.OnTransported(this);
+                if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
+                if (this.Transported != null) this.Transported.Invoke(this);
             }
-            this.events?.OnDisposed(this);
-            if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
-            if (this.Transported != null) this.Transported.Invoke(this);
-        }
-
-        /// <summary>
-        /// 发送一次buffer 完成
-        /// </summary>
-        protected virtual void OnBufferTransported()
-        {
-            this.restart_transport();
         }
 
         /// <summary>
@@ -186,15 +178,6 @@
         {
             try
             {
-                if (this.is_disposed) return;
-                //发送数据为零，使用上次的缓存进行发送
-                if (this.state > 0)
-                {
-                    if (this.cache.Length > this.TransportSize) this.nTransported = this.TransportSize;
-                    else this.nTransported = (int)this.cache.Length;
-                    this.cache.Dequeue(this.buffer, 0, this.nTransported);
-                    this.state = 0;
-                }
                 if (this.is_disposed || !this.core.Actived) return;
                 // Socket Poll 判断连接是否可用 this.core.Actived
                 var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
@@ -203,14 +186,13 @@
                     if (this.core.CanBegin)
                     {
                         if (this.is_disposed) return;
-                        AsyncResult = this.core.Socket.BeginSend(this.buffer, 0, this.nTransported, SocketFlags.None, this.SendCallback, null);
+                        AsyncResult = this.core.Socket.BeginSend(this.buffer, this.offset, this.length, SocketFlags.None, this.SendCallback, null);
                     }
                 }
                 else
                 {
                     if (this.is_disposed) return;
-                    this.state = 0;
-                    restart_transport();
+                    restart_transport(); //对方缓冲区已满，重新发送
                 }
                 return;
             }
@@ -233,6 +215,10 @@
                 if (this.core.CanEnd)
                 {
                     this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
+                    if (this.state <= 0)
+                    {
+                        restart_transport();
+                    }
                 }
                 else
                 {
@@ -242,17 +228,7 @@
                 }
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.is_disposed) return;
-                //传输完成
-                if (this.cache.IsEmpty)
-                {
-                    this.events?.OnTransported(this);
-                    this.OnTransported();
-                }
-                else
-                {
-                    this.events?.OnBufferTransported(this);
-                    this.OnBufferTransported();
-                }
+                this.OnTransported();
                 return;
             }
             catch (ObjectDisposedException) { }
@@ -270,7 +246,7 @@
             this.EndTransport = endTransport;
         }
 
-        public void BindEvents(ITcpTxEvents events)
+        public void BindEvents(ITxEvents events)
         {
             this.events = events;
         }

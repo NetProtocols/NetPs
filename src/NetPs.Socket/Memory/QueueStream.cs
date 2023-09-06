@@ -180,6 +180,9 @@
             }
         }
 
+        public virtual int RequestRead(int length) => (int)this.get_record_out_len(length);
+        public virtual void RecordRead(int length) => this.record_out(length);
+
         public virtual void CopyTo(QueueStream stream, int length)
         {
             try

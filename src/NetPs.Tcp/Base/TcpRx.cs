@@ -12,7 +12,7 @@
     /// <summary>
     /// tcp 接收控制.
     /// </summary>
-    public class TcpRx : IDisposable, ITcpRx
+    public class TcpRx : IDisposable, IRx
     {
         protected TcpCore core { get; }
         protected byte[] bBuffer { get; private set; }
@@ -23,7 +23,7 @@
         protected TaskFactory Task { get; private set; }
         private ITcpReceive receive { get; set; }
         private IAsyncResult AsyncResult { get; set; }
-        private ITcpRxEvents events { get; set; }
+        private IRxEvents events { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpRx"/> class.
         /// </summary>
@@ -130,7 +130,7 @@
             var data = new byte[this.nReceived];
             Array.Copy(this.bBuffer, data, this.nReceived);
             SendReceived(data);
-            Task.StartNew(restart_receive);
+            restart_receive();
         }
 
         protected void restart_receive() => Task.StartNew(this.x_StartReceive);
@@ -174,7 +174,7 @@
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.nReceived <= 0)
                 {
-                    this.events?.OnShutdown(this);
+                    //this.events?.OnShutdown(this);
                     //if (this.is_disposed) return;
                     if (this.core.Socket.Poll(1000, SelectMode.SelectRead))
                     {
@@ -202,7 +202,7 @@
             if (!this.is_disposed) this.core.Lose();
         }
 
-        public void BindEvents(ITcpRxEvents events)
+        public void BindEvents(IRxEvents events)
         {
             this.events = events;
         }
