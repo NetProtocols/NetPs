@@ -45,7 +45,7 @@ namespace NetPs.Udp.DNS
     {
         public IPAddress Address;
     }
-    public class DnsPacket
+    public class DnsPacket : IPacket
     {
         public const ushort Flag_standard_query = 0x0100;
         public const ushort Flag_standard_query_response = 0x8180;

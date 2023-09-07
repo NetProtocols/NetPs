@@ -310,7 +310,7 @@
             }
             catch (ObjectDisposedException) { }
             catch (NullReferenceException) { }
-            catch (SocketException) { }
+            catch (SocketException) { Console.WriteLine("socket error"); }
             this.tell_disconnected();
         }
         private void tell_connected()

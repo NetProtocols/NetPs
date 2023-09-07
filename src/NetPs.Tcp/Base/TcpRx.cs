@@ -2,6 +2,7 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
     using System.Threading.Tasks;
@@ -54,6 +55,8 @@
         /// </summary>
         public virtual event ReceivedStreamHandler Received;
 
+        public virtual TcpCore TcpCore => this.core;
+
         /// <summary>
         /// 缓冲区
         /// </summary>
@@ -68,6 +71,7 @@
         /// Gets 接送缓冲区大小.
         /// </summary>
         public virtual int BufferSize => this.nBuffersize;
+        public virtual IPEndPoint RemoteAddress => this.core.RemoteIPEndPoint;
         public virtual void WhenReceived(ITcpReceive tcp_receive)
         {
             this.receive = tcp_receive;

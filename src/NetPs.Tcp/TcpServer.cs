@@ -23,6 +23,7 @@
         public TcpServer(TcpConfigFunction tcp_config = null) : base(tcp_config)
         {
             construct();
+            this.Ax.Accepted += Ax_Accepted;
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpServer"/> class.

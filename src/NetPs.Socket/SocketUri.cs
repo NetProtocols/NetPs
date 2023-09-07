@@ -24,6 +24,8 @@ namespace NetPs.Socket
             Initialization();
         }
 
+        public SocketUri(string protol, IPEndPoint point) : this(protol, point.Address.ToString(), point.Port) { }
+
         public SocketUri(string uriString, UriKind uriKind) : base(InitializationUriString(uriString), uriKind)
         {
             Initialization();

@@ -63,7 +63,7 @@
         public int ReceivedSize => this.nReceived;
 
         public bool Running => this.core.Receiving;
-        public IPEndPoint RemoteIP => this.remotePoint as IPEndPoint;
+        public IPEndPoint RemoteAddress => this.remotePoint as IPEndPoint;
 
         /// <summary>
         /// 开始接收.

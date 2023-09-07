@@ -50,6 +50,7 @@
         /// </summary>
         /// <param name="data"></param>
         public void Transport(byte[] data) => Tx.Transport(data);
+        public void Transport(byte[] data, int offset, int length) => Tx.Transport(data, offset, length);
 
         /// <summary>
         /// 开始用指定接口接收数据
@@ -110,6 +111,16 @@
             this.events?.OnLosed(this);
             base.OnLosed();
             this.OnDisconnected();
+        }
+
+        public void BindRxEvents(IRxEvents events)
+        {
+            this.Rx.BindEvents(events);
+        }
+
+        public void BindTxEvents(ITxEvents events)
+        {
+            this.Tx.BindEvents(events);
         }
     }
 }

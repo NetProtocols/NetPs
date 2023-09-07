@@ -1,4 +1,5 @@
 # NetPs(Net protocols)
+[![license](https://img.shields.io/github/license/NetProtocols/NetPs)](https://github.com/NetProtocols/NetPs/blob/main/LICENSE)
 [![NetPs v1.0](https://github.com/NetProtocols/NetPs/actions/workflows/dotnet-desktop.yml/badge.svg)](https://github.com/NetProtocols/NetPs/actions/workflows/dotnet-desktop.yml)
 
 *NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。*
