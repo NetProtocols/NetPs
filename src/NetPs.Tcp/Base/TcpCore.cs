@@ -310,7 +310,7 @@
             }
             catch (ObjectDisposedException) { }
             catch (NullReferenceException) { }
-            catch (SocketException) { Console.WriteLine("socket error"); }
+            catch (SocketException) { }
             this.tell_disconnected();
         }
         private void tell_connected()
@@ -338,7 +338,6 @@
                 this.is_connected = false;
             }
             this.OnDisconnected();
-            this.DisConnected?.Invoke(this);
         }
 
         protected override void OnClosed()
@@ -347,6 +346,11 @@
 
         protected override void OnLosed()
         {
+        }
+
+        public virtual void FastOpen()
+        {
+            this.Socket.SetSocketOption(SocketOptionLevel.Tcp, (SocketOptionName)15, true);
         }
     }
 }

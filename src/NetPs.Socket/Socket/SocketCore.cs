@@ -4,6 +4,7 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Disposables;
+    using System.Runtime.InteropServices;
 
     /// <summary>
     /// 状态改变.
@@ -20,7 +21,7 @@
     /// <summary>
     /// 套接字基类
     /// </summary>
-    public abstract class SocketCore : IDisposable
+    public abstract class SocketCore : SocketFunc, IDisposable
     {
         /// <summary>
         /// 数据流池
@@ -56,11 +57,6 @@
         /// 处理异常.
         /// </summary>
         public virtual event SocketExceptionHandler SocketException;
-
-        /// <summary>
-        /// Gets or sets tcp client.
-        /// </summary>
-        public virtual Socket Socket { get; protected set; }
 
         /// <summary>
         /// Gets or sets 地址.
@@ -214,19 +210,6 @@
                 }
             }
         }
-
-        /// <summary>
-        /// 允许复用地址
-        /// </summary>
-        /// <remarks>
-        /// * 需要管理员权限
-        /// <br/>！这个范围被约束在同一进程并且配置复用的情况下。
-        /// <br/><br/>用于多个socket 使用相同的地址端口绑定的情况。
-        /// </remarks>
-        public virtual void AllowReuseAddress() { 
-            this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        }
-
         public virtual void Bind(SocketUri address)
         {
             this.ChangeAddress(address);

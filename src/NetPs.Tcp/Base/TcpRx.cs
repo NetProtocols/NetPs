@@ -131,6 +131,7 @@
 
         public virtual void OnRecevied()
         {
+            if (this.is_disposed) return;
             var data = new byte[this.nReceived];
             Array.Copy(this.bBuffer, data, this.nReceived);
             SendReceived(data);

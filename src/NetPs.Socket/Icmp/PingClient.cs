@@ -1,5 +1,6 @@
 ﻿namespace NetPs.Socket.Icmp
 {
+    using NetPs.Socket.Packets;
     using System;
     using System.Net;
     using System.Net.Sockets;

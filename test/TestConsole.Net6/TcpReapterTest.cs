@@ -17,7 +17,7 @@ namespace TestConsole.Net6
                 c.StartMirror(src, 10 << 20); //100M 带宽
             }, core =>
             {
-                core.AllowReuseAddress();
+                core.SetReuseAddress(true);
             });
             host.Run(dst);
         }

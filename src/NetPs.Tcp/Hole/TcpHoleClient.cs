@@ -1,6 +1,7 @@
 ﻿namespace NetPs.Tcp.Hole
 {
     using NetPs.Socket;
+    using NetPs.Socket.Packets;
     using System;
 
     /// <summary>
@@ -13,6 +14,7 @@
     {
         public virtual string Id { get; private set; }
         public virtual string Key { get; private set; }
+        private IHoleEvents events { get; set; }
         public TcpHoleClient(string id, string key) : base()
         {
             this.Id = id;
@@ -23,11 +25,16 @@
         {
         }
 
+        public virtual void BindEvents(IHoleEvents events)
+        {
+            this.events = events;
+        }
         public virtual TcpClient Clone()
         {
             var client = new TcpClient(core =>
             {
-                core.AllowReuseAddress();
+                core.SetReuseAddress(true);
+                core.SetLinger(false, 0);
             });
             client.Bind(Address);
             return client;
@@ -36,7 +43,7 @@
         protected override void OnConfiguration()
         {
             base.OnConfiguration();
-            AllowReuseAddress();
+            SetReuseAddress(true);
         }
 
         protected override void OnAccepted(object client)
@@ -54,6 +61,7 @@
         {
             client = this.Clone();
             client.BindEvents(this);
+            client.BindRxEvents(this);
             client.Connect(server);
         }
 
@@ -93,15 +101,16 @@
         {
             var packet = new HolePacket();
             var len = packet.Read(rx.Buffer);
-            switch (packet.Operation)
-            {
-                case HolePacketOperation.CheckId:
-                    if (packet.Id == this.Id && packet.Key == this.Key)
-                    {
-                        ;
-                    }
-                    break;
-            }
+            this.events?.OnReceivedPacket(packet, (rx as TcpRx).TcpCore as TcpClient);
+            //switch (packet.Operation)
+            //{
+            //    case HolePacketOperation.CheckId:
+            //        if (packet.Id == this.Id && packet.Key == this.Key)
+            //        {
+            //            ;
+            //        }
+            //        break;
+            //}
         }
 
         public void OnDisposed(IRx rx)

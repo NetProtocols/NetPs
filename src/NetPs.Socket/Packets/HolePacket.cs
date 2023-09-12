@@ -1,8 +1,7 @@
-﻿namespace NetPs.Tcp.Hole
+﻿namespace NetPs.Socket.Packets
 {
     using NetPs.Socket;
     using System;
-    using System.IO;
     using System.Net;
     using System.Text;
 
@@ -15,10 +14,9 @@
         Register = 0b00000100, // 注册
         RegisterCallback = 0b00000101,
         RegisterCallbackError = 0b00000111,
-        GetId = 0b00010000,//获取
-        GetIdCallback = 0b00010001,
-        GetIdCallbackError = 0b00010011,
-        HoleReady = 0b00011001, //准备完成
+        Hole = 0b00010000,//打洞
+        HoleCallback = 0b00010001,
+        HoleCallbackError = 0b00010011,
         CheckId = 0b00100000,//认证
         CheckIdCallback = 0b00100001,
         CheckIdCallbackError = 0b00100011,
@@ -84,7 +82,7 @@
                 }
                 else if (CheckBit(b, 5))
                 {
-                    Operation = HolePacketOperation.GetId;
+                    Operation = HolePacketOperation.Hole;
                 }
                 else if (CheckBit(b, 6))
                 {

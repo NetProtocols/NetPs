@@ -1,16 +1,15 @@
 ﻿namespace NetPs.Tcp.Hole
 {
     using NetPs.Socket;
+    using NetPs.Socket.Packets;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Net;
-    public interface IHoleServerEvents
-    {
-        void OnHoleReceived(HolePacket packet, TcpClient client);
-    }
+
     public class TcpHoleServer : IDisposable, ITcpServerEvents, IRxEvents
     {
-        private IHoleServerEvents events { get; set; }
+        private IHoleEvents events { get; set; }
         private TcpServer server { get; set; }
         private Dictionary<string, HolePacket> hosts { get; set; }
         public IPEndPoint Address => this.server.IPEndPoint;
@@ -21,7 +20,7 @@
             this.hosts = new Dictionary<string, HolePacket>();
         }
 
-        public void BindEvents(IHoleServerEvents events)
+        public void BindEvents(IHoleEvents events)
         {
             this.events = events;
         }
@@ -30,7 +29,15 @@
         {
             server.Run(uri);
         }
-
+        public virtual TcpClient Clone()
+        {
+            var client = new TcpClient(core =>
+            {
+                core.SetReuseAddress(true);
+            });
+            client.Bind(server.Address);
+            return client;
+        }
         public void OnAccepted(ITcpServer tcpServer, ITcpClient tcpClient)
         {
             tcpClient.BindRxEvents(this);
@@ -43,6 +50,7 @@
 
         public void OnConfiguration(ITcpServer tcpServer)
         {
+            (tcpServer as TcpServer).SetReuseAddress(true);
         }
 
         public void OnConfiguration(TcpCore core)
@@ -55,12 +63,29 @@
 
         public void OnSocketLosed(ITcpServer tcpServer, ITcpClient tcpClient)
         {
+            Console.WriteLine($"S Lose");
         }
 
         public void OnReceiving(IRx rx)
         {
         }
 
+        public void ConnectTo(string uri)
+        {
+            var c1 = Clone();
+            c1.ConnectedObservable.Subscribe(o =>
+            {
+                Console.WriteLine($"S Connect {uri}");
+            });
+            c1.LoseConnectedObservable.Subscribe(o =>
+            {
+                Console.WriteLine($"S Lose {uri}");
+            });
+            c1.Connect(uri);
+            Console.WriteLine($"S Connect {uri}");
+            cs.Add(c1);
+        }
+        List<TcpClient> cs = new List<TcpClient>();
         public void OnReceived(IRx rx)
         {
             if (rx is TcpRx tcpRx)
@@ -74,24 +99,45 @@
                         case HolePacketOperation.Register:
                             packet.Address = rx.RemoteAddress;
                             hosts[packet.Id] = packet;
+                            //client.Close();
                             break;
-                        case HolePacketOperation.GetId:
+                        case HolePacketOperation.Hole:
+                        case HolePacketOperation.HoleCallback:
+                            packet.IsCallback = true;
+                            //根据Address判断
                             if (hosts.ContainsKey(packet.Id))
                             {
-                                packet.IsCallback = true;
-                                packet.Address = hosts[packet.Id].Address;
+                                var id_address = hosts[packet.Id].Address;
+                                var dst_client = this.server.Connects.FirstOrDefault(con => con.RemoteAddress.Equal(id_address));
+                                if (dst_client != null)
+                                {
+                                    packet.Address = client.RemoteIPEndPoint;
+                                    dst_client.TransportedObservable.Subscribe(tx =>
+                                    {
+                                        dst_client.Lose();
+                                    });
+                                    dst_client.Transport(packet.GetData());
+                                }
+                                packet.Address = id_address;
+                                client.TransportedObservable.Subscribe(tx =>
+                                {
+                                    client.Lose();
+                                });
                                 client.Transport(packet.GetData());
+
+                            }
+                            else
+                            {
+                                client.Lose();
                             }
                             break;
-                        case HolePacketOperation.HoleReady:
-                            break;
                     }
-                    this.events?.OnHoleReceived(packet, client);
+                    this.events?.OnReceivedPacket(packet, client);
                 }
             }
         }
 
-        public void OnDisposed(IRx rx)
+        public void OnDisposed(IRx rx) 
         {
         }
 

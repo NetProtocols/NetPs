@@ -5,6 +5,7 @@
     using System.Collections.Generic;
     using System.Linq;
     using System.Net.Sockets;
+    using System.Reactive;
     using System.Reactive.Linq;
 
     public delegate void TcpAcceptedFunction(TcpServer tcpServer, TcpClient tcpClient);
@@ -62,6 +63,7 @@
         {
             this.Ax = new TcpAx(this);
             this.Connects = new List<TcpClient>(); // 65535-1024= 64571
+            this.AcceptClientObservable = Observable.FromEvent<TcpAcceptedFunction, TcpClient>(handler => (s, c) => handler(c), evt => this.AcceptedClient += evt, evt => this.AcceptedClient -= evt);
         }
 
         /// <summary>
@@ -73,6 +75,9 @@
         /// Gets or sets 接受.
         /// </summary>
         public virtual IObservable<Socket> AcceptObservable => this.Ax.AcceptObservable;
+
+        public event TcpAcceptedFunction AcceptedClient;
+        public virtual IObservable<TcpClient> AcceptClientObservable { get; private set; }
 
         /// <summary>
         /// Gets or sets 服务.
@@ -194,8 +199,8 @@
         }
         protected override void OnConfiguration()
         {
-            this.events?.OnConfiguration(this);
             base.OnConfiguration();
+            this.events?.OnConfiguration(this);
         }
     }
 }

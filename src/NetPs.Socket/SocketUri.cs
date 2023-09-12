@@ -92,12 +92,13 @@ namespace NetPs.Socket
 
         public virtual bool Equal(IPEndPoint ip)
         {
-            return ip.Address == this.IP && (ip.Port == this.Port || this.Port == 0);
+            if (ip == null) return false;
+            return ip.Address.Equals(this.IP) && (ip.Port == this.Port || this.Port == 0);
         }
 
         public virtual bool Equal(SocketUri host)
         {
-            return IP == host.IP && (Port == host.Port || Port == 0 || host.Port == 0);
+            return IP.Equals(host.IP) && (Port == host.Port || Port == 0 || host.Port == 0);
         }
     }
 }

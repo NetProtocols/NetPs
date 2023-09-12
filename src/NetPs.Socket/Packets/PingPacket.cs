@@ -1,4 +1,4 @@
-﻿namespace NetPs.Socket.Icmp
+﻿namespace NetPs.Socket.Packets
 {
     using System;
     using System.Diagnostics;

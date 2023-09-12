@@ -1,4 +1,5 @@
-﻿using NetPs.Tcp;
+﻿using NetPs.Socket.Packets;
+using NetPs.Tcp;
 using NetPs.Tcp.Hole;
 using System;
 using System.Collections.Generic;
@@ -8,10 +9,10 @@ using System.Threading.Tasks;
 
 namespace TestConsole.Net6
 {
-    public class HoleServerTest : IDisposable, IHoleServerEvents
+    public class HoleServer : IDisposable, IHoleEvents
     {
-        TcpHoleServer server { get; set; }
-        public HoleServerTest(string uri)
+        public TcpHoleServer server { get; set; }
+        public HoleServer(string uri)
         {
             server = new TcpHoleServer();
             server.BindEvents(this);
@@ -23,7 +24,7 @@ namespace TestConsole.Net6
         {
         }
 
-        public void OnHoleReceived(HolePacket packet, TcpClient client)
+        public void OnReceivedPacket(HolePacket packet, TcpClient client)
         {
             Console.WriteLine($"{client.RemoteIPEndPoint} send packet {packet.Operation.ToString()}");
         }
