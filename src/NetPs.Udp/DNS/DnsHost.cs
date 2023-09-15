@@ -1,5 +1,6 @@
 ﻿namespace NetPs.Udp
 {
+    using NetPs.Socket;
     using NetPs.Udp.DNS;
     using System;
     using System.Reactive.Disposables;

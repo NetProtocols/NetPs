@@ -6,7 +6,7 @@
     {
         private bool is_disposed = false;
         private IQueueStream cache { get; set; }
-        public TcpQueueTx(TcpCore tcpCore) : base(tcpCore)
+        public TcpQueueTx() : base()
         {
             this.cache = SocketCore.StreamPool.GET();
         }

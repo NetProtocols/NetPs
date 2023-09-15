@@ -1,8 +1,8 @@
 ﻿namespace NetPs.Tcp.Hole
 {
+    using System;
     using NetPs.Socket;
     using NetPs.Socket.Packets;
-    using System;
 
     /// <summary>
     /// 内网穿透客户端
@@ -101,7 +101,7 @@
         {
             var packet = new HolePacket();
             var len = packet.Read(rx.Buffer);
-            this.events?.OnReceivedPacket(packet, (rx as TcpRx).TcpCore as TcpClient);
+            this.events?.OnReceivedPacket(packet, (rx as TcpRx).Core as TcpClient);
             //switch (packet.Operation)
             //{
             //    case HolePacketOperation.CheckId:

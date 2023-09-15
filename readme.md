@@ -29,6 +29,7 @@ NuGet\Install-Package NetPs.Tcp
 - 压缩：可以选择对数据流进行简单压缩，可用于在传输音视频、图片等数据流。
 
 - 请求限制：
+  - 实现IP DenyList、AllowList。
   
   - 可以限制单用户、总最大连接数。
   

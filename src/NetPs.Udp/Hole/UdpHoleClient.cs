@@ -1,47 +1,31 @@
 ﻿namespace NetPs.Udp.Hole
 {
+    using NetPs.Socket;
+    using NetPs.Socket.Hole;
     using NetPs.Socket.Packets;
     using System;
-    public class UdpHoleClient : UdpHost
+    public class UdpHoleClient : UdpHoleCore, IDisposable
     {
-        private bool holed = false;
-        private IHoleEvents events { get; set; }
+        private bool is_disposed = false;
         public UdpHoleClient() : base()
         {
-            this.ReceicedObservable.Subscribe(data =>
+            He = new UdpHoleHe();
+            Rg = new UdpHoleRg();
+            Fz = new UdpHoleFz();
+            He.BindCore(this);
+            Rg.BindCore(this);
+            Fz.BindCore(this);
+        }
+        public virtual UdpHoleHe He { get; private set; }
+        public virtual UdpHoleRg Rg { get; private set; }
+        public virtual UdpHoleFz Fz { get; private set; }
+        public override void Dispose()
+        {
+            lock (this)
             {
-                if (!holed)
-                {
-                    var packet = new HolePacket();
-                    packet.Read(data.Data);
-                    this.events?.OnReceivedPacket(packet);
-                }
-            });
-            this.Rx.StartReveice();
-        }
-
-        public virtual bool IsHoled => this.holed;
-        public virtual string Id { get; private set; }
-        public virtual string Key { get; private set; }
-        public virtual string ServerAddr { get; private set; }
-        public virtual void Register(string server, string id, string key)
-        {
-            this.Id = id;
-            this.Key = key;
-            this.ServerAddr = server;
-            var packet = new HolePacket(HolePacketOperation.Register, this.Id, this.Key);
-            var tx = GetTx(server);
-            tx.Transport(packet.GetData());
-        }
-
-        public virtual void TellHoled()
-        {
-            this.holed = true;
-        }
-
-        public virtual void BindEvents(IHoleEvents events)
-        {
-            this.events = events;
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
         }
     }
 }

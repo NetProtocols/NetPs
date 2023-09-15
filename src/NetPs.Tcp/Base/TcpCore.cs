@@ -86,7 +86,7 @@
         /// <summary>
         /// 连接的地址
         /// </summary>
-        public virtual SocketUri RemoteAddress { get; protected set; }
+        public virtual ISocketUri RemoteAddress { get; protected set; }
 
         /// <summary>
         /// 连接的地址
@@ -114,7 +114,7 @@
         /// 创建新连接.
         /// </summary>
         /// <param name="address">.</param>
-        public virtual async Task<bool> ConnectAsync(SocketUri address)
+        public virtual async Task<bool> ConnectAsync(ISocketUri address)
         {
             if (this.connect_pre(address))
             {
@@ -123,7 +123,7 @@
             return false;
         }
         public virtual async Task<bool> ConnectAsync(string address) => await this.ConnectAsync(new SocketUri(address));
-        public virtual void Connect(SocketUri address)
+        public virtual void Connect(ISocketUri address)
         {
             if (this.connect_pre(address))
             {
@@ -131,7 +131,7 @@
             }
         }
         public virtual void Connect(string address) => this.Connect(new SocketUri(address));
-        private bool connect_pre(SocketUri address)
+        private bool connect_pre(ISocketUri address)
         {
             if (address != null)
             {

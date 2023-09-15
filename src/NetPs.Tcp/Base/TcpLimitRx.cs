@@ -14,7 +14,7 @@ namespace NetPs.Tcp
         private int received_count { get; set; }
         public int Limit { get; protected set; } // must gt 0
         public long LastTime => this.last_time;
-        public TcpLimitRx(TcpCore tcpCore) : base(tcpCore)
+        public TcpLimitRx() : base()
         {
             this.Limit = 0;
             this.received_count = 0;

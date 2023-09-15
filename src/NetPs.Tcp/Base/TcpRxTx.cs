@@ -1,11 +1,12 @@
 ﻿namespace NetPs.Tcp
 {
+    using NetPs.Socket;
     using System;
 
     /// <summary>
     /// Tcp 收发.
     /// </summary>
-    public class TcpRxTx : TcpCore
+    public class TcpRxTx<TTx, TRx> : TcpCore where TTx : TcpTx, ITx, new() where TRx: TcpRx, IRx, new()
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpRxTx"/> class.
@@ -14,8 +15,10 @@
         public TcpRxTx(TcpConfigFunction tcp_config)
             : base(tcp_config)
         {
-            this.Rx = new TcpRx(this);
-            this.Tx = new TcpTx(this);
+            this.Rx = new TRx();
+            this.Tx = new TTx();
+            this.Rx.BindCore(this);
+            this.Tx.BindCore(this);
         }
 
         public TcpRxTx() : base()
@@ -25,12 +28,12 @@
         /// <summary>
         /// Gets or sets 接收.
         /// </summary>
-        public TcpRx Rx { get; protected set; }
+        public TRx Rx { get; protected set; }
 
         /// <summary>
         /// Gets or sets 发送.
         /// </summary>
-        public TcpTx Tx { get; protected set; }
+        public TTx Tx { get; protected set; }
 
 
         protected override void OnClosed()

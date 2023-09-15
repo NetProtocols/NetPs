@@ -1,7 +1,7 @@
 ﻿namespace NetPs.Tcp.Hole
 {
-    using NetPs.Socket.Packets;
     using System;
+    using NetPs.Socket.Packets;
 
     public interface IHoleEvents
     {

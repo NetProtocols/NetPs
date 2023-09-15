@@ -1,7 +1,6 @@
 ﻿using NetPs.Tcp;
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace TestsConsole
 {
@@ -21,7 +20,7 @@ namespace TestsConsole
         static TcpServer server { get; set; }
         static int j = 0;
         static int x = 0;
-        public void TcpReceive(byte[] data, TcpClient tcp)
+        public void TcpReceive(byte[] data, ITcpClient tcp)
         {
             j++;
             tcp.Transport(data);

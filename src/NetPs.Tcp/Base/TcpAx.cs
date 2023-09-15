@@ -9,10 +9,9 @@
     /// <summary>
     /// 服务.
     /// </summary>
-    public class TcpAx : IDisposable
+    public class TcpAx : IDisposable, IBindTcpCore
     {
         private bool is_disposed = false;
-        private TcpCore core { get; }
         protected TaskFactory Task { get; private set; }
         private IAsyncResult AsyncResult { get; set; }
         private AsyncCallback AsyncCallback { get; set; }
@@ -20,10 +19,9 @@
         /// Initializes a new instance of the <see cref="TcpAx"/> class.
         /// </summary>
         /// <param name="tcpCore">.</param>
-        public TcpAx(TcpCore tcpCore)
+        public TcpAx()
         {
             this.Task = new TaskFactory();
-            this.core = tcpCore;
             this.AcceptObservable = Observable.FromEvent<TcpAx.AcceptSocketHandler, Socket>(handler => socket => handler(socket), evt => this.Accepted += evt, evt => this.Accepted -= evt);
         }
 
@@ -31,6 +29,8 @@
         /// Gets or sets 接受.
         /// </summary>
         public virtual IObservable<Socket> AcceptObservable { get; protected set; }
+
+        public TcpCore Core { get; private set; }
 
         /// <summary>
         /// 接受Socket.
@@ -55,7 +55,7 @@
             {
                 SocketCore.WaitHandle(AsyncResult, () =>
                 {
-                    this.core.Socket.EndAccept(AsyncResult);
+                    this.Core.Socket.EndAccept(AsyncResult);
                 });
                 this.AsyncResult = null;
             }
@@ -72,7 +72,7 @@
             try
             {
                 AsyncCallback = new AsyncCallback(this.AcceptCallback);
-                AsyncResult = this.core.Socket.BeginAccept(AsyncCallback, null);
+                AsyncResult = this.Core.Socket.BeginAccept(AsyncCallback, null);
                 return;
             }
             catch (ObjectDisposedException) { return; }
@@ -91,7 +91,7 @@
             try
             {
                 Socket client = null;
-                client = this.core.Socket.EndAccept(asyncResult);
+                client = this.Core.Socket.EndAccept(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
                 StartAccept();
                 Task.StartNew(tell_accept, client);
@@ -109,6 +109,11 @@
         private void tell_accept(object client)
         {
             if (this.Accepted != null) Accepted.Invoke(client as Socket);
+        }
+
+        public void BindCore(TcpCore core)
+        {
+            this.Core = core;
         }
     }
 }

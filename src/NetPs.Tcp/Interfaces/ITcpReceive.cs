@@ -4,6 +4,6 @@
 
     public interface ITcpReceive
     {
-        void TcpReceive(byte[] data, TcpClient tcp);
+        void TcpReceive(byte[] data, ITcpClient tcp);
     }
 }

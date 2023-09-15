@@ -17,7 +17,7 @@
         Response = 10,
     }
 
-    public class PingPacket : IPingPacket
+    public class PingPacket : IPingPacket, IPacket
     {
         private byte[] x_data { get; set; }
         public IPAddress Address { get; set; }
@@ -47,12 +47,7 @@
 
         public PingPacket(byte[] data)
         {
-            Type = data[0];
-            Code = data[1];
-            Checksum = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, 2, 2).ToArray(), 0);
-            Identifier = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, 4, 2).ToArray(), 0);
-            SequenceNumber = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, 6, 2).ToArray(), 0);
-            Data = new ReadOnlySpan<byte>(data, 8, data.Length - 8).ToArray();
+            this.SetData(data);
         }
 
         public virtual PingPacket Next()
@@ -118,6 +113,30 @@
             {
                 return 45;
             }
+        }
+
+        public byte[] GetData()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetData(byte[] data, int offset)
+        {
+            Type = data[offset++];
+            Code = data[offset++];
+            Checksum = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, offset, 2).ToArray(), 0);
+            offset += 2;
+            Identifier = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, offset, 2).ToArray(), 0);
+            offset += 2;
+            SequenceNumber = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, offset, 2).ToArray(), 0);
+            offset += 2;
+            Data = new ReadOnlySpan<byte>(data, offset, data.Length - offset).ToArray();
+        }
+
+        public bool Verity(byte[] data, int offset)
+        {
+            if (data.Length <= 8) return false;
+            return true;
         }
     }
 }

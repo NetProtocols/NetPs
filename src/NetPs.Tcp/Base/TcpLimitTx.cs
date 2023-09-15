@@ -11,7 +11,7 @@
         private int transported_count { get; set; }
         public int Limit { get; protected set; } // must gt 0
         public long LastTime => this.last_time;
-        public TcpLimitQueueTx(TcpCore tcpCore) : base(tcpCore)
+        public TcpLimitQueueTx() : base()
         {
             this.Limit = -1;
             this.last_time = DateTime.Now.Ticks;

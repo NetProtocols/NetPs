@@ -94,7 +94,7 @@
         /// 发送数据(添加入发送队列)..
         /// </summary>
         /// <param name="data">数据.</param>
-        public virtual void Transport(byte[] data, int offset = 0, int length = -1)
+        public virtual void Transport(byte[] data, int offset, int length)
         {
             if (this.is_disposed || length == 0) return;
             if (length < 0 || length > data.Length) length = data.Length;

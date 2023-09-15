@@ -90,7 +90,7 @@
         {
             if (rx is TcpRx tcpRx)
             {
-                if (tcpRx.TcpCore is TcpClient client)
+                if (tcpRx.Core is TcpClient client)
                 {
                     var packet = new HolePacket();
                     var len = packet.Read(rx.Buffer);

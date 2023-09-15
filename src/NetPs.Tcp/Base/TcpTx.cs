@@ -9,9 +9,8 @@
     /// <summary>
     /// tcp 发送控制.
     /// </summary>
-    public class TcpTx : IDisposable, ITx
+    public class TcpTx : IDisposable, ITx, IBindTcpCore
     {
-        private TcpCore core { get; set; }
         private bool is_disposed = false;
         private bool transporting = false;
         private int state { get; set; }
@@ -27,10 +26,9 @@
         /// Initializes a new instance of the <see cref="TcpTx"/> class.
         /// </summary>
         /// <param name="tcpCore">.</param>
-        public TcpTx(TcpCore tcpCore)
+        public TcpTx()
         {
             this.Task = new TaskFactory(TaskScheduler.Default);
-            this.core = tcpCore;
             this.TransportBufferSize = Consts.TransportBytes;
             this.TransportedObservable = Observable.FromEvent<TransportedHandler, TcpTx>(handler => tx => handler(tx), evt => this.Transported += evt, evt => this.Transported -= evt);
         }
@@ -70,6 +68,8 @@
         /// </summary>
         public bool Running => this.transporting;
 
+        public TcpCore Core { get; private set; }
+
         /// <inheritdoc/>
         public virtual void Dispose()
         {
@@ -82,9 +82,9 @@
             {
                 SocketCore.WaitHandle(AsyncResult, () =>
                 {
-                    if (this.core.CanEnd)
+                    if (this.Core.CanEnd)
                     {
-                        this.core.Socket.EndSend(AsyncResult);
+                        this.Core.Socket.EndSend(AsyncResult);
                     }
                 });
                 this.AsyncResult = null;
@@ -97,7 +97,7 @@
         /// 发送数据(添加入发送队列)..
         /// </summary>
         /// <param name="data">数据.</param>
-        public virtual void Transport(byte[] data, int offset = 0, int length = -1)
+        public virtual void Transport(byte[] data, int offset, int length)
         {
             if (this.is_disposed || length == 0) return;
             if (length < 0 || length > data.Length) length = data.Length;
@@ -126,7 +126,7 @@
         {
             lock (this)
             {
-                if (this.transporting || (EndTransport == null && !this.core.Receiving)) return false;
+                if (this.transporting || (EndTransport == null && !this.Core.Receiving)) return false;
                 this.transporting = true;
             }
             return true;
@@ -143,7 +143,7 @@
 
         protected virtual void restart_transport()
         {
-            if (this.is_disposed || !this.core.Actived)
+            if (this.is_disposed || !this.Core.Actived)
             {
                 to_end();
                 return;
@@ -178,15 +178,15 @@
         {
             try
             {
-                if (this.is_disposed || !this.core.Actived) return;
+                if (this.is_disposed || !this.Core.Actived) return;
                 // Socket Poll 判断连接是否可用 this.core.Actived
-                var poll_ok = this.core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
+                var poll_ok = this.Core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
                 if (poll_ok)
                 {
-                    if (this.core.CanBegin)
+                    if (this.Core.CanBegin)
                     {
                         if (this.is_disposed) return;
-                        AsyncResult = this.core.Socket.BeginSend(this.buffer, this.offset, this.length, SocketFlags.None, this.SendCallback, null);
+                        AsyncResult = this.Core.Socket.BeginSend(this.buffer, this.offset, this.length, SocketFlags.None, this.SendCallback, null);
                     }
                 }
                 else
@@ -201,9 +201,9 @@
             catch (SocketException e)
             {
                 AsyncResult = null;
-                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.StartWrite)) this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.StartWrite)) this.Core.ThrowException(e);
             }
-            if (!this.is_disposed) this.core.Lose();
+            if (!this.is_disposed) this.Core.Lose();
         }
 
         private void SendCallback(IAsyncResult asyncResult)
@@ -211,10 +211,10 @@
             AsyncResult = null;
             try
             {
-                if (this.is_disposed || !this.core.Actived) return;
-                if (this.core.CanEnd)
+                if (this.is_disposed || !this.Core.Actived) return;
+                if (this.Core.CanEnd)
                 {
-                    this.state = this.core.Socket.EndSend(asyncResult); //state决定是否冲重传
+                    this.state = this.Core.Socket.EndSend(asyncResult); //state决定是否冲重传
                     if (this.state <= 0)
                     {
                         restart_transport();
@@ -223,7 +223,7 @@
                 else
                 {
                     asyncResult.AsyncWaitHandle.Close();
-                    if (!this.is_disposed) this.core.Lose();
+                    if (!this.is_disposed) this.Core.Lose();
                     return;
                 }
                 asyncResult.AsyncWaitHandle.Close();
@@ -235,10 +235,10 @@
             catch (NullReferenceException) { }
             catch (SocketException e)
             {
-                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Writing)) this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Writing)) this.Core.ThrowException(e);
                 return;
             }
-            if (!this.is_disposed) this.core.Lose();
+            if (!this.is_disposed) this.Core.Lose();
         }
 
         public void LookEndTransport(IEndTransport endTransport)
@@ -249,6 +249,11 @@
         public void BindEvents(ITxEvents events)
         {
             this.events = events;
+        }
+
+        public void BindCore(TcpCore core)
+        {
+            this.Core = core;
         }
     }
 }

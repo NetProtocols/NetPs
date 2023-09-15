@@ -1,18 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Reactive.Linq.ObservableImpl;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.RegularExpressions;
-
-namespace NetPs.Socket
+﻿namespace NetPs.Socket
 {
-    public class SocketUri : Uri
+    using System;
+    using System.Net;
+    using System.Text.RegularExpressions;
+
+    public class SocketUri : Uri, ISocketUri
     {
         public const string PortDelimiter = ":";
+        public const string UriSchemeUdp = "udp";
         public virtual IPAddress IP { get; protected set; }
-
 
         public SocketUri(string uriString) : base(InitializationUriString(uriString))
         {
@@ -96,7 +92,7 @@ namespace NetPs.Socket
             return ip.Address.Equals(this.IP) && (ip.Port == this.Port || this.Port == 0);
         }
 
-        public virtual bool Equal(SocketUri host)
+        public virtual bool Equal(ISocketUri host)
         {
             return IP.Equals(host.IP) && (Port == host.Port || Port == 0 || host.Port == 0);
         }

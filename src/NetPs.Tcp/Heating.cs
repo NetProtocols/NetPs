@@ -49,7 +49,7 @@
         }
 
 
-        public void TcpReceive(byte[] data, TcpClient tcp)
+        public void TcpReceive(byte[] data, ITcpClient tcp)
         {
         }
 

@@ -1,6 +1,7 @@
 ﻿namespace NetPs.Socket
 {
     using System;
+
     /// <summary>
     /// 数据传输基础
     /// </summary>
@@ -22,5 +23,10 @@
         /// 要看结束事件
         /// </summary>
         void LookEndTransport(IEndTransport endTransport);
+    }
+
+    public static class IDataTransportExtra
+    {
+        public static void Transport(this IDataTransport tx, byte[] data) => tx.Transport(data, 0, -1);
     }
 }

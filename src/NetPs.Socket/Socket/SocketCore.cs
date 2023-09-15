@@ -4,7 +4,6 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Disposables;
-    using System.Runtime.InteropServices;
 
     /// <summary>
     /// 状态改变.
@@ -61,7 +60,7 @@
         /// <summary>
         /// Gets or sets 地址.
         /// </summary>
-        public virtual SocketUri Address { get; protected set; }
+        public virtual ISocketUri Address { get; protected set; }
 
         /// <summary>
         /// Gets or sets 终端地址.
@@ -210,13 +209,13 @@
                 }
             }
         }
-        public virtual void Bind(SocketUri address)
+        public virtual void Bind(ISocketUri address)
         {
             this.ChangeAddress(address);
             this.Bind();
         }
 
-        public virtual void ChangeAddress(SocketUri address)
+        public virtual void ChangeAddress(ISocketUri address)
         {
             this.Address = address;
             this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
