@@ -28,7 +28,7 @@
         {
             PutSocket(socket);
             this.RemoteIPEndPoint = socket.RemoteEndPoint as global::System.Net.IPEndPoint;
-            this.RemoteAddress = new SocketUri(SocketUri.UriSchemeNetTcp, this.RemoteIPEndPoint.Address.ToString(), this.RemoteIPEndPoint.Port);
+            this.RemoteAddress = new InsideSocketUri(InsideSocketUri.UriSchemeTCP, this.RemoteIPEndPoint);
         }
 
         /// <summary>

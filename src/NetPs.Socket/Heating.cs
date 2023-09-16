@@ -27,7 +27,7 @@
             new QueueStream().Dispose();
             new hot_SocketCore().Dispose();
             ArrayTool.Exist(ArrayTool.FindAll(ArrayTool.Empty<int>().ToReadOnly().ToArray(), ar => true), ar => true);
-            var uri = new SocketUri(hot_uri);
+            var uri = new InsideSocketUri(hot_uri);
             watch.Heat_Progress();
             using (var socket = new Socket(uri.IP.AddressFamily, SocketType.Dgram, ProtocolType.Udp))
             {

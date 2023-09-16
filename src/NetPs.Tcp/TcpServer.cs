@@ -109,7 +109,7 @@
         /// <param name="backlog">连接最大数量.</param>
         public virtual void Listen(string address)
         {
-            this.Listen(new SocketUri(address));
+            this.Listen(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
         }
 
         /// <summary>

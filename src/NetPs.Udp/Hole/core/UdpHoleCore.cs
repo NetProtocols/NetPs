@@ -38,12 +38,12 @@
         }
         public virtual void Connect(string server)
         {
-            this.ServerAddress = new SocketUri(server);
+            this.ServerAddress = new InsideSocketUri(InsideSocketUri.UriSchemeUDP, server);
             this.Tx = this.GetTx(this.ServerAddress.IP, this.ServerAddress.Port);
         }
         public virtual void Connect(IPEndPoint ip)
         {
-            this.ServerAddress = new SocketUri(SocketUri.UriSchemeUdp, ip);
+            this.ServerAddress = new InsideSocketUri(InsideSocketUri.UriSchemeUDP, ip);
             this.Tx = this.GetTx(this.ServerAddress.IP, this.ServerAddress.Port);
         }
         public virtual ITx GetTx(string addr) => this.host.GetTx(addr);

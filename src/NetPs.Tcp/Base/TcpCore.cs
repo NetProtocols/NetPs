@@ -122,7 +122,7 @@
             }
             return false;
         }
-        public virtual async Task<bool> ConnectAsync(string address) => await this.ConnectAsync(new SocketUri(address));
+        public virtual async Task<bool> ConnectAsync(string address) => await this.ConnectAsync(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
         public virtual void Connect(ISocketUri address)
         {
             if (this.connect_pre(address))
@@ -130,7 +130,7 @@
                 this.just_start_connect();
             }
         }
-        public virtual void Connect(string address) => this.Connect(new SocketUri(address));
+        public virtual void Connect(string address) => this.Connect(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
         private bool connect_pre(ISocketUri address)
         {
             if (address != null)

@@ -2,13 +2,9 @@
 {
     using System;
     using System.Net;
-    using System.Net.Sockets;
-    using System.Text.RegularExpressions;
 
     public class SocketUri : Uri, ISocketUri
     {
-        public const string PortDelimiter = ":";
-        public const string UriSchemeUdp = "udp";
         public virtual IPAddress IP { get; protected set; }
 
         public SocketUri(string uriString) : base(InitializationUriString(uriString))
@@ -35,69 +31,24 @@
 
         protected virtual void Initialization()
         {
-            this.IP = ParseIP(Host);
+            this.IP = InsideSocketUri.ParseIPAddress(Host);
         }
 
         private static string InitializationUriString(string protol, string host, int port)
         {
             //ipv6
-            if (host.Contains(PortDelimiter)) host = $"[{host}]";
-            return $"{protol}{Uri.SchemeDelimiter}{host}{PortDelimiter}{port}";
+            if (host.Contains(InsideSocketUri.PortDelimiter) && !host.StartsWith(InsideSocketUri.Ipv6DelimiterLf)) host = $"{InsideSocketUri.Ipv6DelimiterLf}{host}{InsideSocketUri.Ipv6DelimiterRt}";
+            return $"{protol}{InsideSocketUri.SchemeDelimiter}{host}{InsideSocketUri.PortDelimiter}{port}";
         }
 
         private static string InitializationUriString(string uriString)
         {
-            var protol = GetProtol(uriString);
+            var protol = InsideSocketUri.GetScheme(uriString);
             if (uriString.StartsWith(protol, StringComparison.OrdinalIgnoreCase))
             {
                 return uriString;
             }
-            return $"{protol}{Uri.SchemeDelimiter}{uriString}";
-        }
-
-        public static string GetProtol(string uriString)
-        {
-            var protol = Regex.Match(uriString, @"[a-zA-Z.]+\:\/\/");
-            if (protol.Success)
-            {
-                return protol.Value.TrimEnd(':','/','/');
-            }
-
-            return Uri.UriSchemeNetTcp;
-        }
-
-        public static IPAddress ParseIP(string host)
-        {
-            switch (host)
-            {
-                case "[::]":
-                case "::":
-                    return IPAddress.IPv6Any;
-                case "[::1]":
-                case "::1":
-                    return IPAddress.IPv6Loopback;
-                case ":1":
-                case "127.1":
-                case "localhost":
-                    return IPAddress.Loopback;
-                case "*":
-                case "0.0.0.0":
-                    return IPAddress.Any;
-
-                default:
-                    return IPAddress.Parse(host);
-            }
-        }
-
-        public virtual bool Equal(IPEndPoint ip)
-        {
-            if (ip == null) return false;
-            return ip.Address.Equals(this.IP) && (ip.Port == this.Port || this.Port == 0);
-        }
-
-        public virtual bool Equal(ISocketUri host)
-        {
-            return IP.Equals(host.IP) && (Port == host.Port || Port == 0 || host.Port == 0);
+            return $"{protol}{InsideSocketUri.SchemeDelimiter}{uriString}";
         }
     }
 }

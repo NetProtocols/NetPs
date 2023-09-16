@@ -194,7 +194,7 @@
                 var ip = Socket.LocalEndPoint as IPEndPoint;
                 if (ip != null)
                 {
-                    Address = new SocketUri($"{Address.Scheme}{SocketUri.SchemeDelimiter}{Address.Host}{SocketUri.PortDelimiter}{ip.Port}");
+                    Address = new InsideSocketUri(Address.Scheme, Address.Host, ip.Port);
                     IPEndPoint.Port = ip.Port;
                 }
             }

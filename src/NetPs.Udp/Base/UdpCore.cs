@@ -31,7 +31,7 @@
 
         public virtual void Bind(string address)
         {
-            this.Bind(new SocketUri(address));
+            this.Bind(new InsideSocketUri(InsideSocketUri.UriSchemeUDP, address));
             this.IsUdp();
         }
 
