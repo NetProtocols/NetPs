@@ -137,7 +137,7 @@
                         if (CheckBit(b, 2))
                         {
                             //ipv6
-                            var ip = new IPAddress(queue.Dequeue(8));
+                            var ip = new IPAddress(queue.Dequeue(16));
                             var port = queue.DequeueUInt16();
                             this.Address = new IPEndPoint(ip, port);
                         }
@@ -183,7 +183,7 @@
                             if (CheckBit(b, 2))
                             {
                                 //ipv6
-                                this.FuzhuAddress = new IPAddress(queue.Dequeue(8));
+                                this.FuzhuAddress = new IPAddress(queue.Dequeue(16));
                             }
                             else
                             {
@@ -242,7 +242,7 @@
                         queue.Enqueue(ip);
                         queue.EnqueueUInt16(port);
                     }
-                    else if (ip.Length == 8)
+                    else if (ip.Length == 16)
                     {
                         queue.EnqueueByte((byte)HolePacketTag.AddressV6);
                         queue.Enqueue(ip);
@@ -267,7 +267,7 @@
                                 queue.EnqueueByte((byte)HolePacketTag.AddressV4);
                                 queue.Enqueue(ip);
                             }
-                            else if (ip.Length == 8)
+                            else if (ip.Length == 16)
                             {
                                 queue.EnqueueByte((byte)HolePacketTag.AddressV6);
                                 queue.Enqueue(ip);
@@ -348,7 +348,7 @@
                                 offset += 4;
                                 break;
                             case (byte)HolePacketTag.AddressV6:
-                                offset += 8;
+                                offset += 16;
                                 break;
                             case (byte)HolePacketTag.End: continue;
                             default: return false;
@@ -361,7 +361,7 @@
                         offset += 6;
                         continue;
                     case (byte)HolePacketTag.AddressV6:
-                        offset += 10;
+                        offset += 18;
                         continue;
                     case (byte)HolePacketTag.End: break;
                     default: return false;

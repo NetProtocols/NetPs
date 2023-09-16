@@ -2,6 +2,7 @@
 {
     using System;
     using System.Net;
+    using System.Net.Sockets;
     using System.Text.RegularExpressions;
 
     public class SocketUri : Uri, ISocketUri
@@ -39,6 +40,8 @@
 
         private static string InitializationUriString(string protol, string host, int port)
         {
+            //ipv6
+            if (host.Contains(PortDelimiter)) host = $"[{host}]";
             return $"{protol}{Uri.SchemeDelimiter}{host}{PortDelimiter}{port}";
         }
 

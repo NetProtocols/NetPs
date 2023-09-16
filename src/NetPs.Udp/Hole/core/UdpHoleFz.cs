@@ -34,12 +34,6 @@
             this.Core = core;
             this.Core.PacketReceived += Core_PacketReceived;
         }
-        public virtual void Verify(string tag, HolePacket packet)
-        {
-            if (packet.Operation != HolePacketOperation.Hole) return;
-
-            var vpacket = new HolePacket();
-        }
         private async void Core_PacketReceived(HolePacket packet)
         {
             switch (packet.Operation)
@@ -69,11 +63,12 @@
                 {
                     tx.Transport(pkt.GetData());
                     await Task.Delay(10);
-                    if (fz_callback[tag]) return;
+                    if (has_fz(tag)) return;
                 }
             }
         }
 
+        private bool has_fz(string tag) => fz_callback.ContainsKey(tag) && fz_callback[tag];
         public virtual void Dispose()
         {
             lock (this)

@@ -35,10 +35,34 @@
         /// </summary>
         void Enqueue(byte[] block, int offset, int length);
         /// <summary>
-        /// 退出
+        /// 推出
         /// </summary>
         int Dequeue(byte[] block, int offset, int length);
         int RequestRead(int length);
         void RecordRead(int length);
+    }
+
+    public static class IQueueStreamExtra
+    {
+        /// <summary>
+        /// 推入
+        /// </summary>
+        /// <remarks>
+        /// 推入全部数据。offset: 0, length: -1
+        /// </remarks>
+        public static void Enqueue(this IQueueStream stream, byte[] block)
+        {
+            stream.Enqueue(block, 0, -1);
+        }
+        /// <summary>
+        /// 推出
+        /// </summary>
+        /// <remarks>
+        /// 推出全部数据。offset: 0, length: -1
+        /// </remarks>
+        public static int Dequeue(this IQueueStream stream, byte[] block)
+        {
+            return stream.Dequeue(block, 0, -1);
+        }
     }
 }

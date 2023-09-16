@@ -61,10 +61,10 @@
             var tx = Core.GetTx(ip);
             var pkt = new HolePacket(HolePacketOperation.HoleCallback, Id, Key);
             var i = 0;
-            while (i < 25)
+            while (i < 2500)
             {
                 tx.Transport(pkt.GetData());
-                await Task.Delay(10);
+                await Task.Delay(1);
                 if (is_holed) return;
             }
         }

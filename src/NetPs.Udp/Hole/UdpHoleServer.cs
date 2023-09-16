@@ -49,22 +49,24 @@
                 case HolePacketOperation.Hole:
                     var tag = records.ApplyVerifyTag(packet);
                     var ip = records.FindAddr(packet.Id);
-                    records.Record(HoleFzBag.Create(tag, ip, packet.Source));
-                    await start_fuzhu(tag, fuzhu1, ip);
+                    var record = HoleFzBag.Create(tag, ip, packet.Source);
+                    records.Record(record);
+                    await start_fuzhu(tag, fuzhu1, record);
+                    //tell_holed(tag, record, this);
                     break;
             }
         }
 
-        private void tell_holed(string tag, HoleFzBag record)
+        private void tell_holed(string tag, HoleFzBag record, UdpHoleCore fz)
         {
             var info = records.GetInfoByTag(tag);
             var pkt = new HolePacket(HolePacketOperation.Hole, info.Id, info.Key);
             pkt.Address = info.Address;
             pkt.Address.Port = record.CurrentPort;
-
             var tx = this.GetTx(record.RequestAddress);
             tx.Transport(pkt.GetData());
-            tx = this.GetTx(info.Address);
+
+            tx = fz.GetTx(pkt.Address);
             pkt.Address = record.RequestAddress;
             tx.Transport(pkt.GetData());
         }
@@ -76,14 +78,15 @@
                     end_fuzhu(packet.FuzhuTag, packet.Source, fuzhu1);
                     var record = records.GetFzRecord(packet.FuzhuTag);
                     record.Update(packet.Source);
-                    if (record.Verity())
-                    {
-                        this.tell_holed(packet.FuzhuTag, record);
-                    }
-                    else
-                    {
-                        await start_fuzhu(packet.FuzhuTag, fuzhu2, packet.Source);
-                    }
+                    await start_fuzhu(packet.FuzhuTag, fuzhu2, record);
+                    //if (record.Verity())
+                    //{
+                    //    this.tell_holed(packet.FuzhuTag, record, fuzhu1);
+                    //}
+                    //else
+                    //{
+                    //    await start_fuzhu(packet.FuzhuTag, fuzhu2, record);
+                    //}
                     break;
             }
         }
@@ -95,14 +98,15 @@
                     end_fuzhu(packet.FuzhuTag, packet.Source, fuzhu2);
                     var record = records.GetFzRecord(packet.FuzhuTag);
                     record.Update(packet.Source);
-                    if (record.Verity())
-                    {
-                        this.tell_holed(packet.FuzhuTag, record);
-                    }
-                    else
-                    {
-                        await start_fuzhu(packet.FuzhuTag, fuzhu3, packet.Source);
-                    }
+                    await start_fuzhu(packet.FuzhuTag, fuzhu3, record);
+                    //if (record.Verity())
+                    //{
+                    //    this.tell_holed(packet.FuzhuTag, record, fuzhu2);
+                    //}
+                    //else
+                    //{
+                    //    await start_fuzhu(packet.FuzhuTag, fuzhu3, record);
+                    //}
                     break;
             }
         }
@@ -116,21 +120,21 @@
                     record.Update(packet.Source);
                     if (record.Verity())
                     {
-                        this.tell_holed(packet.FuzhuTag, record);
+                        this.tell_holed(packet.FuzhuTag, record, fuzhu3);
                     }
                     break;
             }
         }
 
-        private async Task start_fuzhu(string tag, UdpHoleCore fz, IPEndPoint dst)
+        private async Task start_fuzhu(string tag, UdpHoleCore fz, HoleFzBag record)
         {
             fz_callback[tag] = false;
             var pkt = new HolePacket();
             pkt.Fuzhu(tag, this.Address.IP, fz.Address.Port);
-            var tx = this.GetTx(dst);
+            var tx = this.GetTx(record.Address, record.CurrentPort);
             tx.Transport(pkt.GetData());
             pkt.IsCallback = true;
-            tx = fz.GetTx(dst);
+            tx = fz.GetTx(record.Address, record.CurrentPort);
             var i = 0;
             while (i++ < 20)
             {

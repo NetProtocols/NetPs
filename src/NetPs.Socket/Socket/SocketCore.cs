@@ -58,16 +58,6 @@
         public virtual event SocketExceptionHandler SocketException;
 
         /// <summary>
-        /// Gets or sets 地址.
-        /// </summary>
-        public virtual ISocketUri Address { get; protected set; }
-
-        /// <summary>
-        /// Gets or sets 终端地址.
-        /// </summary>
-        public virtual IPEndPoint IPEndPoint { get; protected set; }
-
-        /// <summary>
         /// Gets a value indicating whether 存活.
         /// </summary>
         public virtual bool Actived => !this.IsClosed;

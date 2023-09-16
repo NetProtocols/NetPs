@@ -31,7 +31,6 @@
         {
             this.Task = new TaskFactory();
             this.core = udpCore;
-            this.remotePoint = new IPEndPoint(IPAddress.Any, 0);
             this.nBuffersize = Consts.ReceiveBytes;
             this.bBuffer = new byte[this.nBuffersize];
             this.ReceicedObservable = Observable.FromEvent<ReveicedStreamHandler, UdpData>(handler => data => handler(data), evt => this.Received += evt, evt => this.Received -= evt);
@@ -76,7 +75,10 @@
                 if (this.core.Receiving) return;
                 this.core.Receiving = true;
             }
-
+            if (this.remotePoint == null)
+            {
+                this.remotePoint = core.CreateIPAny();
+            }
             this.events?.OnReceiving(this);
             this.x_StartReveice();
         }

@@ -1,16 +1,23 @@
 ﻿namespace NetPs.Socket
 {
     using System;
+    using System.Net;
     using System.Net.Sockets;
 
     public abstract class SocketFunc
     {
-
         /// <summary>
         /// Gets or sets tcp client.
         /// </summary>
         public virtual Socket Socket { get; protected set; }
-
+        /// <summary>
+        /// Gets or sets 地址.
+        /// </summary>
+        public virtual ISocketUri Address { get; protected set; }
+        /// <summary>
+        /// Gets or sets 终端地址.
+        /// </summary>
+        public virtual IPEndPoint IPEndPoint { get; protected set; }
         /// <summary>
         /// 复用地址
         /// </summary>
@@ -24,7 +31,6 @@
             this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, optionValue);
 
         }
-
         /// <summary>
         /// Linger
         /// </summary>
@@ -37,6 +43,14 @@
         {
             var optionValue = new LingerOption(enable, seconds);
             this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Linger, optionValue);
+        }
+        public virtual IPEndPoint CreateIPAny()
+        {
+            if (Address.IsIpv6())
+            {
+                return new IPEndPoint(IPAddress.IPv6Any, 0);
+            }
+            return new IPEndPoint(IPAddress.Any, 0);
         }
     }
 }

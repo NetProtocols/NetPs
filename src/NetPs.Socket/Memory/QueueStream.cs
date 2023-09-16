@@ -154,7 +154,7 @@
         /// <param name="block">数据块.</param>
         /// <param name="offset">偏移.</param>
         /// <param name="length">长度.</param>
-        public virtual void Enqueue(byte[] block, int offset = 0, int length = -1)
+        public virtual void Enqueue(byte[] block, int offset, int length)
         {
             try
             {
@@ -278,7 +278,7 @@
         /// <param name="block">数据块.</param>
         /// <param name="offset">偏移.</param>
         /// <param name="length">长度.</param>
-        public virtual int Dequeue(byte[] block, int offset = 0, int length = -1)
+        public virtual int Dequeue(byte[] block, int offset, int length)
         {
             try
             {
