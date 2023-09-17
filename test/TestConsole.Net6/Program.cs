@@ -12,6 +12,7 @@ namespace TestConsole.Net6
     {
         static void Main(string[] args) 
         {
+            new PingTest();
             var addr = "[::1]:9999";
             var s = new UdpHoleServer();
             s.Run(addr);

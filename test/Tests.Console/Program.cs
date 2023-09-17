@@ -8,6 +8,7 @@
     {
         static void Main()
         {
+            new DnsTest();
             new TcpTest();
         }
     }

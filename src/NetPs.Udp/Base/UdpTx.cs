@@ -6,6 +6,7 @@
     using System.Net.Sockets;
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     public class UdpTx : IDisposable, ITx
@@ -80,10 +81,7 @@
             this.Disposables.Dispose();
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    this.core.Socket.EndSend(AsyncResult);
-                });
+                SocketCore.WaitHandle(AsyncResult, () => { });
                 this.AsyncResult = null;
             }
             this.EndTransport = null;

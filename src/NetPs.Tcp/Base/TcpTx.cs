@@ -80,13 +80,13 @@
             }
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    if (this.Core.CanEnd)
-                    {
-                        this.Core.Socket.EndSend(AsyncResult);
-                    }
-                });
+                SocketCore.WaitHandle(AsyncResult, () => { });
+                //{
+                //    if (this.Core.CanEnd)
+                //    {
+                //        this.Core.Socket.EndSend(AsyncResult);
+                //    }
+                //});
                 this.AsyncResult = null;
             }
             this.EndTransport = null;

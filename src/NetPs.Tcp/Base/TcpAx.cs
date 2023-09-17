@@ -53,10 +53,10 @@
             }
             if (AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    this.Core.Socket.EndAccept(AsyncResult);
-                });
+                SocketCore.WaitHandle(AsyncResult, () => { });
+                //{
+                //    this.Core.Socket.EndAccept(AsyncResult);
+                //});
                 this.AsyncResult = null;
             }
             this.Accepted = null;
@@ -87,7 +87,7 @@
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
-            if (this.is_disposed) return;
+            if (this.Core.IsDisposed) return;
             try
             {
                 Socket client = null;

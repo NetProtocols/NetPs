@@ -230,10 +230,10 @@
             }
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    this.Socket.EndConnect(AsyncResult);
-                });
+                SocketCore.WaitHandle(AsyncResult, () => { });
+                //{
+                //    this.Socket.EndConnect(AsyncResult);
+                //});
                 this.AsyncResult = null;
             }
             base.Dispose();

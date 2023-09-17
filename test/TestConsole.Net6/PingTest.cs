@@ -9,7 +9,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TestsConsole
+namespace TestConsole.Net6
 {
     internal class PingTest
     {

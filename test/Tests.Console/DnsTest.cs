@@ -32,7 +32,6 @@ namespace TestsConsole
             var host = "nuget.org";
             var dns = DnsHost.DNS_NETEASE;
             Console.WriteLine(dns);
-            host = Console.ReadLine();
             while (true)
             {
                 Console.Write("dns-test> ");
