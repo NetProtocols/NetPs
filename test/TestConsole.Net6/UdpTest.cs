@@ -2,44 +2,39 @@
 using NetPs.Udp;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace TestConsole.Net6
 {
-    public class UdpTest : IDisposable,IRxEvents
+    public class UdpTest : IDisposable
     {
+        byte[] testdata = new byte[4096];
         UdpHost host { get; set; }
         UdpHost host2 { get; set; }
         public UdpTest()
         {
             host = new UdpHost("127.0.0.1:2401");
-            host.Rx.BindEvents(this);
+            host.Rx.Received += Rx_Received;
             host.Rx.StartReveice();
             host2 = new UdpHost();
-            var tx = host2.GetTx("127.0.0.1:2401");
-            tx.Transport(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, }, 0, -1);
+            var tx = host.GetTx("127.0.0.1:2401");
+            tx.Transport(testdata);
+            var tx2 = host2.GetTx("127.0.0.1:2401");
+            tx2.Transport(testdata);
+        }
 
+        private void Rx_Received(UdpData data)
+        {
+            Debug.Assert(data.Data != testdata);
         }
 
         public void Dispose()
         {
             host.Dispose();
             host2.Dispose();
-        }
-
-        public void OnReceiving(IRx rx)
-        {
-        }
-
-        public void OnReceived(IRx rx)
-        {
-            Console.Write(rx.Buffer);
-        }
-
-        public void OnDisposed(IRx rx)
-        {
         }
     }
 }
