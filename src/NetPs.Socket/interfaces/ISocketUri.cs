@@ -27,6 +27,14 @@
 
     public static class ISocketUriExtra
     {
+        public static bool IsIpv6(this IPAddress ip)
+        {
+            return ip.AddressFamily is AddressFamily.InterNetworkV6;
+        }
+        public static bool IsIpv4(this IPAddress ip)
+        {
+            return ip.AddressFamily is AddressFamily.InterNetwork;
+        }
         public static bool IsIpv6(this ISocketUri uri)
         {
             return uri.IP.AddressFamily is AddressFamily.InterNetworkV6;
@@ -35,12 +43,20 @@
         {
             return uri.IP.AddressFamily is AddressFamily.InterNetwork;
         }
+        public static bool IsAny(this ISocketUri uri)
+        {
+            return uri.IP == IPAddress.Any || uri.IP == IPAddress.IPv6Any;
+        }
+        public static ISocketUri ToLoopback(this ISocketUri uri)
+        {
+            if (uri.IsIpv4()) return new InsideSocketUri(uri.Scheme, IPAddress.Loopback, uri.Port);
+            return  new InsideSocketUri(uri.Scheme, IPAddress.IPv6Loopback, uri.Port);
+        }
         public static bool Equal(this ISocketUri uri, IPEndPoint ip)
         {
             if (ip == null) return false;
             return ip.Address.Equals(uri.IP) && (ip.Port == uri.Port || uri.Port == 0);
         }
-
         public static bool Equal(this ISocketUri uri, ISocketUri host)
         {
             return uri.IP.Equals(host.IP) && (uri.Port == host.Port || uri.Port == 0 || host.Port == 0);

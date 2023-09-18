@@ -24,6 +24,10 @@
         private int offset { get; set; }
         private int length { get; set; }
         protected readonly CompositeDisposable disposables;
+        internal UdpTx()
+        {
+            this.disposables = new CompositeDisposable();
+        }
         /// <summary>
         /// Initializes a new instance of the <see cref="UdpTx"/> class.
         /// </summary>
@@ -81,7 +85,7 @@
             this.Disposables.Dispose();
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () => { });
+                SocketCore.WaitHandle(AsyncResult);
                 this.AsyncResult = null;
             }
             this.EndTransport = null;
@@ -168,7 +172,7 @@
         {
             try
             {
-                if (this.is_disposed) return;
+                if (this.is_disposed || this.core.IsClosed) return;
                 this.AsyncResult = this.core.Socket.BeginSendTo(this.buffer, this.offset, this.length, SocketFlags.None, this.RemoteIP, this.SendCallback, null);
                 return;
             }
@@ -183,7 +187,7 @@
 
         private void SendCallback(IAsyncResult asyncResult)
         {
-            if (this.is_disposed) return;
+            if (this.is_disposed || this.core.IsClosed) return;
             AsyncResult = null;
             try
             {

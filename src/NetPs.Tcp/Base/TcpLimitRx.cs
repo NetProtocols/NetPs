@@ -1,6 +1,7 @@
 ﻿using NetPs.Socket;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace NetPs.Tcp
 {
@@ -12,10 +13,12 @@ namespace NetPs.Tcp
         private bool is_disposed = false;
         private long last_time { get; set; }
         private int received_count { get; set; }
-        public int Limit { get; protected set; } // must gt 0
-        public long LastTime => this.last_time;
+        private CancellationToken CancellationToken { get; set; }
+        public virtual int Limit { get; protected set; }
+        public virtual long LastTime => this.last_time;
         public TcpLimitRx() : base()
         {
+            this.CancellationToken = new CancellationToken();
             this.Limit = 0;
             this.received_count = 0;
             this.last_time = DateTime.Now.Ticks;
@@ -27,6 +30,7 @@ namespace NetPs.Tcp
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
+            this.CancellationToken.WaitHandle.Close();
             base.Dispose();
         }
 
@@ -48,11 +52,11 @@ namespace NetPs.Tcp
             if (this.Limit > 0)
             {
                 received_count += this.nReceived;
-                wait_limit();
+                Task.StartNew(wait_limit, CancellationToken);
             }
         }
 
-        private void wait_limit()
+        private async Task wait_limit()
         {
             if (this.received_count > this.Limit)
             {
@@ -62,7 +66,9 @@ namespace NetPs.Tcp
                     var wait = this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
-                        Thread.Sleep(wait);
+                        if (CancellationToken.IsCancellationRequested) return;
+                        await global::System.Threading.Tasks.Task.Delay(wait, CancellationToken); //阈值10ms, 小于则不等待
+                        if (CancellationToken.IsCancellationRequested) return;
                         last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else

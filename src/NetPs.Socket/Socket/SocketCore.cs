@@ -36,7 +36,7 @@
         private bool is_closed = true;
 
         protected readonly CompositeDisposable h_disposables;
-        public bool IsDisposed => is_disposed;
+        public override bool IsDisposed => is_disposed;
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
         /// </summary>
@@ -65,7 +65,7 @@
         /// <summary>
         /// Gets a value indicating whether gets 链接已关闭.
         /// </summary>
-        public virtual bool IsClosed => this.is_closed;
+        public override bool IsClosed => this.is_closed;
 
         /// <summary>
         /// Gets 地址.
@@ -129,13 +129,7 @@
                 this.is_disposed = true;
             }
             this.Disposables.Dispose();
-            if (this.Socket != null)
-            {
-                //防止未初始化socket的情况
-                this.Socket.Close();
-                //if (this.Socket is IDisposable o) o.Dispose();
-                //this.Socket = null;
-            }
+            close_socket();
         }
 
         /// <summary>
@@ -198,6 +192,7 @@
                     IPEndPoint.Port = ip.Port;
                 }
             }
+            if (this.Address.Scheme == InsideSocketUri.UriSchemeUDP) this.IsUdp();
         }
         public virtual void Bind(ISocketUri address)
         {
@@ -210,8 +205,7 @@
             this.Address = address;
             this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
         }
-
-        public static void WaitHandle(IAsyncResult asyncResult, Action end_function)
+        public static void WaitHandle(IAsyncResult asyncResult)
         {
             try
             {
@@ -226,7 +220,6 @@
                 }
                 else
                 {
-                    end_function();
                     asyncResult.AsyncWaitHandle.Close();
                 }
             }

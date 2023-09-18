@@ -14,6 +14,9 @@
         public const string UriSchemeTCP = "net.tcp";
         public const string UriSchemeUDP = "net.udp";
         public const string UriSchemeICMP = "net.icmp";
+        internal InsideSocketUri()
+        {
+        }
         public InsideSocketUri(string uri) : this(GetScheme(uri), uri)
         {
         }
@@ -29,6 +32,13 @@
             this.Scheme = protol;
             this.Host = host;
             this.IP = ParseIPAddress(host);
+            this.Port = port;
+        }
+        public InsideSocketUri(string protol, IPAddress ip, int port)
+        {
+            this.Scheme = protol;
+            this.Host = ip.ToString();
+            this.IP = ip;
             this.Port = port;
         }
         public InsideSocketUri(string protol, IPEndPoint point)
@@ -62,7 +72,6 @@
                 case "[::1]":
                 case "::1":
                     return IPAddress.IPv6Loopback;
-                case ":1":
                 case "127.1":
                 case "localhost":
                     return IPAddress.Loopback;
@@ -120,6 +129,36 @@
             }
 
             return 0;
+        }
+
+        public static bool IsIPAddress(string ip)
+        {
+            if (ip.Contains("."))
+            {
+                var b= ip.Split('.');
+                if (b.Length > 4) return false;
+                for (var i = 0; i < b.Length; i++)
+                {
+                    var re = Regex.Match(b[i], @"[0-9]+");
+                    if (!re.Success) return false;
+                    if (re.Value != b[i]) return false;
+                }
+                return true;
+            }else if (ip.Contains(":"))
+            {
+                ip = ip.Trim('[', ']');
+                var b = ip.Split(':');
+                if (b.Length > 8) return false;
+                for (var i = 0; i < b.Length; i++)
+                {
+                    if (b[i] == string.Empty) continue;
+                    var re = Regex.Match(b[i], @"[0-9a-zA-Z]+");
+                    if (!re.Success) return false;
+                    if (re.Value != b[i]) return false;
+                }
+                return true;
+            }
+            return false;
         }
     }
 }

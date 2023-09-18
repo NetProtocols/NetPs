@@ -88,8 +88,8 @@
         public override void Dispose()
         {
             this.Ax.Accepted -= Ax_Accepted;
-            base.Dispose();
             this.Ax.Dispose();
+            base.Dispose();
         }
 
         /// <summary>

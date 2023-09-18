@@ -80,13 +80,7 @@
             }
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () => { });
-                //{
-                //    if (this.Core.CanEnd)
-                //    {
-                //        this.Core.Socket.EndSend(AsyncResult);
-                //    }
-                //});
+                SocketCore.WaitHandle(AsyncResult);
                 this.AsyncResult = null;
             }
             this.EndTransport = null;
@@ -154,9 +148,10 @@
 
         protected virtual void tell_transported()
         {
+            if (this.is_disposed) return;
             if (to_end())
             {
-                this.events?.OnTransported(this);
+                if (this.events != null) this.events.OnTransported(this);
                 if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
                 if (this.Transported != null) this.Transported.Invoke(this);
             }
@@ -178,20 +173,18 @@
         {
             try
             {
-                if (this.is_disposed || !this.Core.Actived) return;
+                if (this.Core.IsDisposed || !this.Core.Actived) return;
                 // Socket Poll 判断连接是否可用 this.core.Actived
-                var poll_ok = this.Core.Socket.Poll(Consts.SocketPollTime, SelectMode.SelectWrite);
-                if (poll_ok)
+                if (this.Core.PollWrite(Consts.SocketPollTime))
                 {
                     if (this.Core.CanBegin)
                     {
-                        if (this.is_disposed) return;
-                        AsyncResult = this.Core.Socket.BeginSend(this.buffer, this.offset, this.length, SocketFlags.None, this.SendCallback, null);
+                        AsyncResult = this.Core.BeginSend(this.buffer, this.offset, this.length, this.SendCallback);
                     }
                 }
                 else
                 {
-                    if (this.is_disposed) return;
+                    if (this.Core.IsDisposed) return;
                     restart_transport(); //对方缓冲区已满，重新发送
                 }
                 return;
@@ -211,10 +204,10 @@
             AsyncResult = null;
             try
             {
-                if (this.is_disposed || !this.Core.Actived) return;
+                if (!this.Core.Actived) return;
                 if (this.Core.CanEnd)
                 {
-                    this.state = this.Core.Socket.EndSend(asyncResult); //state决定是否冲重传
+                    this.state = this.Core.EndSend(asyncResult); //state决定是否冲重传
                     if (this.state <= 0)
                     {
                         restart_transport();

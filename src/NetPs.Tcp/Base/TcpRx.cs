@@ -97,18 +97,12 @@
             {
                 if (this.is_disposed) return;
                 this.is_disposed = true;
-                this.Core.Receiving = false;
+                if (this.Core != null) this.Core.Receiving = false;
             }
             this.events?.OnDisposed(this);
             if (AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    if (this.Core.CanEnd)
-                    {
-                        this.Core.Socket.EndReceive(AsyncResult);
-                    }
-                });
+                SocketCore.WaitHandle(AsyncResult);
                 this.AsyncResult = null;
             }
             this.bBuffer = null;
@@ -144,8 +138,7 @@
             {
                 if (this.Core.CanBegin)
                 {
-                    if (this.is_disposed) return;
-                    this.AsyncResult = this.Core.Socket.BeginReceive(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, this.ReceiveCallback, null);
+                    this.AsyncResult = this.Core.BeginReceive(this.bBuffer, 0, this.nBuffersize, this.ReceiveCallback);
                 }
                 return;
             }
@@ -165,10 +158,9 @@
             AsyncResult = null;
             try
             {
-                if (this.is_disposed) return;
                 if (this.Core.CanEnd)
                 {
-                    this.nReceived = this.Core.Socket.EndReceive(asyncResult);
+                    this.nReceived = this.Core.EndReceive(asyncResult);
                 }
                 else
                 {
@@ -179,7 +171,7 @@
                 {
                     //this.events?.OnShutdown(this);
                     //if (this.is_disposed) return;
-                    if (this.Core.Socket.Poll(1000, SelectMode.SelectRead))
+                    if (this.Core.PollRead(1000))
                     {
                         // 接收到 FIN
                         this.Core.FIN();
@@ -188,7 +180,6 @@
                     this.Core.Lose();
                     return;
                 }
-                if (this.is_disposed) return;
                 this.events?.OnReceived(this);
                 this.OnRecevied();
                 return;

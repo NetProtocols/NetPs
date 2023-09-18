@@ -22,6 +22,7 @@
         public TcpAx()
         {
             this.Task = new TaskFactory();
+            this.AsyncCallback = new AsyncCallback(this.AcceptCallback);
             this.AcceptObservable = Observable.FromEvent<TcpAx.AcceptSocketHandler, Socket>(handler => socket => handler(socket), evt => this.Accepted += evt, evt => this.Accepted -= evt);
         }
 
@@ -53,13 +54,12 @@
             }
             if (AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () => { });
+                SocketCore.WaitHandle(AsyncResult);
                 //{
                 //    this.Core.Socket.EndAccept(AsyncResult);
                 //});
                 this.AsyncResult = null;
             }
-            this.Accepted = null;
         }
 
         /// <summary>
@@ -68,11 +68,9 @@
         public virtual void StartAccept() => Task.StartNew(this.start_accept);
         private void start_accept()
         {
-            if (this.is_disposed) return;
             try
             {
-                AsyncCallback = new AsyncCallback(this.AcceptCallback);
-                AsyncResult = this.Core.Socket.BeginAccept(AsyncCallback, null);
+                AsyncResult = this.Core.BeginAccept(AsyncCallback);
                 return;
             }
             catch (ObjectDisposedException) { return; }
@@ -80,7 +78,7 @@
             catch (SocketException)
             {
                 //忽略 客户端连接错误
-                if (this.is_disposed) return;
+                if (this.Core.IsDisposed) return;
             }
 
             StartAccept();
@@ -90,11 +88,13 @@
             if (this.Core.IsDisposed) return;
             try
             {
-                Socket client = null;
-                client = this.Core.Socket.EndAccept(asyncResult);
+                var client = this.Core.EndAccept(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
                 StartAccept();
-                Task.StartNew(tell_accept, client);
+                if (client != null)
+                {
+                    Task.StartNew(tell_accept, client);
+                }
                 return;
             }
             catch (ObjectDisposedException) { return; }
@@ -103,8 +103,8 @@
             {
                 //请求错误不处理
                 if (this.is_disposed) return;
+                StartAccept();
             }
-            StartAccept();
         }
         private void tell_accept(object client)
         {

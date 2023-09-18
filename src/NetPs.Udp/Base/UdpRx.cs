@@ -23,6 +23,9 @@
         protected TaskFactory Task { get; set; }
         private IAsyncResult AsyncResult { get; set; }
         private IRxEvents events { get; set; }
+        internal UdpRx()
+        {
+        }
         /// <summary>
         /// Initializes a new instance of the <see cref="UdpRx"/> class.
         /// </summary>
@@ -90,16 +93,13 @@
             {
                 if (this.is_disposed) return;
                 this.is_disposed = true;
-                this.core.Receiving = false;
+                if (this.core != null) this.core.Receiving = false;
             }
 
             this.events?.OnDisposed(this);
             if (AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    this.core.Socket.EndReceive(AsyncResult);
-                });
+                SocketCore.WaitHandle(AsyncResult);
                 this.AsyncResult = null;
             }
             this.bBuffer = null;
@@ -126,23 +126,23 @@
 
         private void x_StartReveice()
         {
-            if (this.is_disposed) return;
+            if (this.is_disposed || this.core.IsClosed) return;
             try
             {
-                this.core.Socket.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, ref remotePoint, this.ReceiveCallback, null);
+                AsyncResult = this.core.Socket.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, ref remotePoint, this.ReceiveCallback, null);
                 return;
             }
             //释放
             catch (ObjectDisposedException) { }
             catch (NullReferenceException) { }
-            catch (SocketException e)
+            catch (SocketException)
             {
                 if (!this.is_disposed)
                 {
                     restart_receive(); //忽略 客户端连接错误
                     return;
                 }
-                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
+                //else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
         }
 
@@ -151,7 +151,7 @@
             this.AsyncResult = null;
             try
             {
-                if (this.is_disposed) return;
+                if (this.is_disposed || this.core.IsClosed) return;
                 this.nReceived = this.core.Socket.EndReceiveFrom(asyncResult, ref this.remotePoint);
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.nReceived > 0)
@@ -168,7 +168,7 @@
             //释放
             catch (ObjectDisposedException) { }
             catch (NullReferenceException) { }
-            catch (SocketException e)
+            catch (SocketException)
             {
                 this.nReceived = -1;
                 if (!this.is_disposed)
@@ -176,7 +176,7 @@
                     restart_receive(); //忽略 客户端连接错误
                     return;
                 }
-                else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.ReadUDP)) this.core.ThrowException(e);
+                //else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.ReadUDP)) this.core.ThrowException(e);
             }
 
         }

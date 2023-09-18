@@ -38,13 +38,18 @@
         public const string DNS_GREENTEAM_2 = "209.88.198.133";
         public const string DNS_CLOUDFLARE = "1.1.1.1";
         #endregion
+        private bool is_disposed = false;
         public const int DEFAUlT_TIMEOUT = 2000;
         public const int DEFAULT_RETRY_TIMES = 1;
         private static ushort id = 1;
         protected readonly CompositeDisposable disposables;
-        private UdpHost host;
+        private UdpHost host { get; set; }
         public int TimeoutMillisenconds { get; }
         public int RetryTimes { get; }
+        internal DnsHost()
+        {
+            this.disposables = new CompositeDisposable();
+        }
         public DnsHost(string address, int timeout = DEFAUlT_TIMEOUT, int retry_times = DEFAULT_RETRY_TIMES) : this(timeout, retry_times)
         {
             host = new UdpHost(address);
@@ -70,13 +75,17 @@
         public virtual IObservable<DnsPacket> PacketReceivedObservable { get; protected set; }
         public void Dispose()
         {
+            lock (this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             this.disposables.Dispose();
             
             if (host != null)
             {
                 host.Rx.Received -= Rx_Received;
-                host.Dispose();
-                host = null;
+                host.Close();
             }
         }
 

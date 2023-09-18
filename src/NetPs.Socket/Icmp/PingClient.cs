@@ -14,6 +14,9 @@
         public int Timeout { get; private set; }
         private IReceivedFrom ReceivedFrom { get; set; }
         public int BufferSize { get; private set; }
+        internal PingClient()
+        {
+        }
         public PingClient(int timeout, int buffer_size)
         {
             BufferSize = buffer_size;
@@ -37,8 +40,9 @@
 
         protected virtual void BindTo()
         {
-            Socket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.Icmp);
-            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, Timeout);
+            Address = new InsideSocketUri(InsideSocketUri.UriSchemeICMP, new IPEndPoint(IPAddress.Any, 0));
+            Socket = new_socket();
+            this.SetSendTimeout(Timeout);
             this.Socket.Bind(new IPEndPoint(IPAddress.Any, 0));
         }
 

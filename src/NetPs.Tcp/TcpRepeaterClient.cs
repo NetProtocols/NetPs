@@ -7,6 +7,9 @@
     {
         private bool is_disposed = false;
         private TcpClient tcpClient { get; set; }
+        internal TcpRepeaterClient()
+        {
+        }
         public TcpRepeaterClient(IDataTransport transport) : base()
         {
             this.Rx.BindTransport(transport);
@@ -21,6 +24,11 @@
 
         public void Limit(int limit) => this.Rx.SetLimit(limit);
 
+        protected override void OnConfiguration()
+        {
+            base.OnConfiguration();
+            this.SetLinger(false, 0);
+        }
         public override void Dispose()
         {
             lock (this)

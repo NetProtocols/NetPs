@@ -8,6 +8,9 @@
     {
         private bool is_disposed = false;
         private IQueueStream cache { get; set; }
+        internal UdpQueueTx()
+        {
+        }
         public UdpQueueTx(UdpCore udpCore, IPEndPoint endPoint) : base(udpCore, endPoint)
         {
             this.cache = SocketCore.StreamPool.GET();

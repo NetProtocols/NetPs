@@ -10,9 +10,12 @@ namespace TestConsole.Net6
 {
     internal class Program : IHeatingWatch
     {
-        static void Main(string[] args) 
+        static void Main(string[] args)
         {
+            Task.Factory.StartNew(() => Food.Heating()).Wait();
+            new TcpReapterTest("172.17.0.161:15244", "0.0.0.0:5244");
             new PingTest();
+            Console.ReadLine();
             var addr = "[::1]:9999";
             var s = new UdpHoleServer();
             s.Run(addr);
@@ -27,7 +30,6 @@ namespace TestConsole.Net6
             c2.He.Holed += He_Holed;
             c1.Received += C1_Received;
             c2.He.Hole("c1", "1234");
-            //new TcpReapterTest("172.17.0.1:80", "0.0.0.0:3021");
             Console.ReadLine();
         }
 

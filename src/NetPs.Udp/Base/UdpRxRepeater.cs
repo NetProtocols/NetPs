@@ -5,6 +5,7 @@
 
     public class UdpRxRepeater : UdpRx, IDisposable, IEndTransport, ISpeedLimit
     {
+        internal UdpRxRepeater() { }
         public UdpRxRepeater(UdpCore udpCore) : base(udpCore)
         {
         }
