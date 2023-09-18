@@ -1,4 +1,4 @@
-﻿namespace NetPs.Socket.Icmp
+﻿namespace NetPs.Socket.Packets
 {
     using System;
     using System.Diagnostics;
@@ -17,8 +17,9 @@
         Response = 10,
     }
 
-    public class PingPacket : IPingPacket
+    public class PingPacket : IPingPacket, IPacket
     {
+        public static readonly byte[] DATA_32 = { 0x2e, 0x2e, 0x2e, 0x2e, 0x20, 0x2e, 0x20, 0x2d, 0x2e, 0x2d, 0x2d, 0x20, 0x2e, 0x2d, 0x2d, 0x2e, 0x20, 0x2e, 0x2e, 0x20, 0x2d, 0x2e, 0x20, 0x2d, 0x2d, 0x2e, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20 };
         private byte[] x_data { get; set; }
         public IPAddress Address { get; set; }
         public byte Type { get; private set; }
@@ -27,7 +28,6 @@
         public int Identifier { get; private set; }
         public int SequenceNumber { get; private set; }
         public byte[] Data { get; private set; }
-
         public PingPacket(byte[] data, PingPacketKind kind = PingPacketKind.Request)
         {
             switch (kind)
@@ -47,12 +47,7 @@
 
         public PingPacket(byte[] data)
         {
-            Type = data[0];
-            Code = data[1];
-            Checksum = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, 2, 2).ToArray(), 0);
-            Identifier = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, 4, 2).ToArray(), 0);
-            SequenceNumber = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, 6, 2).ToArray(), 0);
-            Data = new ReadOnlySpan<byte>(data, 8, data.Length - 8).ToArray();
+            this.SetData(data);
         }
 
         public virtual PingPacket Next()
@@ -71,6 +66,10 @@
             BitConverter.GetBytes(GetCurrentProcessID()).CopyTo(x_data, 4);
             BitConverter.GetBytes(this.SequenceNumber).CopyTo(x_data, 6);
             Data.CopyTo(x_data, 8);
+            if (Address.IsIpv6())
+            {
+                x_data[0] <<= 4; //icmpv6: type 0x80, not ipv4 0x08
+            }
             BitConverter.GetBytes((short)this.MakeCheckSum(x_data, len)).CopyTo(x_data, 2);
             return x_data;
         }
@@ -94,12 +93,13 @@
         {
             var x_out = 0;
             var counter = 0;
-            packet_data[1] = 0;//checksum
-            while (size > 0)
+            packet_data[2] = 0;//checksum
+            packet_data[3] = 0;//checksum
+            while (--size > 0)
             {
-                x_out += packet_data[counter];
-                counter += 1;
-                size -= 1;
+                x_out += packet_data[counter++];
+                x_out += packet_data[counter++] << 8;
+                size --;
             }
 
             x_out = (x_out >> 16) + (x_out & 0xffff);
@@ -118,6 +118,30 @@
             {
                 return 45;
             }
+        }
+
+        public byte[] GetData()
+        {
+            return this.GET();
+        }
+
+        public void SetData(byte[] data, int offset)
+        {
+            Type = data[offset++];
+            Code = data[offset++];
+            Checksum = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, offset, 2).ToArray(), 0);
+            offset += 2;
+            Identifier = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, offset, 2).ToArray(), 0);
+            offset += 2;
+            SequenceNumber = BitConverter.ToUInt16(new ReadOnlySpan<byte>(data, offset, 2).ToArray(), 0);
+            offset += 2;
+            Data = new ReadOnlySpan<byte>(data, offset, data.Length - offset).ToArray();
+        }
+
+        public bool Verity(byte[] data, int offset)
+        {
+            if (data.Length <= 8) return false;
+            return true;
         }
     }
 }

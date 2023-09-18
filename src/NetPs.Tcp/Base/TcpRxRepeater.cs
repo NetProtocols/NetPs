@@ -23,14 +23,18 @@
         public int Limit { get; protected set; }
         public long LastTime => this.last_time;
         private CancellationToken CancellationToken { get; set; }
-        public TcpRxRepeater(TcpCore tcpCore, IDataTransport transport) : base(tcpCore)
+        public TcpRxRepeater() : base()
         {
             this.CancellationToken = new CancellationToken();
-            this.Transport = transport;
-            this.Transport.LookEndTransport(this);
             this.Limit = -1;
             this.transported_count = 0;
             this.last_time = DateTime.Now.Ticks;
+        }
+
+        public virtual void BindTransport(IDataTransport transport)
+        {
+            this.Transport = transport;
+            this.Transport.LookEndTransport(this);
         }
 
         public override void Dispose()

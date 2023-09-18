@@ -57,7 +57,7 @@
 
         public UdpTx GetTx(string address)
         {
-            var uri = new SocketUri(address);
+            var uri = new InsideSocketUri(InsideSocketUri.UriSchemeUDP, address);
             return this.GetTx(new IPEndPoint(uri.IP, uri.Port));
         }
 

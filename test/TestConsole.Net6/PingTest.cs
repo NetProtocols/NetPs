@@ -1,4 +1,7 @@
-﻿using NetPs.Socket.Icmp;
+﻿using NetPs.Socket;
+using NetPs.Socket.Eggs;
+using NetPs.Socket.Icmp;
+using NetPs.Socket.Packets;
 using NetPs.Udp;
 using System;
 using System.Collections.Generic;
@@ -8,14 +11,16 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace TestsConsole
+namespace TestConsole.Net6
 {
     internal class PingTest
     {
         PingClient ping;
+        PingV6Client pingV6;
         public PingTest()
         {
             ping = new PingClient(3000, 8192);
+            pingV6 = new PingV6Client(3000, 8192);
             Run().Wait();
         }
 
@@ -29,11 +34,11 @@ namespace TestsConsole
                 try
                 {
                     if (string.IsNullOrEmpty(host)) continue;
-                    try
+                    if (InsideSocketUri.IsIPAddress(host))
                     {
-                        IPAddress.Parse(host);
+                        InsideSocketUri.ParseIPAddress(host);
                     }
-                    catch
+                    else
                     {
                         var dns_packet = await new DnsHost(1000, 1).SendReqA($"{DnsHost.DNS_ALI}:53", host);
                         host = dns_packet.Answers.Where(a => a.Address != null).Select(a => a.Address.ToString()).FirstOrDefault();
@@ -41,16 +46,25 @@ namespace TestsConsole
 
                     if (string.IsNullOrEmpty(host)) continue;
 
-                    var packet = new PingPacket(new byte[56], PingPacketKind.Request)
+                    var packet = new PingPacket(PingPacket.DATA_32, PingPacketKind.Request)
                     {
                         Address = IPAddress.Parse(host)
                     };
                     var sw = new Stopwatch();
 
-                    sw.Start();
-
-                    var p = await ping.Ping(packet);
-                    sw.Stop();
+                    IPingPacket p;
+                    if (packet.Address.IsIpv4())
+                    {
+                        sw.Start();
+                        p = await ping.Ping(packet);
+                        sw.Stop();
+                    }
+                    else
+                    {
+                        sw.Start();
+                        p = await pingV6.Ping(packet);
+                        sw.Stop();
+                    }
                     var times2 = sw.ElapsedMilliseconds;
                     Console.Write(p.Address.ToString());
                     Console.Write("  ");

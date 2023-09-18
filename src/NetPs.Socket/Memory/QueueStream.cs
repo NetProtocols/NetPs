@@ -11,7 +11,6 @@
     /// </summary>
     public class QueueStream : MemoryStream, IDisposable, IQueueStream
     {
-        public const int MAX_STACK_LENGTH = 10240; //80K，可扩大
         // 读取点s
         private long r { get; set; }
 
@@ -54,6 +53,16 @@
             this.Clear();
             this.x_buffer = bytes;
             nLength = bytes.Length;
+        }
+
+        /// <summary>
+        /// 只读
+        /// </summary>
+        /// <param name="bytes"></param>
+        public QueueStream(byte[] bytes, int offset) : this(bytes)
+        {
+            this.r = offset -1;
+            nLength = bytes.Length - offset;
         }
 
         /// <summary>
@@ -145,7 +154,7 @@
         /// <param name="block">数据块.</param>
         /// <param name="offset">偏移.</param>
         /// <param name="length">长度.</param>
-        public virtual void Enqueue(byte[] block, int offset = 0, int length = -1)
+        public virtual void Enqueue(byte[] block, int offset, int length)
         {
             try
             {
@@ -179,6 +188,9 @@
                 if (!this.is_disposed) throw;
             }
         }
+
+        public virtual int RequestRead(int length) => (int)this.get_record_out_len(length);
+        public virtual void RecordRead(int length) => this.record_out(length);
 
         public virtual void CopyTo(QueueStream stream, int length)
         {
@@ -266,7 +278,7 @@
         /// <param name="block">数据块.</param>
         /// <param name="offset">偏移.</param>
         /// <param name="length">长度.</param>
-        public virtual int Dequeue(byte[] block, int offset = 0, int length = -1)
+        public virtual int Dequeue(byte[] block, int offset, int length)
         {
             try
             {
@@ -349,6 +361,11 @@
             return BitConverter.ToInt32(this.Dequeue(4), 0);
         }
 
+        public virtual int DequeueUInt16()
+        {
+            return BitConverter.ToUInt16(this.Dequeue(2), 0);
+        }
+
         /// <summary>
         /// 出 Int32.
         /// </summary>
@@ -365,6 +382,16 @@
             bytes[2] = bytes[4];
             bytes[4] = 0;
             return BitConverter.ToInt64(bytes, 0);
+        }
+
+        public virtual void EnqueueByte(params byte[] b)
+        {
+            this.Enqueue(b);
+        }
+
+        public virtual void EnqueueUInt16(int num)
+        {
+            this.Enqueue(BitConverter.GetBytes((UInt16)num));
         }
 
         /// <summary>
@@ -468,32 +495,32 @@
 
         private long before_empty() => this.x - this.r - this.enda;
 
-        /// <summary>
-        /// 安全的写入
-        /// </summary>
-        private void SafeWrite(byte[] buffer, int offset, int count)
-        {
-            //fix: ObjectDisposedException Cannot access a closed Stream
-            if (!this.IsClosed && !this.locked) base.Write(buffer, offset, count);
-        }
+        ///// <summary>
+        ///// 安全的写入
+        ///// </summary>
+        //private void SafeWrite(byte[] buffer, int offset, int count)
+        //{
+        //    //fix: ObjectDisposedException Cannot access a closed Stream
+        //    if (!this.IsClosed && !this.locked) base.Write(buffer, offset, count);
+        //}
 
-        /// <summary>
-        /// 安全的读取
-        /// </summary>
-        private int SafeRead(byte[] buffer, int offset, int count)
-        {
-            //fix: ObjectDisposedException Cannot access a closed Stream
-            if (!this.IsClosed && !this.locked) return base.Read(buffer, offset, count);
-            return 0;
-        }
+        ///// <summary>
+        ///// 安全的读取
+        ///// </summary>
+        //private int SafeRead(byte[] buffer, int offset, int count)
+        //{
+        //    //fix: ObjectDisposedException Cannot access a closed Stream
+        //    if (!this.IsClosed && !this.locked) return base.Read(buffer, offset, count);
+        //    return 0;
+        //}
 
-        /// <summary>
-        /// 安全的指针位置设置
-        /// </summary>
-        /// <param name="position"></param>
-        private void SafePositionSet(long position)
-        {
-            if (!this.IsClosed && !this.locked) this.Position = position;
-        }
+        ///// <summary>
+        ///// 安全的指针位置设置
+        ///// </summary>
+        ///// <param name="position"></param>
+        //private void SafePositionSet(long position)
+        //{
+        //    if (!this.IsClosed && !this.locked) this.Position = position;
+        //}
     }
 }

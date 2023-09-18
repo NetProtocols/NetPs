@@ -74,7 +74,7 @@
         /// <summary>
         /// 可以开始
         /// </summary>
-        public virtual bool CanBegin => !(!(this.Socket?.Blocking ?? false) && !(this.Socket?.Connected ?? false));
+        public virtual bool CanBegin => !this.IsDisposed && !(!(this.Socket?.Blocking ?? false) && !(this.Socket?.Connected ?? false));
 
         /// <summary>
         /// Gets or sets a value indicating whether gets or sets 正在连接.
@@ -86,7 +86,7 @@
         /// <summary>
         /// 连接的地址
         /// </summary>
-        public virtual SocketUri RemoteAddress { get; protected set; }
+        public virtual ISocketUri RemoteAddress { get; protected set; }
 
         /// <summary>
         /// 连接的地址
@@ -114,7 +114,7 @@
         /// 创建新连接.
         /// </summary>
         /// <param name="address">.</param>
-        public virtual async Task<bool> ConnectAsync(SocketUri address)
+        public virtual async Task<bool> ConnectAsync(ISocketUri address)
         {
             if (this.connect_pre(address))
             {
@@ -122,19 +122,23 @@
             }
             return false;
         }
-        public virtual async Task<bool> ConnectAsync(string address) => await this.ConnectAsync(new SocketUri(address));
-        public virtual void Connect(SocketUri address)
+        public virtual async Task<bool> ConnectAsync(string address) => await this.ConnectAsync(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
+        public virtual void Connect(ISocketUri address)
         {
             if (this.connect_pre(address))
             {
                 this.just_start_connect();
             }
         }
-        public virtual void Connect(string address) => this.Connect(new SocketUri(address));
-        private bool connect_pre(SocketUri address)
+        public virtual void Connect(string address) => this.Connect(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
+        private bool connect_pre(ISocketUri address)
         {
             if (address != null)
             {
+                if (address.IsAny())
+                {
+                    address = address.ToLoopback();
+                }
                 lock (this)
                 {
                     if (this.is_connecting)
@@ -178,13 +182,8 @@
             {
                 if (CanFIN)
                 {
-                    try
-                    {
-                        //主动关闭的必要：发送 FIN 包
-                        this.Socket.Shutdown(how);
-                    }
-                    catch (ObjectDisposedException) { }
-                    catch (SocketException) { }
+                    //主动关闭的必要：发送 FIN 包
+                    this.socket_shutdown(how);
                 }
             }
             if (!base.IsClosed) this.Lose();
@@ -205,7 +204,7 @@
         /// </summary>
         protected virtual void OnConfiguration()
         {
-            this.Socket = new Socket(this.Address.IP.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            this.Socket = new_socket();
             //this.Socket.Blocking = false;
             if (tcp_config != null) tcp_config.Invoke(this);
         }
@@ -230,10 +229,10 @@
             }
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    this.Socket.EndConnect(AsyncResult);
-                });
+                SocketCore.WaitHandle(AsyncResult);
+                //{
+                //    this.Socket.EndConnect(AsyncResult);
+                //});
                 this.AsyncResult = null;
             }
             base.Dispose();
@@ -268,13 +267,7 @@
             //超时释放
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult, () =>
-                {
-                    if (this.CanEnd)
-                    {
-                        this.Socket.EndConnect(AsyncResult);
-                    }
-                });
+                SocketCore.WaitHandle(AsyncResult);
                 this.AsyncResult = null;
             }
             tell_disconnected();
@@ -287,7 +280,7 @@
             try
             {
                 to_opened();
-                AsyncResult = this.Socket.BeginConnect(this.RemoteIPEndPoint, this.connect_callback, null);
+                AsyncResult = this.BeginConnect(this.RemoteIPEndPoint, this.connect_callback);
                 return;
             }
             catch (ObjectDisposedException) { }
@@ -300,10 +293,10 @@
         private void connect_callback(IAsyncResult asyncResult)
         {
             AsyncResult = null;
-            if (this.is_disposed) return;
+            if (this.is_disposed || this.IsClosed) return;
             try
             {
-                this.Socket.EndConnect(asyncResult);
+                this.EndConnect(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.Socket.Connected) this.tell_connected();
                 return;
@@ -338,7 +331,6 @@
                 this.is_connected = false;
             }
             this.OnDisconnected();
-            this.DisConnected?.Invoke(this);
         }
 
         protected override void OnClosed()

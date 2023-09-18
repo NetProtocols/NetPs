@@ -19,20 +19,18 @@
 
         public override void Bind()
         {
-            this.Socket = new Socket(this.Address.IP.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             this.OnConfiguration();
             base.Bind();
         }
 
         protected virtual void OnConfiguration()
         {
-            this.Socket = new Socket(this.Address.IP.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            this.Socket = new_socket();
         }
 
         public virtual void Bind(string address)
         {
-            this.Bind(new SocketUri(address));
-            this.IsUdp();
+            this.Bind(new InsideSocketUri(InsideSocketUri.UriSchemeUDP, address));
         }
 
         protected override void OnClosed()

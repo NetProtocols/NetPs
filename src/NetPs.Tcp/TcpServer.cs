@@ -23,6 +23,7 @@
         public TcpServer(TcpConfigFunction tcp_config = null) : base(tcp_config)
         {
             construct();
+            this.Ax.Accepted += Ax_Accepted;
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpServer"/> class.
@@ -59,8 +60,10 @@
 
         private void construct()
         {
-            this.Ax = new TcpAx(this);
+            this.Ax = new TcpAx();
+            this.Ax.BindCore(this);
             this.Connects = new List<TcpClient>(); // 65535-1024= 64571
+            this.AcceptClientObservable = Observable.FromEvent<TcpAcceptedFunction, TcpClient>(handler => (s, c) => handler(c), evt => this.AcceptedClient += evt, evt => this.AcceptedClient -= evt);
         }
 
         /// <summary>
@@ -73,6 +76,9 @@
         /// </summary>
         public virtual IObservable<Socket> AcceptObservable => this.Ax.AcceptObservable;
 
+        public event TcpAcceptedFunction AcceptedClient;
+        public virtual IObservable<TcpClient> AcceptClientObservable { get; private set; }
+
         /// <summary>
         /// Gets or sets 服务.
         /// </summary>
@@ -82,8 +88,8 @@
         public override void Dispose()
         {
             this.Ax.Accepted -= Ax_Accepted;
-            base.Dispose();
             this.Ax.Dispose();
+            base.Dispose();
         }
 
         /// <summary>
@@ -103,7 +109,7 @@
         /// <param name="backlog">连接最大数量.</param>
         public virtual void Listen(string address)
         {
-            this.Listen(new SocketUri(address));
+            this.Listen(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
         }
 
         /// <summary>
@@ -111,7 +117,7 @@
         /// </summary>
         /// <param name="address">地址.</param>
         /// <param name="backlog">连接最大数量.</param>
-        public virtual void Listen(SocketUri address)
+        public virtual void Listen(ISocketUri address)
         {
             if (address != null)
             {
@@ -193,8 +199,8 @@
         }
         protected override void OnConfiguration()
         {
-            this.events?.OnConfiguration(this);
             base.OnConfiguration();
+            this.events?.OnConfiguration(this);
         }
     }
 }

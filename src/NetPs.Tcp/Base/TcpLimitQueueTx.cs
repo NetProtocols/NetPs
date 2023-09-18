@@ -3,19 +3,22 @@
     using NetPs.Socket;
     using System;
     using System.Threading;
+    using System.Threading.Tasks;
 
-    public class TcpLimitTx : TcpTx, IDisposable, ISpeedLimit
+    public class TcpLimitQueueTx : TcpQueueTx, IDisposable, ISpeedLimit
     {
         private bool is_disposed = false;
         private long last_time { get; set; }
         private int transported_count { get; set; }
-        public int Limit { get; protected set; } // must gt 0
-        public long LastTime => this.last_time;
-        public TcpLimitTx(TcpCore tcpCore) : base(tcpCore)
+        private CancellationToken CancellationToken { get; set; }
+        public virtual int Limit { get; protected set; }
+        public virtual long LastTime => this.last_time;
+        public TcpLimitQueueTx() : base()
         {
+            this.CancellationToken = new CancellationToken();
             this.Limit = -1;
-            this.last_time = DateTime.Now.Ticks;
             this.transported_count = 0;
+            this.last_time = DateTime.Now.Ticks;
         }
 
         public override void Dispose()
@@ -25,6 +28,7 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
+            this.CancellationToken.WaitHandle.Close();
             base.Dispose();
         }
 
@@ -39,15 +43,15 @@
             if (this.Limit > 0)
             {
                 this.transported_count += this.nTransported;
-                Task.StartNew(wait_limit);
+                Task.StartNew(wait_limit, CancellationToken);
             }
             else
             {
-                Task.StartNew(base.restart_transport);
+                Task.StartNew(base.OnBufferTransported);
             }
         }
 
-        private void wait_limit()
+        private async Task wait_limit()
         {
             if (transported_count > this.Limit)
             {
@@ -57,7 +61,9 @@
                     var wait = this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
-                        Thread.Sleep(wait);
+                        if (CancellationToken.IsCancellationRequested) return;
+                        await global::System.Threading.Tasks.Task.Delay(wait, CancellationToken); //阈值10ms, 小于则不等待
+                        if (CancellationToken.IsCancellationRequested) return;
                         last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else

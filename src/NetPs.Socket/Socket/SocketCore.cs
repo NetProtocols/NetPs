@@ -20,7 +20,7 @@
     /// <summary>
     /// 套接字基类
     /// </summary>
-    public abstract class SocketCore : IDisposable
+    public abstract class SocketCore : SocketFunc, IDisposable
     {
         /// <summary>
         /// 数据流池
@@ -36,7 +36,7 @@
         private bool is_closed = true;
 
         protected readonly CompositeDisposable h_disposables;
-        public bool IsDisposed => is_disposed;
+        public override bool IsDisposed => is_disposed;
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
         /// </summary>
@@ -58,21 +58,6 @@
         public virtual event SocketExceptionHandler SocketException;
 
         /// <summary>
-        /// Gets or sets tcp client.
-        /// </summary>
-        public virtual Socket Socket { get; protected set; }
-
-        /// <summary>
-        /// Gets or sets 地址.
-        /// </summary>
-        public virtual SocketUri Address { get; protected set; }
-
-        /// <summary>
-        /// Gets or sets 终端地址.
-        /// </summary>
-        public virtual IPEndPoint IPEndPoint { get; protected set; }
-
-        /// <summary>
         /// Gets a value indicating whether 存活.
         /// </summary>
         public virtual bool Actived => !this.IsClosed;
@@ -80,7 +65,7 @@
         /// <summary>
         /// Gets a value indicating whether gets 链接已关闭.
         /// </summary>
-        public virtual bool IsClosed => this.is_closed;
+        public override bool IsClosed => this.is_closed;
 
         /// <summary>
         /// Gets 地址.
@@ -144,13 +129,7 @@
                 this.is_disposed = true;
             }
             this.Disposables.Dispose();
-            if (this.Socket != null)
-            {
-                //防止未初始化socket的情况
-                this.Socket.Close();
-                //if (this.Socket is IDisposable o) o.Dispose();
-                //this.Socket = null;
-            }
+            close_socket();
         }
 
         /// <summary>
@@ -209,37 +188,24 @@
                 var ip = Socket.LocalEndPoint as IPEndPoint;
                 if (ip != null)
                 {
-                    Address = new SocketUri($"{Address.Scheme}{SocketUri.SchemeDelimiter}{Address.Host}{SocketUri.PortDelimiter}{ip.Port}");
+                    Address = new InsideSocketUri(Address.Scheme, Address.Host, ip.Port);
                     IPEndPoint.Port = ip.Port;
                 }
             }
+            if (this.Address.Scheme == InsideSocketUri.UriSchemeUDP) this.IsUdp();
         }
-
-        /// <summary>
-        /// 允许复用地址
-        /// </summary>
-        /// <remarks>
-        /// * 需要管理员权限
-        /// <br/>！这个范围被约束在同一进程并且配置复用的情况下。
-        /// <br/><br/>用于多个socket 使用相同的地址端口绑定的情况。
-        /// </remarks>
-        public virtual void AllowReuseAddress() { 
-            this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-        }
-
-        public virtual void Bind(SocketUri address)
+        public virtual void Bind(ISocketUri address)
         {
             this.ChangeAddress(address);
             this.Bind();
         }
 
-        public virtual void ChangeAddress(SocketUri address)
+        public virtual void ChangeAddress(ISocketUri address)
         {
             this.Address = address;
             this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
         }
-
-        public static void WaitHandle(IAsyncResult asyncResult, Action end_function)
+        public static void WaitHandle(IAsyncResult asyncResult)
         {
             try
             {
@@ -254,7 +220,6 @@
                 }
                 else
                 {
-                    end_function();
                     asyncResult.AsyncWaitHandle.Close();
                 }
             }

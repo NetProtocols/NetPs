@@ -1,4 +1,6 @@
 # NetPs(Net protocols)
+
+[![license](https://img.shields.io/github/license/NetProtocols/NetPs)](https://github.com/NetProtocols/NetPs/blob/main/LICENSE)
 [![NetPs v1.0](https://github.com/NetProtocols/NetPs/actions/workflows/dotnet-desktop.yml/badge.svg)](https://github.com/NetProtocols/NetPs/actions/workflows/dotnet-desktop.yml)
 
 *NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。*
@@ -11,11 +13,13 @@ NuGet\Install-Package NetPs.Tcp
 ```
 
 ### How Can?
+
 - **转发**：将tcp\udp 转发到任意实现 ```IDataTransport``` 的实例中。
 - **限流**：限制接收、发送、转发的网络速度。
 
 ### Flows
-**Tcp**: [基础功能流程图](src\NetPs.Tcp\doc\readme.md)、[未来功能](src\NetPs.Tcp\doc\feture.md)
+
+**Tcp**: [基础功能流程图](src/NetPs.Tcp/doc/readme.md)
 
 ### Next Plan
 
@@ -28,6 +32,8 @@ NuGet\Install-Package NetPs.Tcp
 - 压缩：可以选择对数据流进行简单压缩，可用于在传输音视频、图片等数据流。
 
 - 请求限制：
+  
+  - 实现IP DenyList、AllowList。
   
   - 可以限制单用户、总最大连接数。
   

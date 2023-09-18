@@ -1,11 +1,12 @@
 ﻿namespace NetPs.Tcp
 {
+    using NetPs.Socket;
     using System;
 
     /// <summary>
     /// Tcp 数据发送事件集
     /// </summary>
-    public interface ITcpTxEvents
+    public interface ITcpTxEvents : ITxEvents
     {
         /// <summary>
         /// 开始发送
@@ -16,12 +17,12 @@
         /// 当发送队列被添加
         /// </summary>
         /// <param name="tx"></param>
-        void OnTransportEnqueue(ITcpTx tx);
+        //void OnTransportEnqueue(ITcpTx tx);
         /// <summary>
         /// 单次发送完成
         /// </summary>
         /// <param name="tx"></param>
-        void OnBufferTransported(ITcpTx tx);
+        //void OnBufferTransported(ITcpTx tx);
         /// <summary>
         /// 发送完成
         /// </summary>

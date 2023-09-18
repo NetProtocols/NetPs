@@ -10,9 +10,8 @@
 		</NoWarn>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-		<InvariantGlobalization>true</InvariantGlobalization>
 	</PropertyGroup>
-	
+
 	<ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
 		<Compile Remove="reference\System.Reactive.WinCE\**" />
 		<Compile Remove="reference\NETStandard.WindowsCE\**" />

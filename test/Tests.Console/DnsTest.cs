@@ -32,7 +32,6 @@ namespace TestsConsole
             var host = "nuget.org";
             var dns = DnsHost.DNS_NETEASE;
             Console.WriteLine(dns);
-            host = Console.ReadLine();
             while (true)
             {
                 Console.Write("dns-test> ");
@@ -73,7 +72,6 @@ namespace TestsConsole
                     var packet2 = await dns_client.SendReqAAAA(dns, host);
                     sw.Stop();
                     var times2 = sw.ElapsedMilliseconds;
-                    //var times2 = sw.ElapsedMilliseconds;
                     var addrs = packet.Answers.Where(a => a.Address != null).Select(a => a.Address.ToString()).ToArray();
                     var addrs2 = packet2.Answers.Where(a => a.Address != null).Select(a => a.Address.ToString()).ToArray();
                     var cnames = packet.Answers.Where(a => a.CNAME != null).Select(a => a.CNAME).ToArray();

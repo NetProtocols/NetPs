@@ -1,12 +1,10 @@
 ﻿namespace NetPs.Tcp
 {
+    using NetPs.Socket;
     using System;
-    public interface ITcpRx
+    public interface ITcpRx : IRx
     {
-        byte[] Buffer { get; }
-        int ReceivedSize { get; }
         int BufferSize { get; }
-        bool Running { get; }
         void BindEvents(ITcpRxEvents events);
     }
 }

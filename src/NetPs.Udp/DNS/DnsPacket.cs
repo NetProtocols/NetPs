@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
-using System.Xml.Linq;
 
 namespace NetPs.Udp.DNS
 {
@@ -45,7 +44,7 @@ namespace NetPs.Udp.DNS
     {
         public IPAddress Address;
     }
-    public class DnsPacket
+    public class DnsPacket : IPacket
     {
         public const ushort Flag_standard_query = 0x0100;
         public const ushort Flag_standard_query_response = 0x8180;
@@ -83,83 +82,7 @@ namespace NetPs.Udp.DNS
 
         public DnsPacket(byte[] data)
         {
-            Answers = new List<DnsAnswer>();
-            AuthoritativeNameservers = new List<DnsAuthoritativeNameserver>();
-            Additionals = new List<DnsAdditional>();
-            using (var ms = new MemoryStream(data))
-            {
-                var reader = new BinaryReader(ms);
-                TransactionID = Read_ushort(reader);
-                Flags = Read_ushort(reader);
-                if (Flag_standard_query_response != Flags) return; 
-                Questions = Read_ushort(reader);
-                AnswerRRs = Read_ushort(reader);
-                AuthorityRRs = Read_ushort(reader);
-                AdditionalRRs = Read_ushort(reader);
-                Queries = new List<DnsQuestion>();
-                while (Queries.Count < Questions)
-                {
-                    var question = new DnsQuestion();
-                    Read_DnsQuestion(question, reader);
-                    Queries.Add(question);
-                }
-                while (Answers.Count < AnswerRRs)
-                {
-                    var answer = new DnsAnswer();
-                    Read_DnsAnswer(answer, reader);
-                    Answers.Add(answer);
-
-                    switch (answer.Type)
-                    {
-                        case Type_A:
-                        case Type_AAAA:
-                            answer.Address = new IPAddress(answer.Data);
-                            break;
-                        case Type_CNAME:
-                            using (var ms_cname = new QueueStream(answer.Data))
-                            {
-                                var reader_cname = new BinaryReader(ms_cname);
-                                var cname_buf = Read_data(reader, ms_cname).ToArray();
-                                answer.CNAME = Encoding.UTF8.GetString(cname_buf, 0, cname_buf.Length);
-                            }
-                            break;
-                    }
-                }
-                while (AuthoritativeNameservers.Count < AuthorityRRs)
-                {
-                    var authoritativeNameserver = new DnsAuthoritativeNameserver();
-                    Read_DnsAnswer(authoritativeNameserver, reader);
-                    AuthoritativeNameservers.Add(authoritativeNameserver);
-
-                    if (authoritativeNameserver.DataLength > 0)
-                    {
-                        using (var ms_auth = new QueueStream(authoritativeNameserver.Data))
-                        {
-                            var nbuf = Read_data(reader, ms_auth).ToArray();
-                            authoritativeNameserver.PrimaryNameserver = Encoding.UTF8.GetString(nbuf, 0, nbuf.Length);
-                            if (!ms_auth.CanRead) continue;
-                            nbuf = Read_data(reader, ms_auth).ToArray();
-                            authoritativeNameserver.ResponsibleAuthorityMailbox = Encoding.UTF8.GetString(nbuf, 0, nbuf.Length);
-                            if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.SerialNumber = ms_auth.DequeueInt64_32();
-                            if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.RefreshInterval = ms_auth.DequeueInt32_Reversed();
-                            if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.RetryInterval = ms_auth.DequeueInt32_Reversed();
-                            if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.ExpireLimit = ms_auth.DequeueInt32_Reversed();
-                            if (!ms_auth.CanRead) continue;
-                            authoritativeNameserver.MinimumTTL = ms_auth.DequeueInt32_Reversed();
-                        }
-                    }
-                }
-                while (Additionals.Count < AdditionalRRs)
-                {
-                    var additional = new DnsAdditional();
-                    Read_DnsAnswer(additional, reader);
-                    Additionals.Add(additional);
-                }
-            }
+            this.SetData(data);
         }
         private void Read_DnsAnswer(DnsDataResult data, BinaryReader reader)
         {
@@ -394,6 +317,92 @@ namespace NetPs.Udp.DNS
             ms.WriteByte(_data[2]);
             ms.WriteByte(_data[1]);
             ms.WriteByte(_data[0]);
+        }
+
+        public void SetData(byte[] data, int offset)
+        {
+            Answers = new List<DnsAnswer>();
+            AuthoritativeNameservers = new List<DnsAuthoritativeNameserver>();
+            Additionals = new List<DnsAdditional>();
+            using (var ms = new MemoryStream(data, offset, data.Length - offset))
+            {
+                var reader = new BinaryReader(ms);
+                TransactionID = Read_ushort(reader);
+                Flags = Read_ushort(reader);
+                if (Flag_standard_query_response != Flags) return;
+                Questions = Read_ushort(reader);
+                AnswerRRs = Read_ushort(reader);
+                AuthorityRRs = Read_ushort(reader);
+                AdditionalRRs = Read_ushort(reader);
+                Queries = new List<DnsQuestion>();
+                while (Queries.Count < Questions)
+                {
+                    var question = new DnsQuestion();
+                    Read_DnsQuestion(question, reader);
+                    Queries.Add(question);
+                }
+                while (Answers.Count < AnswerRRs)
+                {
+                    var answer = new DnsAnswer();
+                    Read_DnsAnswer(answer, reader);
+                    Answers.Add(answer);
+
+                    switch (answer.Type)
+                    {
+                        case Type_A:
+                        case Type_AAAA:
+                            answer.Address = new IPAddress(answer.Data);
+                            break;
+                        case Type_CNAME:
+                            using (var ms_cname = new QueueStream(answer.Data))
+                            {
+                                var reader_cname = new BinaryReader(ms_cname);
+                                var cname_buf = Read_data(reader, ms_cname).ToArray();
+                                answer.CNAME = Encoding.UTF8.GetString(cname_buf, 0, cname_buf.Length);
+                            }
+                            break;
+                    }
+                }
+                while (AuthoritativeNameservers.Count < AuthorityRRs)
+                {
+                    var authoritativeNameserver = new DnsAuthoritativeNameserver();
+                    Read_DnsAnswer(authoritativeNameserver, reader);
+                    AuthoritativeNameservers.Add(authoritativeNameserver);
+
+                    if (authoritativeNameserver.DataLength > 0)
+                    {
+                        using (var ms_auth = new QueueStream(authoritativeNameserver.Data))
+                        {
+                            var nbuf = Read_data(reader, ms_auth).ToArray();
+                            authoritativeNameserver.PrimaryNameserver = Encoding.UTF8.GetString(nbuf, 0, nbuf.Length);
+                            if (!ms_auth.CanRead) continue;
+                            nbuf = Read_data(reader, ms_auth).ToArray();
+                            authoritativeNameserver.ResponsibleAuthorityMailbox = Encoding.UTF8.GetString(nbuf, 0, nbuf.Length);
+                            if (!ms_auth.CanRead) continue;
+                            authoritativeNameserver.SerialNumber = ms_auth.DequeueInt64_32();
+                            if (!ms_auth.CanRead) continue;
+                            authoritativeNameserver.RefreshInterval = ms_auth.DequeueInt32_Reversed();
+                            if (!ms_auth.CanRead) continue;
+                            authoritativeNameserver.RetryInterval = ms_auth.DequeueInt32_Reversed();
+                            if (!ms_auth.CanRead) continue;
+                            authoritativeNameserver.ExpireLimit = ms_auth.DequeueInt32_Reversed();
+                            if (!ms_auth.CanRead) continue;
+                            authoritativeNameserver.MinimumTTL = ms_auth.DequeueInt32_Reversed();
+                        }
+                    }
+                }
+                while (Additionals.Count < AdditionalRRs)
+                {
+                    var additional = new DnsAdditional();
+                    Read_DnsAnswer(additional, reader);
+                    Additionals.Add(additional);
+                }
+            }
+        }
+
+        public bool Verity(byte[] data, int offset)
+        {
+            return true;
         }
     }
 }
