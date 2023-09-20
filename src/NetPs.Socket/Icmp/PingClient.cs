@@ -2,6 +2,7 @@
 {
     using NetPs.Socket.Packets;
     using System;
+    using System.Diagnostics;
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
@@ -108,14 +109,14 @@
                 else endPoint = new IPEndPoint(IPAddress.Any, 0);
                 Socket.BeginReceiveFrom(receive_buffer, 0, receive_buffer.Length, SocketFlags.None, ref endPoint, receive_from_callback, null);
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch when (this.IsClosed) { Debug.Assert(false); }
             catch (SocketException)
             {
                 //忽略
                 //receive_from();
                 return;
             }
+            catch (Exception e) { this.ThrowException(e); }
             receiving = false;
         }
 
@@ -131,14 +132,14 @@
                 received();
                 return;
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch when (this.IsClosed) { Debug.Assert(false); }
             catch (SocketException)
             {
                 //忽略
                 //receive_from();
                 return;
             }
+            catch (Exception e) { this.ThrowException(e); }
             receiving = false;
         }
 

@@ -24,7 +24,7 @@
 
         protected override void OnClosed()
         {
-            if (Hub != null) Hub.Close();
+            //if (Hub != null) Hub.Close();
             base.OnClosed();
         }
     }

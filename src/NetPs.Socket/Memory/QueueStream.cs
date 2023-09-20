@@ -1,6 +1,7 @@
 ﻿namespace NetPs.Socket
 {
     using System;
+    using System.Diagnostics;
     using System.IO;
 #if NET35_CF
     using Array = System.Array2;
@@ -183,9 +184,9 @@
                     //this.Flush();
                 }
             }
-            catch (UnauthorizedAccessException)
+            catch when (this.is_disposed)
             {
-                if (!this.is_disposed) throw;
+                Debug.Assert(false);
             }
         }
 
@@ -222,9 +223,9 @@
                     this.CopyTo(stream, (int)(length - len));
                 }
             }
-            catch (UnauthorizedAccessException)
-            { 
-                if (!this.is_disposed) throw;
+            catch when (this.is_disposed)
+            {
+                Debug.Assert(false);
             }
         }
 
@@ -315,9 +316,10 @@
                     return (int)len;
                 }
             }
-            catch (UnauthorizedAccessException)
+            //UnauthorizedAccessException
+            catch when (this.is_disposed)
             {
-                if (!this.is_disposed) throw;
+                Debug.Assert(false);
             }
             return 0;
         }

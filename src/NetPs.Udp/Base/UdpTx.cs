@@ -85,7 +85,7 @@
             this.Disposables.Dispose();
             if (this.AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult);
+                this.core.WaitHandle(AsyncResult);
                 this.AsyncResult = null;
             }
             this.EndTransport = null;

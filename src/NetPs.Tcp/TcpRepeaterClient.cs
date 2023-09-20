@@ -21,13 +21,11 @@
             this.PutSocket(client.Socket);
             this.Rx.BindTransport(transport);
         }
-
-        public void Limit(int limit) => this.Rx.SetLimit(limit);
-
+        public override bool IsDisposed => base.IsDisposed || this.is_disposed;
+        public virtual void Limit(int limit) => this.Rx.SetLimit(limit);
         protected override void OnConfiguration()
         {
             base.OnConfiguration();
-            this.SetLinger(false, 0);
         }
         public override void Dispose()
         {

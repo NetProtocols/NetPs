@@ -37,7 +37,7 @@
         private static string InitializationUriString(string protol, string host, int port)
         {
             //ipv6
-            if (host.Contains(InsideSocketUri.PortDelimiter) && !host.StartsWith(InsideSocketUri.Ipv6DelimiterLf)) host = $"{InsideSocketUri.Ipv6DelimiterLf}{host}{InsideSocketUri.Ipv6DelimiterRt}";
+            if (host.Contains(InsideSocketUri.PortDelimiter) && host[0] != InsideSocketUri.Ipv6DelimiterLf) host = $"{InsideSocketUri.Ipv6DelimiterLf}{host}{InsideSocketUri.Ipv6DelimiterRt}";
             return $"{protol}{InsideSocketUri.SchemeDelimiter}{host}{InsideSocketUri.PortDelimiter}{port}";
         }
 

@@ -8,6 +8,7 @@
     /// </summary>
     public class TcpRxTx<TTx, TRx> : TcpCore where TTx : TcpTx, ITx, new() where TRx: TcpRx, IRx, new()
     {
+        private bool is_disposed = false;
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpRxTx"/> class.
         /// </summary>
@@ -25,15 +26,17 @@
         {
         }
 
+        public override bool IsDisposed => base.IsDisposed || this.is_disposed;
+
         /// <summary>
         /// Gets or sets 接收.
         /// </summary>
-        public TRx Rx { get; protected set; }
+        public virtual TRx Rx { get; protected set; }
 
         /// <summary>
         /// Gets or sets 发送.
         /// </summary>
-        public TTx Tx { get; protected set; }
+        public virtual TTx Tx { get; protected set; }
 
 
         protected override void OnClosed()
@@ -44,6 +47,11 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
+            lock (this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             if (this.Rx != null)
             {
                 this.Rx.Dispose();

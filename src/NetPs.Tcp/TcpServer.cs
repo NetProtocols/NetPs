@@ -16,6 +16,7 @@
     public class TcpServer : TcpCore, IDisposable, ISocketLosed, ITcpServer
     {
         private bool alive = false;
+        private bool is_disposed = false;
         private TcpAcceptedFunction accepted_function { get; set; }
         private TcpClosedFunction closed_function { get; set; }
         private TcpClientLosedFunction losed_function { get; set; }
@@ -70,6 +71,8 @@
         /// 运行状态
         /// </summary>
         public virtual bool Alive => this.alive;
+        public override bool IsServer => true;
+        public override bool IsDisposed => base.IsDisposed|| this.is_disposed;
 
         /// <summary>
         /// Gets or sets 接受.
@@ -87,6 +90,11 @@
         /// <inheritdoc/>
         public override void Dispose()
         {
+            lock (this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             this.Ax.Accepted -= Ax_Accepted;
             this.Ax.Dispose();
             base.Dispose();

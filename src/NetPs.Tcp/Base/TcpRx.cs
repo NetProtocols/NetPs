@@ -2,9 +2,11 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Diagnostics;
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 #if NET35_CF
     using Array = System.Array2;
@@ -100,11 +102,11 @@
                 if (this.Core != null) this.Core.Receiving = false;
             }
             this.events?.OnDisposed(this);
-            if (AsyncResult != null)
-            {
-                SocketCore.WaitHandle(AsyncResult);
-                this.AsyncResult = null;
-            }
+            //if (AsyncResult != null)
+            //{
+            //    this.Core.WaitHandle(AsyncResult);
+            //    this.AsyncResult = null;
+            //}
             this.bBuffer = null;
         }
 
@@ -130,26 +132,43 @@
             restart_receive();
         }
 
-        protected void restart_receive() => Task.StartNew(this.x_StartReceive);
+        protected async void restart_receive() 
+        {
+            if (this.Core.IsClosed) return;
+            try
+            {
+                await Task.StartNew(this.x_StartReceive);
+            }
+            catch { Debug.Assert(false); }
+        }
 
         private void x_StartReceive()
         {
+            if (this.Core.IsClosed) return;
+
             try
             {
                 if (this.Core.CanBegin)
                 {
                     this.AsyncResult = this.Core.BeginReceive(this.bBuffer, 0, this.nBuffersize, this.ReceiveCallback);
+                    if (this.AsyncResult == null)
+                    {
+                        if (!this.Core.IsClosed) this.Core.Lose();
+                        else this.Core.FIN();
+                        return;
+                    }
+                    this.AsyncResult.Wait();
                 }
                 return;
             }
-            //释放
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException e)
             {
+                Debug.Assert(false);
                 AsyncResult = null;
                 if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Read)) this.Core.ThrowException(e);
             }
+            catch (Exception e) { this.Core.ThrowException(e); }
 
             if (!this.is_disposed) this.Core.Lose();
         }
@@ -158,6 +177,7 @@
             AsyncResult = null;
             try
             {
+                //socket closed, last result.
                 if (this.Core.CanEnd)
                 {
                     this.nReceived = this.Core.EndReceive(asyncResult);
@@ -169,30 +189,23 @@
                 asyncResult.AsyncWaitHandle.Close();
                 if (this.nReceived <= 0)
                 {
-                    //this.events?.OnShutdown(this);
-                    //if (this.is_disposed) return;
-                    if (this.Core.PollRead(1000))
-                    {
-                        // 接收到 FIN
-                        this.Core.FIN();
-                        return;
-                    }
-                    this.Core.Lose();
+                    this.Dispose();
+                    // 接收到 FIN
+                    this.Core.FIN();
                     return;
                 }
                 this.events?.OnReceived(this);
                 this.OnRecevied();
                 return;
             }
-            //释放
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException e)
             {
+                Debug.Assert(false);
                 this.nReceived = 0;
-
                 if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Read)) this.Core.ThrowException(e);
             }
+            catch (Exception e) { this.Core.ThrowException(e); }
             if (!this.is_disposed) this.Core.Lose();
         }
 

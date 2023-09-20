@@ -2,8 +2,10 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Diagnostics;
     using System.Net.Sockets;
     using System.Reactive.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -78,11 +80,6 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            if (this.AsyncResult != null)
-            {
-                SocketCore.WaitHandle(AsyncResult);
-                this.AsyncResult = null;
-            }
             this.EndTransport = null;
             this.events?.OnDisposed(this);
         }
@@ -135,7 +132,7 @@
             return true;
         }
 
-        protected virtual void restart_transport()
+        protected virtual async void restart_transport()
         {
             if (this.is_disposed || !this.Core.Actived)
             {
@@ -143,7 +140,11 @@
                 return;
             }
 
-            Task.StartNew(x_Transport);
+            try
+            {
+                await Task.StartNew(x_Transport);
+            }
+            catch { Debug.Assert(false); }
         }
 
         protected virtual void tell_transported()
@@ -160,10 +161,7 @@
         /// <summary>
         /// 发送队列完成
         /// </summary>
-        protected virtual void OnTransported()
-        {
-            Task.StartNew(this.tell_transported);
-        }
+        protected virtual void OnTransported() { if (!this.Core.IsClosed) this.tell_transported(); }
 
         /// <summary>
         /// 发送数据.
@@ -171,31 +169,34 @@
         /// <param name="data">数据.</param>
         private void x_Transport()
         {
+            if (this.Core.IsClosed) return;
+
             try
             {
-                if (this.Core.IsDisposed || !this.Core.Actived) return;
+                if (!this.Core.Actived) return;
                 // Socket Poll 判断连接是否可用 this.core.Actived
                 if (this.Core.PollWrite(Consts.SocketPollTime))
                 {
                     if (this.Core.CanBegin)
                     {
                         AsyncResult = this.Core.BeginSend(this.buffer, this.offset, this.length, this.SendCallback);
+                        this.AsyncResult.Wait();
                     }
                 }
                 else
                 {
-                    if (this.Core.IsDisposed) return;
-                    restart_transport(); //对方缓冲区已满，重新发送
+                    if (!this.Core.IsClosed) restart_transport(); //对方缓冲区已满，重新发送
                 }
                 return;
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
-            catch (SocketException e)
-            {
-                AsyncResult = null;
-                if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.StartWrite)) this.Core.ThrowException(e);
-            }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
+            //catch (SocketException e)
+            //{
+            //    Debug.Assert(false);
+            //    AsyncResult = null;
+            //    if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.StartWrite)) this.Core.ThrowException(e);
+            //}
+            catch (Exception e) { this.Core.ThrowException(e); }
             if (!this.is_disposed) this.Core.Lose();
         }
 
@@ -204,13 +205,15 @@
             AsyncResult = null;
             try
             {
-                if (!this.Core.Actived) return;
                 if (this.Core.CanEnd)
                 {
                     this.state = this.Core.EndSend(asyncResult); //state决定是否冲重传
+                    asyncResult.AsyncWaitHandle.Close();
                     if (this.state <= 0)
                     {
+                        if (this.Core.IsClosed) return;
                         restart_transport();
+                        return;
                     }
                 }
                 else
@@ -219,18 +222,17 @@
                     if (!this.is_disposed) this.Core.Lose();
                     return;
                 }
-                asyncResult.AsyncWaitHandle.Close();
-                if (this.is_disposed) return;
                 this.OnTransported();
                 return;
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
-            catch (SocketException e)
-            {
-                if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Writing)) this.Core.ThrowException(e);
-                return;
-            }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
+            //catch (SocketException e)
+            //{
+            //    Debug.Assert(false);
+            //    if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Writing)) this.Core.ThrowException(e);
+            //    return;
+            //}
+            catch (Exception e) { this.Core.ThrowException(e); }
             if (!this.is_disposed) this.Core.Lose();
         }
 

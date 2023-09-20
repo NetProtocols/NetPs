@@ -1,9 +1,17 @@
 ﻿namespace NetPs.Socket
 {
     using System;
+    using System.Diagnostics;
     using System.Net;
     using System.Net.Sockets;
+    using System.Threading;
+    using System.Threading.Tasks;
 
+    /// <summary>
+    /// 处理异常.
+    /// </summary>
+    /// <param name="exception">异常.</param>
+    public delegate void SocketExceptionHandler(Exception exception);
     public abstract class SocketFunc
     {
         /// <summary>
@@ -20,6 +28,24 @@
         public virtual IPEndPoint IPEndPoint { get; protected set; }
         public abstract bool IsDisposed { get; }
         public abstract bool IsClosed { get; }
+        public abstract bool Actived { get; }
+        public abstract bool IsShutdown { get; }
+        public virtual bool IsSocketClosed { get; private set; } = false;
+        public event EventHandler SocketClosed;
+        /// <summary>
+        /// 处理异常.
+        /// </summary>
+        public virtual event SocketExceptionHandler SocketException;
+        /// <summary>
+        /// 抛出异常.
+        /// </summary>
+        /// <param name="e">异常.</param>
+        public virtual void ThrowException(Exception e)
+        {
+            Debug.Assert(!this.IsClosed);
+            this.SocketException?.Invoke(e);
+        }
+
         /// <summary>
         /// 复用地址
         /// </summary>
@@ -82,70 +108,121 @@
         {
             if (this.Socket != null)
             {
-                //防止未初始化socket的情况
-                this.Socket.Close();
-                //if (this.Socket is IDisposable o) o.Dispose();
-                //this.Socket = null;
+                try
+                {
+                    //防止未初始化socket的情况
+                    this.IsSocketClosed = true;
+                    if (SocketClosed != null) SocketClosed.Invoke(this, null);
+                    Thread.Sleep(1000);
+                    this.Socket.Close();
+                }
+                catch
+                {
+                    Debug.Assert(false);
+                }
             }
         }
+        public virtual void WaitHandle(IAsyncResult asyncResult)
+        {
+            try
+            {
+                if (!asyncResult.IsCompleted)
+                {
+                    asyncResult.AsyncWaitHandle.WaitOne();
+                    asyncResult.AsyncWaitHandle.Close();
+                }
+                else
+                {
+                    asyncResult.AsyncWaitHandle.Close();
+                }
+            }
+            catch when (this.IsClosed) { Debug.Assert(false); }
+            catch (Exception e) { this.ThrowException(e); }
+        }
+
         protected virtual void socket_shutdown(SocketShutdown how)
         {
-            if (this.Socket != null)
+            if (this.Socket != null && this.Socket.ProtocolType == ProtocolType.Tcp)
             {
                 try
                 {
-                    this.Socket.Shutdown(how);
+                    if (this.Socket.Connected)
+                    {
+                        this.Socket.Shutdown(how);
+                    }
                 }
-                catch (ObjectDisposedException) { }
-                catch (SocketException) { }
+                catch when (this.IsClosed) { Debug.Assert(false); }
+                catch (Exception e) { this.ThrowException(e); }
             }
         }
         public virtual bool PollRead(int millisecondsTimeout)
         {
-            return !this.IsDisposed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectRead);
+            try
+            {
+                return !this.IsClosed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectRead);
+            }
+            catch
+            {
+                return false;
+            }
         }
         public virtual bool PollWrite(int millisecondsTimeout)
         {
-            return !this.IsDisposed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectWrite);
+            try
+            {
+
+                return !this.IsClosed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectWrite);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public virtual bool PollError(int millisecondsTimeout)
+        {
+            return !this.IsClosed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectError);
         }
         public virtual IAsyncResult BeginAccept(AsyncCallback callback)
         {
-            if (this.IsDisposed) return null;
+            if (!this.Actived) return null;
             return this.Socket.BeginAccept(callback, null);
         }
         public virtual Socket EndAccept(IAsyncResult asyncResult)
         {
-            if (this.IsDisposed) return null;
+            if (!this.Actived) return null;
             return this.Socket.EndAccept(asyncResult);
         }
         public virtual IAsyncResult BeginConnect(IPEndPoint address, AsyncCallback callback)
         {
-            if (this.IsDisposed) return null;
+            if (this.IsClosed) return null;
             return this.Socket.BeginConnect(address, callback, null);
         }
         public virtual void EndConnect(IAsyncResult asyncResult)
         {
-            if (this.IsDisposed) return;
+            if (this.IsClosed) return;
             this.Socket.EndConnect(asyncResult);
         }
         public virtual IAsyncResult BeginReceive(byte[] buffer, int offset, int count, AsyncCallback callback)
         {
-            if (buffer == null ||this.IsDisposed) return null;
+            if (buffer == null || this.IsClosed) return null;
+            if (this.Socket.Available <= 0 && this.PollRead(0)) return null;
+            if (!this.Actived) return null;
             return this.Socket.BeginReceive(buffer, offset, count, SocketFlags.None, callback, null);
         }
         public virtual int EndReceive(IAsyncResult asyncResult)
         {
-            if (this.IsDisposed) return 0;
+            if (!this.Actived) return 0;
             return this.Socket.EndReceive(asyncResult);
         }
         public virtual IAsyncResult BeginSend(byte[] buffer, int offset, int count, AsyncCallback callback)
         {
-            if (buffer == null ||this.IsDisposed) return null;
+            if (buffer == null || !this.Actived) return null;
+            if (this.IsClosed) return null;
             return this.Socket.BeginSend(buffer, offset, count, SocketFlags.None, callback, null);
         }
         public virtual int EndSend(IAsyncResult asyncResult)
         {
-            if (this.IsDisposed) return 0;
+            if (!this.Actived) return 0;
             return this.Socket.EndSend(asyncResult);
         }
 

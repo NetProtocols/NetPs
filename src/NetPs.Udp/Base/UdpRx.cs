@@ -99,7 +99,7 @@
             this.events?.OnDisposed(this);
             if (AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult);
+                this.core.WaitHandle(AsyncResult);
                 this.AsyncResult = null;
             }
             this.bBuffer = null;

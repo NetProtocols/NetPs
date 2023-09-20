@@ -2,6 +2,7 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Diagnostics;
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
@@ -21,6 +22,7 @@
         private bool is_disposed = false;
         private bool is_connecting = false;
         private bool is_connected = false;
+        private bool is_shutdown = false;
         public TcpCore()
         {
             this.tcp_config = null;
@@ -61,8 +63,8 @@
         /// <summary>
         /// 活动状态
         /// </summary>
-        public override bool Actived => base.Actived && (this.Socket?.Connected ?? false);
-
+        public override bool Actived => base.Actived && (this.IsServer || this.IsConnected && !this.IsShutdown);
+        public virtual bool IsServer => false;
         /// <summary>
         /// 可以结束
         /// </summary>
@@ -70,18 +72,19 @@
         /// <summary>
         /// 可以Poll
         /// </summary>
-        public virtual bool CanFIN => !(this.Socket.Blocking && this.Socket.Connected);
+        public virtual bool CanFIN => (this.Socket.Blocking && this.Socket.Connected);
         /// <summary>
         /// 可以开始
         /// </summary>
-        public virtual bool CanBegin => !this.IsDisposed && !(!(this.Socket?.Blocking ?? false) && !(this.Socket?.Connected ?? false));
+        public virtual bool CanBegin => !this.IsDisposed && !(!this.Socket.Blocking && !IsConnected);
 
         /// <summary>
         /// Gets or sets a value indicating whether gets or sets 正在连接.
         /// </summary>
         public virtual bool IsConnecting => this.is_connecting;
-
-        public virtual bool IsConnected => this.is_connected;
+        public virtual bool IsConnected => (this.IPEndPoint == null || this.is_connected) && Socket.Connected;
+        public override bool IsShutdown => this.is_shutdown;
+        public override bool IsClosed => base.IsClosed || this.IsShutdown;
 
         /// <summary>
         /// 连接的地址
@@ -118,7 +121,12 @@
         {
             if (this.connect_pre(address))
             {
-                return await this.connect_task(this.ConnectTimeout);
+                try
+                {
+                    return await this.connect_task(this.ConnectTimeout);
+                }
+                catch when (this.IsClosed) { Debug.Assert(false); }
+                catch (Exception e) { this.ThrowException(e); }
             }
             return false;
         }
@@ -177,15 +185,13 @@
         /// </remarks>
         public virtual void Shutdown(SocketShutdown how)
         {
-            if (this.is_disposed) return;
-            if (this.Socket != null)
+            lock (this)
             {
-                if (CanFIN)
-                {
-                    //主动关闭的必要：发送 FIN 包
-                    this.socket_shutdown(how);
-                }
+                if (this.is_shutdown) return;
+                this.is_shutdown = true;
             }
+            //主动关闭的必要：发送 FIN 包
+            this.socket_shutdown(how);
             if (!base.IsClosed) this.Lose();
         }
 
@@ -227,14 +233,6 @@
             {
                 this.CancellationToken.WaitHandle.Close();
             }
-            if (this.AsyncResult != null)
-            {
-                SocketCore.WaitHandle(AsyncResult);
-                //{
-                //    this.Socket.EndConnect(AsyncResult);
-                //});
-                this.AsyncResult = null;
-            }
             base.Dispose();
         }
 
@@ -251,25 +249,22 @@
                 if (CancellationToken == null) CancellationToken = new CancellationToken();
                 //var rep = this.ConnectedObservable.Timeout(TimeSpan.FromMilliseconds(timeout)).FirstOrDefaultAsync();
                 //var task = rep.GetAwaiter();
-                this.just_start_connect();
+                var _task = Task.Factory.StartNew(this.just_start_connect);
                 //var o = await task;
                 if (!this.CancellationToken.IsCancellationRequested)
                 {
                     await Task.Delay(timeout, CancellationToken);
                 }
+
+                await _task;
                 if (this.is_connected)
                 {
                     return true;
                 }
                 if (this.is_disposed) return false;
             }
-            catch (TimeoutException) { }
-            //超时释放
-            if (this.AsyncResult != null)
-            {
-                SocketCore.WaitHandle(AsyncResult);
-                this.AsyncResult = null;
-            }
+            catch when (this.IsClosed) { Debug.Assert(false); }
+            catch (Exception e) { this.ThrowException(e); }
             tell_disconnected();
             return false;
         }
@@ -281,30 +276,28 @@
             {
                 to_opened();
                 AsyncResult = this.BeginConnect(this.RemoteIPEndPoint, this.connect_callback);
+                AsyncResult.Wait();
                 return;
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
             //防止 SocketErr: 10045
-            catch (SocketException) { }
+            catch when (this.IsClosed) { Debug.Assert(false); }
+            catch (Exception e) { this.ThrowException(e); }
             AsyncResult = null;
             this.tell_disconnected();
         }
         private void connect_callback(IAsyncResult asyncResult)
         {
             AsyncResult = null;
-            if (this.is_disposed || this.IsClosed) return;
             try
             {
                 this.EndConnect(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
-                if (this.Socket.Connected) this.tell_connected();
+                if (!this.IsClosed && this.Socket.Connected) this.tell_connected();
                 return;
             }
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
-            catch (SocketException) { }
-            this.tell_disconnected();
+            catch when (this.IsClosed) { Debug.Assert(false); }
+            catch (Exception e) { this.ThrowException(e); }
+            if (!this.IsClosed) this.tell_disconnected();
         }
         private void tell_connected()
         {

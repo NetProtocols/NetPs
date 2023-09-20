@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace NetPs.Tcp
 {
@@ -26,6 +27,7 @@ namespace NetPs.Tcp
                 if (is_closed) return;
                 this.is_closed = true;
             }
+            this.OnClosed();
             Closed?.Invoke(this, EventArgs.Empty);
         }
 

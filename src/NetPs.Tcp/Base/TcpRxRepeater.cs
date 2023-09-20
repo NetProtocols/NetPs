@@ -44,11 +44,11 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            if (this.Transport != null)
-            {
-                this.Transport.Dispose();
-                this.Transport = null;
-            }
+            //if (this.Transport != null)
+            //{
+            //    this.Transport.Dispose();
+            //    this.Transport = null;
+            //}
             this.CancellationToken.WaitHandle.Close();
             base.Dispose();
         }
@@ -64,6 +64,7 @@
         public override void OnRecevied()
         {
             if (this.is_disposed || this.nReceived <= 0) return;
+            if (this.Transport.IsDisposed) return;
             this.re_rx = false;
             this.has_limit = this.Limit > 0;
             if (this.has_limit)
@@ -81,7 +82,8 @@
             this.waiting = true;
             this.transported_count += length - offset;
             this.Transport?.Transport(data, offset, length);
-            Task.StartNew(wait_limit, CancellationToken);
+
+            wait_limit().Wait();
         }
         private async Task wait_limit()
         {
@@ -115,11 +117,16 @@
                 this.waiting = false;
                 if (!this.re_rx) return;
             }
+
+            if (this.Core.IsClosed) return;
+
             this.restart_receive();
         }
         public void WhenTransportEnd(IDataTransport transport)
         {
             if (this.is_disposed) return;
+            if (this.Core.IsClosed) return;
+
             lock (this)
             {
                 if (this.re_rx) return;

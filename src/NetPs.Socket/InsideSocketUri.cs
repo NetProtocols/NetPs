@@ -6,14 +6,28 @@
 
     public class InsideSocketUri : ISocketUri
     {
-        public const string SchemeDelimiter = "://";
-        public const string PortDelimiter = ":";
-        public const string Ipv6DelimiterLf = "[";
-        public const string Ipv6DelimiterRt = "]";
-
         public const string UriSchemeTCP = "net.tcp";
         public const string UriSchemeUDP = "net.udp";
         public const string UriSchemeICMP = "net.icmp";
+
+        internal const string SchemeDelimiter = "://";
+        internal const string PortDelimiter = ":";
+        internal const char Ipv6DelimiterLf = '[';
+        internal const char Ipv6DelimiterRt = ']';
+        internal const char IPv4Delimiter = '.';
+        internal const char IPv6Delimiter = ':';
+        internal const string IPv6Any = "::";
+        internal const string IPv6Any2 = "[::]";
+        internal const string IPv6Loopback = "::1";
+        internal const string IPv6Loopback2 = "[::1]";
+        internal const string IPv4Loopback = "127.1";
+        internal const string IPv4Loopback2 = "localhost";
+        internal const string IPv4Any = "*";
+        internal const string IPv4Any2 = "0.0.0.0";
+        internal const string SchemeRegex = @"[a-zA-Z.]+\:\/\/";
+        internal const string NumberRegex = @"[0-9]+";
+        internal const string HexRegex = @"[0-9a-zA-Z]+";
+
         internal InsideSocketUri()
         {
         }
@@ -59,24 +73,24 @@
         public override string ToString()
         {
             //ipv6
-            if (Host.Contains(PortDelimiter) && !Host.StartsWith(Ipv6DelimiterLf)) Host = $"{Ipv6DelimiterLf}{Host}{Ipv6DelimiterRt}";
+            if (Host.Contains(PortDelimiter) && Host[0] != Ipv6DelimiterLf) Host = $"{Ipv6DelimiterLf}{Host}{Ipv6DelimiterRt}";
             return $"{Scheme}{SchemeDelimiter}{Host}{PortDelimiter}{Port}";
         }
         public static IPAddress ParseIPAddress(string host)
         {
             switch (host)
             {
-                case "[::]":
-                case "::":
+                case IPv6Any:
+                case IPv6Any2:
                     return IPAddress.IPv6Any;
-                case "[::1]":
-                case "::1":
+                case IPv6Loopback:
+                case IPv6Loopback2:
                     return IPAddress.IPv6Loopback;
-                case "127.1":
-                case "localhost":
+                case IPv4Loopback:
+                case IPv4Loopback2:
                     return IPAddress.Loopback;
-                case "*":
-                case "0.0.0.0":
+                case IPv4Any:
+                case IPv4Any2:
                     return IPAddress.Any;
 
                 default:
@@ -85,7 +99,7 @@
         }
         public static string GetScheme(string uriString)
         {
-            var protol = Regex.Match(uriString, @"[a-zA-Z.]+\:\/\/");
+            var protol = Regex.Match(uriString, SchemeRegex);
             if (protol.Success)
             {
                 return protol.Value.Substring(0, protol.Value.Length -3);
@@ -120,7 +134,7 @@
                 if (ix > 0)
                 {
                     uriString = uriString.Substring(ix);
-                    var port = Regex.Match(uriString, @"[1-9]+");
+                    var port = Regex.Match(uriString, NumberRegex);
                     if (port.Success)
                     {
                         return int.Parse(port.Value);
@@ -133,26 +147,28 @@
 
         public static bool IsIPAddress(string ip)
         {
-            if (ip.Contains("."))
+            if (ip == IPv4Loopback2) return true;
+            else if (Array.IndexOf(ip.ToCharArray(), IPv4Delimiter, 0) != -1)
             {
-                var b= ip.Split('.');
+                var b= ip.Split(IPv4Delimiter);
                 if (b.Length > 4) return false;
                 for (var i = 0; i < b.Length; i++)
                 {
-                    var re = Regex.Match(b[i], @"[0-9]+");
+                    var re = Regex.Match(b[i], NumberRegex);
                     if (!re.Success) return false;
                     if (re.Value != b[i]) return false;
                 }
                 return true;
-            }else if (ip.Contains(":"))
+            }
+            else if (Array.IndexOf(ip.ToCharArray(), IPv6Delimiter, 0) != -1)
             {
-                ip = ip.Trim('[', ']');
-                var b = ip.Split(':');
+                ip = ip.Trim(Ipv6DelimiterLf, Ipv6DelimiterRt);
+                var b = ip.Split(IPv6Delimiter);
                 if (b.Length > 8) return false;
                 for (var i = 0; i < b.Length; i++)
                 {
                     if (b[i] == string.Empty) continue;
-                    var re = Regex.Match(b[i], @"[0-9a-zA-Z]+");
+                    var re = Regex.Match(b[i], HexRegex);
                     if (!re.Success) return false;
                     if (re.Value != b[i]) return false;
                 }

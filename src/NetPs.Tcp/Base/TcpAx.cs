@@ -2,6 +2,7 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Diagnostics;
     using System.Net.Sockets;
     using System.Reactive.Linq;
     using System.Threading.Tasks;
@@ -54,7 +55,7 @@
             }
             if (AsyncResult != null)
             {
-                SocketCore.WaitHandle(AsyncResult);
+                this.Core.WaitHandle(AsyncResult);
                 //{
                 //    this.Core.Socket.EndAccept(AsyncResult);
                 //});
@@ -65,31 +66,46 @@
         /// <summary>
         /// 开始接受Client.
         /// </summary>
-        public virtual void StartAccept() => Task.StartNew(this.start_accept);
+        public virtual async void StartAccept()
+        {
+            if (!this.Core.IsClosed)
+            {
+                try
+                {
+                    await Task.StartNew(this.start_accept);
+                }
+                catch
+                {
+                    Debug.Assert(false);
+                }
+            }
+        }
         private void start_accept()
         {
+            if (this.Core.IsClosed) return;
             try
             {
                 AsyncResult = this.Core.BeginAccept(AsyncCallback);
+                AsyncResult.Wait();
                 return;
             }
-            catch (ObjectDisposedException) { return; }
-            catch (NullReferenceException) { return; }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException)
             {
                 //忽略 客户端连接错误
                 if (this.Core.IsDisposed) return;
             }
+            catch (Exception e) { this.Core.ThrowException(e); }
 
             StartAccept();
         }
         private void AcceptCallback(IAsyncResult asyncResult)
         {
-            if (this.Core.IsDisposed) return;
             try
             {
                 var client = this.Core.EndAccept(asyncResult);
                 asyncResult.AsyncWaitHandle.Close();
+                if (this.Core.IsClosed) return;
                 StartAccept();
                 if (client != null)
                 {
@@ -97,14 +113,15 @@
                 }
                 return;
             }
-            catch (ObjectDisposedException) { return; }
-            catch (NullReferenceException) { return; }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException)
             {
+                Debug.Assert(false);
                 //请求错误不处理
                 if (this.is_disposed) return;
                 StartAccept();
             }
+            catch (Exception e) { this.Core.ThrowException(e); }
         }
         private void tell_accept(object client)
         {

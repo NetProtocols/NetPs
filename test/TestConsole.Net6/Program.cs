@@ -4,7 +4,9 @@ using NetPs.Socket.Packets;
 using NetPs.Tcp;
 using NetPs.Tcp.Hole;
 using NetPs.Udp.Hole;
+using System.Diagnostics;
 using System.Net;
+using System.Net.Sockets;
 
 namespace TestConsole.Net6
 {
@@ -12,8 +14,10 @@ namespace TestConsole.Net6
     {
         static void Main(string[] args)
         {
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
             Task.Factory.StartNew(() => Food.Heating()).Wait();
-            new TcpReapterTest("172.17.0.161:15244", "0.0.0.0:5244");
+            new TcpReapterTest("172.17.0.161:15244", "0.0.0.0:7070");
             new PingTest();
             Console.ReadLine();
             var addr = "[::1]:9999";
@@ -31,6 +35,25 @@ namespace TestConsole.Net6
             c1.Received += C1_Received;
             c2.He.Hole("c1", "1234");
             Console.ReadLine();
+        }
+
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Debug.Assert(false);
+        }
+        private static int i = 0;
+        private static void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+        {
+            e.SetObserved();
+            if (e.Exception.InnerException is SocketException sockerr)
+            {
+                Console.WriteLine(i);
+            }
+            i++;
+            if (sender is IAsyncResult task)
+            {
+                task.AsyncWaitHandle.Close();
+            }
         }
 
         private static void C1_Received(NetPs.Udp.UdpData data)

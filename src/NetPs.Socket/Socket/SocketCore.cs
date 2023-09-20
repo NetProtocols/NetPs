@@ -12,12 +12,6 @@
     public delegate void SateChangeHandle(object source);
 
     /// <summary>
-    /// 处理异常.
-    /// </summary>
-    /// <param name="exception">异常.</param>
-    public delegate void SocketExceptionHandler(Exception exception);
-
-    /// <summary>
     /// 套接字基类
     /// </summary>
     public abstract class SocketCore : SocketFunc, IDisposable
@@ -36,7 +30,6 @@
         private bool is_closed = true;
 
         protected readonly CompositeDisposable h_disposables;
-        public override bool IsDisposed => is_disposed;
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
         /// </summary>
@@ -53,20 +46,16 @@
         public virtual CompositeDisposable Disposables => this.h_disposables;
 
         /// <summary>
-        /// 处理异常.
-        /// </summary>
-        public virtual event SocketExceptionHandler SocketException;
-
-        /// <summary>
         /// Gets a value indicating whether 存活.
         /// </summary>
-        public virtual bool Actived => !this.IsClosed;
+        public override bool Actived => !this.IsClosed && !this.IsDisposed;
 
         /// <summary>
         /// Gets a value indicating whether gets 链接已关闭.
         /// </summary>
         public override bool IsClosed => this.is_closed;
-
+        public override bool IsShutdown => this.is_closed;
+        public override bool IsDisposed => this.is_disposed;
         /// <summary>
         /// Gets 地址.
         /// </summary>
@@ -138,7 +127,6 @@
         public virtual void Lose()
         {
             if (this.is_disposed) return;
-            // 交
             if (this.to_closed())
             {
                 this.OnClosed();
@@ -150,15 +138,6 @@
         public virtual void WhenLoseConnected(ISocketLosed lose)
         {
             this.socketLose = lose;
-        }
-
-        /// <summary>
-        /// 抛出异常.
-        /// </summary>
-        /// <param name="e">异常.</param>
-        public virtual void ThrowException(Exception e)
-        {
-            this.SocketException?.Invoke(e);
         }
 
         /// <summary>
@@ -204,28 +183,6 @@
         {
             this.Address = address;
             this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
-        }
-        public static void WaitHandle(IAsyncResult asyncResult)
-        {
-            try
-            {
-                if (!asyncResult.IsCompleted)
-                {
-                    //等待操作完成, 无法等待则直接close socket
-                    asyncResult.AsyncWaitHandle.WaitOne(100, true);
-                    if (asyncResult.IsCompleted)
-                    {
-                        asyncResult.AsyncWaitHandle.Close();
-                    }
-                }
-                else
-                {
-                    asyncResult.AsyncWaitHandle.Close();
-                }
-            }
-            catch (NullReferenceException) { }
-            catch (ObjectDisposedException) { }
-            catch (SocketException) { }
         }
     }
 }
