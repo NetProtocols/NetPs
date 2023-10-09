@@ -6,23 +6,22 @@
     public class TcpRepeaterClient : TcpClientFactory<TcpTx, TcpRxRepeater>, IDisposable
     {
         private bool is_disposed = false;
-        private TcpClient tcpClient { get; set; }
+        private ITcpClient tcpClient { get; set; }
         internal TcpRepeaterClient()
         {
         }
         public TcpRepeaterClient(IDataTransport transport) : base()
         {
-            this.Rx.BindTransport(transport);
+            this._Rx.BindTransport(transport);
         }
 
-        public TcpRepeaterClient(TcpClient client, IDataTransport transport) : base()
+        public TcpRepeaterClient(ITcpClient client, IDataTransport transport) : base(client.Socket)
         {
             this.tcpClient = client;
-            this.PutSocket(client.Socket);
-            this.Rx.BindTransport(transport);
+            this._Rx.BindTransport(transport);
         }
         public override bool IsDisposed => base.IsDisposed || this.is_disposed;
-        public virtual void Limit(int limit) => this.Rx.SetLimit(limit);
+        public virtual void Limit(int limit) => this._Rx.SetLimit(limit);
         protected override void OnConfiguration()
         {
             base.OnConfiguration();

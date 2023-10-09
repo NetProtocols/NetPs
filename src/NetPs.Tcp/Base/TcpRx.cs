@@ -3,10 +3,8 @@
     using NetPs.Socket;
     using System;
     using System.Diagnostics;
-    using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
-    using System.Threading;
     using System.Threading.Tasks;
 #if NET35_CF
     using Array = System.Array2;
@@ -15,14 +13,13 @@
     /// <summary>
     /// tcp 接收控制.
     /// </summary>
-    public class TcpRx : IDisposable, IRx, IBindTcpCore
+    public class TcpRx : BindTcpCore, IDisposable, ITcpRx
     {
-        protected byte[] bBuffer { get; private set; }
-        public int nReceived { get; protected set; }
-        private int nBuffersize { get; set; }
         private bool is_disposed = false;
-        public bool Running => this.Core.Receiving;
+        public int nReceived { get; protected set; }
+        protected byte[] bBuffer { get; private set; }
         protected TaskFactory Task { get; private set; }
+        private int nBuffersize { get; set; }
         private ITcpReceive receive { get; set; }
         private IAsyncResult AsyncResult { get; set; }
         private IRxEvents events { get; set; }
@@ -31,7 +28,7 @@
         /// </summary>
         public TcpRx()
         {
-            this.Task = new TaskFactory();
+            this.Task = new TaskFactory(TaskScheduler.Default);
             this.nReceived = 0;
             this.nBuffersize = Consts.ReceiveBytes;
             this.bBuffer = new byte[this.nBuffersize];
@@ -53,7 +50,7 @@
         /// 接收数据.
         /// </summary>
         public virtual event ReceivedStreamHandler Received;
-
+        public bool Running => this.Core.Receiving;
         /// <summary>
         /// 缓冲区
         /// </summary>
@@ -68,9 +65,6 @@
         /// Gets 接送缓冲区大小.
         /// </summary>
         public virtual int BufferSize => this.nBuffersize;
-        public virtual IPEndPoint RemoteAddress => this.Core.RemoteIPEndPoint;
-
-        public TcpCore Core { get; private set; }
 
         public virtual void WhenReceived(ITcpReceive tcp_receive)
         {
@@ -102,11 +96,6 @@
                 if (this.Core != null) this.Core.Receiving = false;
             }
             this.events?.OnDisposed(this);
-            //if (AsyncResult != null)
-            //{
-            //    this.Core.WaitHandle(AsyncResult);
-            //    this.AsyncResult = null;
-            //}
             this.bBuffer = null;
         }
 
@@ -118,7 +107,7 @@
         {
             if (data != null && data.Length > 0)
             {
-                if (this.receive != null) receive.TcpReceive(data, this.Core as TcpClient);
+                if (this.receive != null) receive.TcpReceive(data, this.Core);
                 if (this.Received != null) this.Received.Invoke(data);
             }
         }
@@ -132,12 +121,12 @@
             restart_receive();
         }
 
-        protected async void restart_receive() 
+        protected void restart_receive() 
         {
             if (this.Core.IsClosed) return;
             try
             {
-                await Task.StartNew(this.x_StartReceive);
+                Task.StartNew(this.x_StartReceive);
             }
             catch { Debug.Assert(false); }
         }
@@ -148,17 +137,8 @@
 
             try
             {
-                if (this.Core.CanBegin)
-                {
-                    this.AsyncResult = this.Core.BeginReceive(this.bBuffer, 0, this.nBuffersize, this.ReceiveCallback);
-                    if (this.AsyncResult == null)
-                    {
-                        if (!this.Core.IsClosed) this.Core.Lose();
-                        else this.Core.FIN();
-                        return;
-                    }
-                    this.AsyncResult.Wait();
-                }
+                this.AsyncResult = this.Core.BeginReceive(this.bBuffer, 0, this.nBuffersize, this.ReceiveCallback);
+                if (this.AsyncResult != null) this.AsyncResult.Wait();
                 return;
             }
             catch when (this.Core.IsClosed) { Debug.Assert(false); }
@@ -170,7 +150,7 @@
             }
             catch (Exception e) { this.Core.ThrowException(e); }
 
-            if (!this.is_disposed) this.Core.Lose();
+            if (!this.Core.IsClosed) this.Core.Lose();
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
         {
@@ -178,22 +158,9 @@
             try
             {
                 //socket closed, last result.
-                if (this.Core.CanEnd)
-                {
-                    this.nReceived = this.Core.EndReceive(asyncResult);
-                }
-                else
-                {
-                    this.nReceived = 0;
-                }
-                asyncResult.AsyncWaitHandle.Close();
-                if (this.nReceived <= 0)
-                {
-                    this.Dispose();
-                    // 接收到 FIN
-                    this.Core.FIN();
-                    return;
-                }
+                this.nReceived = this.Core.EndReceive(asyncResult);
+                if (this.nReceived <= 0) return;
+                Debug.Assert(this.Core.Socket.Connected);
                 this.events?.OnReceived(this);
                 this.OnRecevied();
                 return;
@@ -212,11 +179,6 @@
         public void BindEvents(IRxEvents events)
         {
             this.events = events;
-        }
-
-        public void BindCore(TcpCore core)
-        {
-            this.Core = core;
         }
     }
 }

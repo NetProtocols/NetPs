@@ -6,12 +6,10 @@
     using System.Net.Sockets;
     using System.Reactive.Disposables;
     using System.Reactive.Linq;
-    using System.Threading;
     using System.Threading.Tasks;
 
-    public class UdpTx : IDisposable, ITx
+    public class UdpTx : BindUdpCore, IDisposable, ITx
     {
-        public UdpCore core { get; set; }
         private bool is_disposed = false;
         private bool transporting = false;
         private int state { get; set; }
@@ -27,19 +25,18 @@
         internal UdpTx()
         {
             this.disposables = new CompositeDisposable();
+            this.Task = new TaskFactory();
+            this.TransportBufferSize = Consts.TransportBytes;
+            this.TransportedObservable = Observable.FromEvent<TransportedHandler, UdpTx>(handler => tx => handler(tx), evt => this.Transported += evt, evt => this.Transported -= evt);
+
         }
         /// <summary>
         /// Initializes a new instance of the <see cref="UdpTx"/> class.
         /// </summary>
         /// <param name="core">.</param>
-        public UdpTx(UdpCore udpCore, IPEndPoint endPoint)
+        public UdpTx(IPEndPoint endPoint) : this()
         {
-            this.disposables = new CompositeDisposable();
-            this.Task = new TaskFactory();
-            this.core = udpCore;
             this.RemoteIP = endPoint;
-            this.TransportBufferSize = Consts.TransportBytes;
-            this.TransportedObservable = Observable.FromEvent<TransportedHandler, UdpTx>(handler => tx => handler(tx), evt => this.Transported += evt, evt => this.Transported -= evt);
         }
 
         /// <summary>
@@ -83,11 +80,6 @@
                 this.is_disposed = true;
             }
             this.Disposables.Dispose();
-            if (this.AsyncResult != null)
-            {
-                this.core.WaitHandle(AsyncResult);
-                this.AsyncResult = null;
-            }
             this.EndTransport = null;
             this.events?.OnDisposed(this);
         }
@@ -172,8 +164,9 @@
         {
             try
             {
-                if (this.is_disposed || this.core.IsClosed) return;
-                this.AsyncResult = this.core.Socket.BeginSendTo(this.buffer, this.offset, this.length, SocketFlags.None, this.RemoteIP, this.SendCallback, null);
+                this.AsyncResult = this.Core.BeginSendTo(this.buffer, this.offset, this.length, this.RemoteIP, this.SendCallback);
+                if (this.AsyncResult == null) return;
+                this.AsyncResult.Wait();
                 return;
             }
             //已经释放了
@@ -181,18 +174,17 @@
             catch (NullReferenceException) { }
             catch (SocketException e)
             {
-                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write)) this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Write)) this.Core.ThrowException(e);
             }
         }
 
         private void SendCallback(IAsyncResult asyncResult)
         {
-            if (this.is_disposed || this.core.IsClosed) return;
             AsyncResult = null;
             try
             {
-                this.state = this.core.Socket.EndSendTo(asyncResult);
-                asyncResult.AsyncWaitHandle.Close();
+                this.state = this.Core.EndSendTo(asyncResult);
+                if (this.state <= 0) return;
                 //传输完成
                 this.OnTransported();
                 return;
@@ -202,7 +194,7 @@
             catch (NullReferenceException) { }
             catch (SocketException e)
             {
-                if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Write)) this.core.ThrowException(e);
+                if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Write)) this.Core.ThrowException(e);
             }
         }
 

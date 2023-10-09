@@ -2,7 +2,7 @@
 
 NetPs.Udp基于NetPs.Socket，对UDP数据数据传输提供便捷。
 
-其中实现了UdpHost与DnsHost。
+其中实现了UdpHost、DnsHost、WolSender。
 
 该库支持提前预热来加快首次运行速度，可以通过调用方法进行使用 `NetPs.Socket.Eggs.Food.Heating();`
 ## How To Use?
@@ -36,5 +36,11 @@ var host = new DnsHost();
 var packet = await host.SendReqA($"{DnsHost.DNS_ALI}:53", "nuget.org");
 ```
 
+- **WolSender**
 
+    向本地所有接口发送三次WakeOnLan Packet.
+```csharp
+var wol = new WolSender();
+wol.Send("00:00:00:00:00:0e");
+```
 *<u>NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。</u>*

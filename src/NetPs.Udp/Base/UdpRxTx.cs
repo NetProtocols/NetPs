@@ -11,7 +11,8 @@
         private List<UdpTx> txs = new List<UdpTx>();
         public UdpRxTx()
         {
-            this.Rx = new UdpRx(this);
+            this.Rx = new UdpRx();
+            this.Rx.BindCore(this);
         }
 
         /// <summary>
@@ -36,12 +37,13 @@
 
         public UdpTx GetTx(IPEndPoint address)
         {
-            var tx = this.txs.Find(t => t.RemoteIP == address);
+            var tx = this.txs.Find(t => t.RemoteIP.Equals(address));
             if (tx == null)
             {
                 lock (txs)
                 {
-                    tx = new UdpTx(this, address);
+                    tx = new UdpTx(address);
+                    tx.BindCore(this);
                     txs.Add(tx);
                 }
                 tx.Disposables.Add(tx.TransportedObservable.Subscribe(observer =>
@@ -53,6 +55,10 @@
                 }));
             }
             return tx;
+        }
+        public UdpTx GetTx(IPAddress ip, int port)
+        {
+            return this.GetTx(new IPEndPoint(ip, port));
         }
 
         public UdpTx GetTx(string address)

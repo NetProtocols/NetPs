@@ -2,8 +2,19 @@
 {
     using NetPs.Socket;
     using System;
-    public interface ITcpClient
+    public interface ITcpClient : ISocket, IDisposable
     {
+
+        /// <summary>
+        /// 接收.
+        /// </summary>
+        ITcpRx Rx { get; }
+
+        /// <summary>
+        /// 发送.
+        /// </summary>
+        ITcpTx Tx { get; }
+        IHub Hub { get; }
         /// <summary>
         /// 绑定事件处理
         /// </summary>
@@ -12,7 +23,9 @@
         void BindTxEvents(ITxEvents events);
 
         void StartReceive();
+        void StartReceive(ITcpReceive receive);
         void Transport(byte[] data);
         void Transport(byte[] data, int offset, int length);
+        void StartHub(IHub hub);
     }
 }

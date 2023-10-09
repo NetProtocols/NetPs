@@ -11,7 +11,7 @@
         internal UdpQueueTx()
         {
         }
-        public UdpQueueTx(UdpCore udpCore, IPEndPoint endPoint) : base(udpCore, endPoint)
+        public UdpQueueTx(IPEndPoint endPoint) : base(endPoint)
         {
             this.cache = SocketCore.StreamPool.GET();
         }

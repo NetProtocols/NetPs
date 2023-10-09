@@ -7,33 +7,23 @@
     using System.Reactive.Linq;
     using System.Threading.Tasks;
 
-    public class UdpRx : IDisposable, IRx
+    public class UdpRx : BindUdpCore, IDisposable, IRx
     {
-        private UdpCore core { get; set; }
-
         protected byte[] bBuffer { get; private set; }
-
         public int nReceived { get; protected set; }
-
         private int nBuffersize { get; set; }
-
         private bool is_disposed = false;
-
         private EndPoint remotePoint;
         protected TaskFactory Task { get; set; }
         private IAsyncResult AsyncResult { get; set; }
         private IRxEvents events { get; set; }
-        internal UdpRx()
-        {
-        }
         /// <summary>
         /// Initializes a new instance of the <see cref="UdpRx"/> class.
         /// </summary>
         /// <param name="udpCore">.</param>
-        public UdpRx(UdpCore udpCore)
+        public UdpRx()
         {
             this.Task = new TaskFactory();
-            this.core = udpCore;
             this.nBuffersize = Consts.ReceiveBytes;
             this.bBuffer = new byte[this.nBuffersize];
             this.ReceicedObservable = Observable.FromEvent<ReveicedStreamHandler, UdpData>(handler => data => handler(data), evt => this.Received += evt, evt => this.Received -= evt);
@@ -59,12 +49,9 @@
         /// Gets 接送缓冲区大小.
         /// </summary>
         public virtual int ReceiveBufferSize => this.nBuffersize;
-
         public byte[] Buffer => this.bBuffer;
-
         public int ReceivedSize => this.nReceived;
-
-        public bool Running => this.core.Receiving;
+        public bool Running => this.Core.Receiving;
         public IPEndPoint RemoteAddress => this.remotePoint as IPEndPoint;
 
         /// <summary>
@@ -73,14 +60,14 @@
         public virtual void StartReveice()
         {
             if (this.is_disposed) return;
-            lock (this.core)
+            lock (this.Core)
             {
-                if (this.core.Receiving) return;
-                this.core.Receiving = true;
+                if (this.Core.Receiving) return;
+                this.Core.Receiving = true;
             }
             if (this.remotePoint == null)
             {
-                this.remotePoint = core.CreateIPAny();
+                this.remotePoint = Core.CreateIPAny();
             }
             this.events?.OnReceiving(this);
             this.x_StartReveice();
@@ -93,15 +80,10 @@
             {
                 if (this.is_disposed) return;
                 this.is_disposed = true;
-                if (this.core != null) this.core.Receiving = false;
+                if (this.Core != null) this.Core.Receiving = false;
             }
 
             this.events?.OnDisposed(this);
-            if (AsyncResult != null)
-            {
-                this.core.WaitHandle(AsyncResult);
-                this.AsyncResult = null;
-            }
             this.bBuffer = null;
             
         }
@@ -126,10 +108,12 @@
 
         private void x_StartReveice()
         {
-            if (this.is_disposed || this.core.IsClosed) return;
+            if (this.is_disposed || !this.Core.Actived) return;
             try
             {
-                AsyncResult = this.core.Socket.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, SocketFlags.None, ref remotePoint, this.ReceiveCallback, null);
+                AsyncResult = this.Core.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, ref remotePoint, this.ReceiveCallback);
+                if (AsyncResult == null) return;
+                AsyncResult.Wait();
                 return;
             }
             //释放
@@ -151,9 +135,8 @@
             this.AsyncResult = null;
             try
             {
-                if (this.is_disposed || this.core.IsClosed) return;
-                this.nReceived = this.core.Socket.EndReceiveFrom(asyncResult, ref this.remotePoint);
-                asyncResult.AsyncWaitHandle.Close();
+                this.nReceived = this.Core.EndReceiveFrom(asyncResult, ref this.remotePoint);
+                if (this.is_disposed || !this.Core.Actived) return;
                 if (this.nReceived > 0)
                 {
                     this.events?.OnReceived(this);

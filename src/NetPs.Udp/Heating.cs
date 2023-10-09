@@ -4,6 +4,7 @@
     using NetPs.Udp;
     using NetPs.Udp.Base;
     using NetPs.Udp.DNS;
+    using NetPs.Udp.Wol;
     using System;
     using System.Net;
 
@@ -21,9 +22,10 @@
             new UdpQueueTx().Dispose();
             new UdpRx().Dispose();
             watch.Heat_Progress();
-            new DnsHost().Dispose();
             Punycode.Decode("test.com");
+            new DnsHost().Dispose();
             watch.Heat_Progress();
+            new WolSender().Dispose();
         }
     }
 }

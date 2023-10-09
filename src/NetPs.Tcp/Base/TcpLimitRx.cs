@@ -11,11 +11,10 @@ namespace NetPs.Tcp
     public class TcpLimitRx : TcpRx, IDisposable, ISpeedLimit
     {
         private bool is_disposed = false;
-        private long last_time { get; set; }
-        private int received_count { get; set; }
-        private CancellationToken CancellationToken { get; set; }
         public virtual int Limit { get; protected set; }
-        public virtual long LastTime => this.last_time;
+        private int received_count { get; set; }
+        private long last_time { get; set; }
+        private CancellationToken CancellationToken { get; set; }
         public TcpLimitRx() : base()
         {
             this.CancellationToken = new CancellationToken();
@@ -23,6 +22,7 @@ namespace NetPs.Tcp
             this.received_count = 0;
             this.last_time = DateTime.Now.Ticks;
         }
+        public virtual long LastTime => this.last_time;
         void IDisposable.Dispose()
         {
             lock (this)

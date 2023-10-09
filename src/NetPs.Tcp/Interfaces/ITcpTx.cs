@@ -3,8 +3,8 @@
     using NetPs.Socket;
     using System;
 
-    public interface ITcpTx : ITx
+    public interface ITcpTx : ITx, IBindTcpCore
     {
-        void BindEvents(ITcpTxEvents events);
+        IObservable<TcpTx> TransportedObservable { get; }
     }
 }

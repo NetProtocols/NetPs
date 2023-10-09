@@ -2,6 +2,7 @@
 {
     using NetPs.Socket.Operations;
     using System;
+    using System.Linq;
     using System.Net;
 
     /// <summary>
@@ -32,7 +33,16 @@
 #if NET35_CF
             this.ips = ArrayTool.FindAll(Dns.GetHostEntry(Dns.GetHostName()).AddressList, f => !IPAddress.IsLoopback(f));
 #else
-            this.ips = ArrayTool.FindAll(Dns.GetHostAddresses(Dns.GetHostName()), f => !IPAddress.IsLoopback(f));
+            //需要筛选状态为运行的interface
+            var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .Where(f => f.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up && f.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback);
+            var unicasts = interfaces.SelectMany(f => f.GetIPProperties().UnicastAddresses);
+            this.ips = unicasts
+                .Where(f => !IPAddress.IsLoopback(f.Address))
+                .Select(f => new IPAddressWithMask(f.Address.GetAddressBytes(), f.IPv4Mask.GetAddressBytes()))
+                .ToArray();
+            //this.ips = ArrayTool.FindAll(Dns.GetHostAddresses(Dns.GetHostName()), f => !IPAddress.IsLoopback(f));
+
 #endif
         }
 

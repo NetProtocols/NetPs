@@ -112,10 +112,10 @@
                                 if (dst_client != null)
                                 {
                                     packet.Address = client.RemoteIPEndPoint;
-                                    dst_client.TransportedObservable.Subscribe(tx =>
+                                    client.Disposables.Add(dst_client.Tx.TransportedObservable.Subscribe(tx =>
                                     {
                                         dst_client.Lose();
-                                    });
+                                    }));
                                     dst_client.Transport(packet.GetData());
                                 }
                                 packet.Address = id_address;

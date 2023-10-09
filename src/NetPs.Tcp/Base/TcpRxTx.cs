@@ -6,7 +6,7 @@
     /// <summary>
     /// Tcp 收发.
     /// </summary>
-    public class TcpRxTx<TTx, TRx> : TcpCore where TTx : TcpTx, ITx, new() where TRx: TcpRx, IRx, new()
+    public class TcpRxTx<TTx, TRx> : TcpCore where TTx : ITcpTx, new() where TRx : ITcpRx, new()
     {
         private bool is_disposed = false;
         /// <summary>
@@ -16,27 +16,38 @@
         public TcpRxTx(TcpConfigFunction tcp_config)
             : base(tcp_config)
         {
-            this.Rx = new TRx();
-            this.Tx = new TTx();
-            this.Rx.BindCore(this);
-            this.Tx.BindCore(this);
+            construct();
         }
 
+        public TcpRxTx(System.Net.Sockets.Socket socket) : base(socket)
+        {
+            construct();
+        }
         public TcpRxTx() : base()
         {
+            construct();
         }
 
+        private void construct()
+        {
+            this.Rx = this._Rx = new TRx();
+            this.Tx = this._Tx = new TTx();
+            this._Rx.BindCore(this);
+            this._Tx.BindCore(this);
+        }
         public override bool IsDisposed => base.IsDisposed || this.is_disposed;
 
         /// <summary>
         /// Gets or sets 接收.
         /// </summary>
-        public virtual TRx Rx { get; protected set; }
+        public virtual ITcpRx Rx { get; protected set; }
 
         /// <summary>
         /// Gets or sets 发送.
         /// </summary>
-        public virtual TTx Tx { get; protected set; }
+        public virtual ITcpTx Tx { get; protected set; }
+        protected virtual TTx _Tx { get; private set; }
+        protected virtual TRx _Rx { get; private set; }
 
 
         protected override void OnClosed()

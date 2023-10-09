@@ -9,6 +9,7 @@
         public const string UriSchemeTCP = "net.tcp";
         public const string UriSchemeUDP = "net.udp";
         public const string UriSchemeICMP = "net.icmp";
+        public const string UriSchemeUnknown = "net.unknown";
 
         internal const string SchemeDelimiter = "://";
         internal const string PortDelimiter = ":";
@@ -41,6 +42,13 @@
             this.IP = ParseIPAddress(this.Host);
             this.Port = GetPort(uri);
         }
+        public InsideSocketUri(ISocketUri uri, int port)
+        {
+            this.Scheme = uri.Scheme;
+            this.Host = uri.Host;
+            this.IP = uri.IP;
+            this.Port = port;
+        }
         public InsideSocketUri(string protol, string host, int port)
         {
             this.Scheme = protol;
@@ -70,6 +78,10 @@
 
         public int Port { get; private set; }
 
+        public virtual void SetPort(int port)
+        {
+            this.Port = port;
+        }
         public override string ToString()
         {
             //ipv6

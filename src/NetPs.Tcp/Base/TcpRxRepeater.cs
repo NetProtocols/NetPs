@@ -2,6 +2,7 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -17,20 +18,19 @@
         private bool re_rx = false;
         private bool waiting = false;
         private bool has_limit = false;
-        private int transported_count { get; set; }
-        private long last_time { get; set; }
-        public IDataTransport Transport { get; protected set; }
         public int Limit { get; protected set; }
-        public long LastTime => this.last_time;
-        private CancellationToken CancellationToken { get; set; }
+        private long last_time { get; set; }
+        private int transported_count { get; set; }
+        public IDataTransport Transport { get; protected set; }
+        private ManualResetEvent manualResetEvent { get; set; }
         public TcpRxRepeater() : base()
         {
-            this.CancellationToken = new CancellationToken();
+            this.manualResetEvent = new ManualResetEvent(false);
             this.Limit = -1;
             this.transported_count = 0;
             this.last_time = DateTime.Now.Ticks;
         }
-
+        public long LastTime => this.last_time;
         public virtual void BindTransport(IDataTransport transport)
         {
             this.Transport = transport;
@@ -44,12 +44,12 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            //if (this.Transport != null)
-            //{
-            //    this.Transport.Dispose();
-            //    this.Transport = null;
-            //}
-            this.CancellationToken.WaitHandle.Close();
+            if (this.Transport!= null && !this.Transport.IsDisposed)
+            {
+                this.Transport.Dispose();
+            }
+            this.manualResetEvent.Set();
+            this.manualResetEvent.Close();
             base.Dispose();
         }
 
@@ -81,11 +81,12 @@
         {
             this.waiting = true;
             this.transported_count += length - offset;
-            this.Transport?.Transport(data, offset, length);
+            if (this.Transport == null) return;
+            this.Transport.Transport(data, offset, length);
 
-            wait_limit().Wait();
+            wait_limit();
         }
-        private async Task wait_limit()
+        private void wait_limit()
         {
             if (this.transported_count > this.Limit)
             {
@@ -93,11 +94,22 @@
                 if (!this.HasSecondPassed(now))
                 {
                     var wait =this.GetWaitMillisecond(now);
+                    //阈值10ms, 小于则不等待
                     if (wait > 10)
                     {
-                        if (CancellationToken.IsCancellationRequested) return;
-                        await global::System.Threading.Tasks.Task.Delay(wait, CancellationToken); //阈值10ms, 小于则不等待
-                        if (CancellationToken.IsCancellationRequested) return;
+                        try
+                        {
+                            if (this.is_disposed || this.manualResetEvent.WaitOne(wait, false))
+                            {
+                                //终止
+                                return;
+                            }
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            Debug.Assert(false);
+                            return;
+                        }
                         this.last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else
@@ -118,14 +130,18 @@
                 if (!this.re_rx) return;
             }
 
-            if (this.Core.IsClosed) return;
+            if (this.Transport is TcpTx tx)
+            {
+                if (!tx.Core.Actived) return;
+            }
+            if (this.Transport.IsDisposed) return;
 
             this.restart_receive();
         }
         public void WhenTransportEnd(IDataTransport transport)
         {
             if (this.is_disposed) return;
-            if (this.Core.IsClosed) return;
+            if (this.Transport.IsDisposed) return;
 
             lock (this)
             {
@@ -137,6 +153,6 @@
                 }
             }
             restart_receive();
-        }
+         }
     }
 }

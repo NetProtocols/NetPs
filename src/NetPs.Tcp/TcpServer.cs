@@ -7,9 +7,9 @@
     using System.Net.Sockets;
     using System.Reactive.Linq;
 
-    public delegate void TcpAcceptedFunction(TcpServer tcpServer, TcpClient tcpClient);
+    public delegate void TcpAcceptedFunction(TcpServer tcpServer, ITcpClient tcpClient);
     public delegate void TcpClosedFunction();
-    public delegate void TcpClientLosedFunction(TcpClient tcpClient);
+    public delegate void TcpClientLosedFunction(ITcpClient tcpClient);
     /// <summary>
     /// Tcp server.
     /// </summary>
@@ -48,9 +48,8 @@
                     {
                         client.WhenLoseConnected(this);
                         client.Rx.WhenReceived(serverConfig);
-                        lock (this.Connects) { this.Connects.Add(client); }
+                        add_connect(client);
                         return;
-                        //client.StartReceive(serverConfig);
                     }
                 }
                 //无效客户端
@@ -63,8 +62,8 @@
         {
             this.Ax = new TcpAx();
             this.Ax.BindCore(this);
-            this.Connects = new List<TcpClient>(); // 65535-1024= 64571
-            this.AcceptClientObservable = Observable.FromEvent<TcpAcceptedFunction, TcpClient>(handler => (s, c) => handler(c), evt => this.AcceptedClient += evt, evt => this.AcceptedClient -= evt);
+            this.Connects = new List<ITcpClient>();
+            this.AcceptClientObservable = Observable.FromEvent<TcpAcceptedFunction, ITcpClient>(handler => (s, c) => handler(c), evt => this.AcceptedClient += evt, evt => this.AcceptedClient -= evt);
         }
 
         /// <summary>
@@ -73,14 +72,13 @@
         public virtual bool Alive => this.alive;
         public override bool IsServer => true;
         public override bool IsDisposed => base.IsDisposed|| this.is_disposed;
-
         /// <summary>
         /// Gets or sets 接受.
         /// </summary>
         public virtual IObservable<Socket> AcceptObservable => this.Ax.AcceptObservable;
 
         public event TcpAcceptedFunction AcceptedClient;
-        public virtual IObservable<TcpClient> AcceptClientObservable { get; private set; }
+        public virtual IObservable<ITcpClient> AcceptClientObservable { get; private set; }
 
         /// <summary>
         /// Gets or sets 服务.
@@ -103,8 +101,7 @@
         /// <summary>
         /// 连接终端.
         /// </summary>
-        public virtual IList<TcpClient> Connects { get; set; }
-
+        public virtual IList<ITcpClient> Connects { get; set; }
         public void BindEvents(ITcpServerEvents events)
         {
             this.events = events;
@@ -149,9 +146,10 @@
 
         private void Ax_Accepted(Socket socket)
         {
+            if (! socket.Connected) return;
             var client = new TcpClient(socket);
+            add_connect(client);
             client.WhenLoseConnected(this);
-            lock (this.Connects) { this.Connects.Add(client); }
             OnAccepted(client);
         }
 
@@ -169,21 +167,24 @@
         /// </summary>
         public virtual void OnSocketLosed(object socket)
         {
-            var client = (TcpClient)socket;
-            this.events?.OnSocketLosed(this, client);
-            if (client != null)
+            if (socket == null) return;
+            if (socket is ITcpClient client)
             {
-                lock (this.Connects) { this.Connects.Remove(client); }
-                //clear_socket();
-                //client.Dispose();
-                if(this.losed_function != null) losed_function.Invoke(client);
+                remove_connect(client);
+                this.events?.OnSocketLosed(this, client);
+                if (this.losed_function != null) losed_function.Invoke(client);
             }
         }
 
         protected virtual void OnAccepted(object client)
         {
-            accepted_function?.Invoke(this, client as TcpClient);
-            this.events?.OnAccepted(this, client as TcpClient);
+            if (client == null) return;
+            if (client is ITcpClient tcpclient)
+            {
+                accepted_function?.Invoke(this, tcpclient);
+                this.events?.OnAccepted(this, tcpclient);
+                this.AcceptedClient?.Invoke(this, tcpclient);
+            }
         }
 
         protected virtual void OnListened()
@@ -209,6 +210,15 @@
         {
             base.OnConfiguration();
             this.events?.OnConfiguration(this);
+        }
+
+        private void add_connect(ITcpClient client)
+        {
+            lock (this.Connects) { this.Connects.Add(client); }
+        }
+        private void remove_connect(ITcpClient client)
+        {
+            lock (this.Connects) { this.Connects.Remove(client); }
         }
     }
 }

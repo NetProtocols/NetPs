@@ -2,9 +2,11 @@
 {
     using NetPs.Socket;
     using System;
-    public interface ITcpRx : IRx
+    public interface ITcpRx : IRx, IBindTcpCore
     {
         int BufferSize { get; }
-        void BindEvents(ITcpRxEvents events);
+        IObservable<byte[]> ReceivedObservable { get; }
+        void StartReceive();
+        void WhenReceived(ITcpReceive tcp_receive);
     }
 }

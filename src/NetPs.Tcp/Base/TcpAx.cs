@@ -10,7 +10,7 @@
     /// <summary>
     /// 服务.
     /// </summary>
-    public class TcpAx : IDisposable, IBindTcpCore
+    public class TcpAx : BindTcpCore, IDisposable, IBindTcpCore
     {
         private bool is_disposed = false;
         protected TaskFactory Task { get; private set; }
@@ -32,14 +32,11 @@
         /// </summary>
         public virtual IObservable<Socket> AcceptObservable { get; protected set; }
 
-        public TcpCore Core { get; private set; }
-
         /// <summary>
         /// 接受Socket.
         /// </summary>
         /// <param name="socket">套接字.</param>
         public delegate void AcceptSocketHandler(Socket socket);
-
         /// <summary>
         /// 接受Socket.
         /// </summary>
@@ -52,14 +49,6 @@
             {
                 if (this.is_disposed) return;
                 this.is_disposed = true;
-            }
-            if (AsyncResult != null)
-            {
-                this.Core.WaitHandle(AsyncResult);
-                //{
-                //    this.Core.Socket.EndAccept(AsyncResult);
-                //});
-                this.AsyncResult = null;
             }
         }
 
@@ -104,7 +93,6 @@
             try
             {
                 var client = this.Core.EndAccept(asyncResult);
-                asyncResult.AsyncWaitHandle.Close();
                 if (this.Core.IsClosed) return;
                 StartAccept();
                 if (client != null)
@@ -126,11 +114,6 @@
         private void tell_accept(object client)
         {
             if (this.Accepted != null) Accepted.Invoke(client as Socket);
-        }
-
-        public void BindCore(TcpCore core)
-        {
-            this.Core = core;
         }
     }
 }

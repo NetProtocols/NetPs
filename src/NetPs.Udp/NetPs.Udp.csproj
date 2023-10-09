@@ -19,7 +19,4 @@
 	    <Pack>true</Pack>
 	  </None>
 	</ItemGroup>
-	<ItemGroup>
-	  <Folder Include="Wol\" />
-	</ItemGroup>
 </Project>

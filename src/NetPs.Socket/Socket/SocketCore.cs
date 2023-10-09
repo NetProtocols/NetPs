@@ -14,7 +14,7 @@
     /// <summary>
     /// 套接字基类
     /// </summary>
-    public abstract class SocketCore : SocketFunc, IDisposable
+    public abstract class SocketCore : SocketFunc, IDisposable, ISocket
     {
         /// <summary>
         /// 数据流池
@@ -28,7 +28,7 @@
         private ISocketLosed socketLose { get; set; }
         private bool is_disposed = false;
         private bool is_closed = true;
-
+        private bool is_putsocket = false;
         protected readonly CompositeDisposable h_disposables;
         /// <summary>
         /// Initializes a new instance of the <see cref="SocketCore"/> class.
@@ -36,8 +36,14 @@
         public SocketCore()
         {
             this.h_disposables = new CompositeDisposable();
+            register_unhandled();
         }
-
+        public SocketCore(Socket socket) : this()
+        {
+            this.SetSocket(socket);
+            this.is_closed = false;
+            this.is_putsocket = true;
+        }
         public event SateChangeHandle Closed;
 
         /// <summary>
@@ -54,32 +60,13 @@
         /// Gets a value indicating whether gets 链接已关闭.
         /// </summary>
         public override bool IsClosed => this.is_closed;
-        public override bool IsShutdown => this.is_closed;
         public override bool IsDisposed => this.is_disposed;
+        public virtual bool IsReference => this.is_putsocket;
         /// <summary>
         /// Gets 地址.
         /// </summary>
         public EndPoint IP => this.Socket?.RemoteEndPoint;
-
-        /// <summary>
-        /// 放置Socket.
-        /// </summary>
-        /// <param name="socket">Socket.</param>
-        public virtual void PutSocket(Socket socket)
-        {
-            if (this.Socket == null)
-            {
-                lock (this)
-                {
-                    if (!this.is_closed) return;
-                    this.is_closed = false;
-                }
-                this.Socket = socket;
-            }
-        }
-
         public virtual void IsUdp() => to_opened();
-
         protected virtual bool to_closed()
         {
             lock (this)
@@ -129,6 +116,13 @@
             if (this.is_disposed) return;
             if (this.to_closed())
             {
+                if (this.Socket != null)
+                {
+                    if (this.Address.IsTcp())
+                    {
+                        this.socket_shutdown(SocketShutdown.Both);
+                    }
+                }
                 this.OnClosed();
                 this.Closed?.Invoke(this);
                 this.tell_lose();
@@ -149,7 +143,10 @@
         /// 当丢失
         /// </summary>
         protected abstract void OnLosed();
-
+        internal override void OnSocketLosed()
+        {
+            this.Lose();
+        }
         protected virtual void tell_lose()
         {
             this.OnLosed();
@@ -167,7 +164,7 @@
                 var ip = Socket.LocalEndPoint as IPEndPoint;
                 if (ip != null)
                 {
-                    Address = new InsideSocketUri(Address.Scheme, Address.Host, ip.Port);
+                    Address.ResetPort(ip.Port);
                     IPEndPoint.Port = ip.Port;
                 }
             }

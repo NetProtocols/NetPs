@@ -2,8 +2,6 @@
 {
     using NetPs.Socket;
     using System;
-    using System.Net;
-    using System.Net.Sockets;
 
     public class UdpCore : SocketCore
     {
@@ -25,7 +23,7 @@
 
         protected virtual void OnConfiguration()
         {
-            this.Socket = new_socket();
+            this.SetSocket(new_socket());
         }
 
         public virtual void Bind(string address)

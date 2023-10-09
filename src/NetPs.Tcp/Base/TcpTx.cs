@@ -3,27 +3,25 @@
     using NetPs.Socket;
     using System;
     using System.Diagnostics;
-    using System.Net.Sockets;
     using System.Reactive.Linq;
-    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
     /// tcp 发送控制.
     /// </summary>
-    public class TcpTx : IDisposable, ITx, IBindTcpCore
+    public class TcpTx : BindTcpCore, IDisposable, ITcpTx
     {
         private bool is_disposed = false;
         private bool transporting = false;
-        private int state { get; set; }
         protected int nTransported { get; set; }
-        private IEndTransport EndTransport { get; set; }
         protected TaskFactory Task { get; set; }
-        private IAsyncResult AsyncResult { get; set; }
-        private ITxEvents events { get; set; }
         private byte[] buffer { get; set; }
+        private int state { get; set; }
         private int offset { get; set; }
         private int length { get; set; }
+        private IAsyncResult AsyncResult { get; set; }
+        private ITxEvents events { get; set; }
+        private IEndTransport EndTransport { get; set; }
         /// <summary>
         /// Initializes a new instance of the <see cref="TcpTx"/> class.
         /// </summary>
@@ -54,7 +52,7 @@
         /// <summary>
         /// 是否释放
         /// </summary>
-        public bool IsDisposed => this.is_disposed;
+        public bool IsDisposed => this.is_disposed || this.Core.IsClosed;
 
         /// <summary>
         /// Gets 发送数据块大小.
@@ -69,8 +67,6 @@
         /// 运行状态
         /// </summary>
         public bool Running => this.transporting;
-
-        public TcpCore Core { get; private set; }
 
         /// <inheritdoc/>
         public virtual void Dispose()
@@ -132,26 +128,21 @@
             return true;
         }
 
-        protected virtual async void restart_transport()
+        protected virtual void restart_transport()
         {
-            if (this.is_disposed || !this.Core.Actived)
-            {
-                to_end();
-                return;
-            }
-
+            if (this.is_disposed || !this.Core.Actived) return;
             try
             {
-                await Task.StartNew(x_Transport);
+                x_Transport();
             }
             catch { Debug.Assert(false); }
         }
 
         protected virtual void tell_transported()
         {
-            if (this.is_disposed) return;
             if (to_end())
             {
+                if (this.is_disposed) return;
                 if (this.events != null) this.events.OnTransported(this);
                 if (this.EndTransport != null) this.EndTransport.WhenTransportEnd(this);
                 if (this.Transported != null) this.Transported.Invoke(this);
@@ -161,7 +152,13 @@
         /// <summary>
         /// 发送队列完成
         /// </summary>
-        protected virtual void OnTransported() { if (!this.Core.IsClosed) this.tell_transported(); }
+        protected virtual void OnTransported()
+        {
+            if (this.Core.Actived)
+            {
+                Task.StartNew(this.tell_transported);
+            }
+        }
 
         /// <summary>
         /// 发送数据.
@@ -169,33 +166,24 @@
         /// <param name="data">数据.</param>
         private void x_Transport()
         {
-            if (this.Core.IsClosed) return;
-
             try
             {
-                if (!this.Core.Actived) return;
                 // Socket Poll 判断连接是否可用 this.core.Actived
                 if (this.Core.PollWrite(Consts.SocketPollTime))
                 {
-                    if (this.Core.CanBegin)
+                    AsyncResult = this.Core.BeginSend(this.buffer, this.offset, this.length, this.SendCallback);
+                    if (this.AsyncResult != null)
                     {
-                        AsyncResult = this.Core.BeginSend(this.buffer, this.offset, this.length, this.SendCallback);
                         this.AsyncResult.Wait();
                     }
                 }
                 else
                 {
-                    if (!this.Core.IsClosed) restart_transport(); //对方缓冲区已满，重新发送
+                    if (this.Core.Actived) restart_transport(); //对方缓冲区已满，重新发送
                 }
                 return;
             }
             catch when (this.Core.IsClosed) { Debug.Assert(false); }
-            //catch (SocketException e)
-            //{
-            //    Debug.Assert(false);
-            //    AsyncResult = null;
-            //    if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.StartWrite)) this.Core.ThrowException(e);
-            //}
             catch (Exception e) { this.Core.ThrowException(e); }
             if (!this.is_disposed) this.Core.Lose();
         }
@@ -205,33 +193,20 @@
             AsyncResult = null;
             try
             {
-                if (this.Core.CanEnd)
+                this.state = this.Core.EndSend(asyncResult); //state决定是否冲重传
+                if (this.state <= 0)
                 {
-                    this.state = this.Core.EndSend(asyncResult); //state决定是否冲重传
-                    asyncResult.AsyncWaitHandle.Close();
-                    if (this.state <= 0)
+                    if (this.state == 0)
                     {
-                        if (this.Core.IsClosed) return;
                         restart_transport();
-                        return;
                     }
-                }
-                else
-                {
-                    asyncResult.AsyncWaitHandle.Close();
-                    if (!this.is_disposed) this.Core.Lose();
+
                     return;
                 }
                 this.OnTransported();
                 return;
             }
             catch when (this.Core.IsClosed) { Debug.Assert(false); }
-            //catch (SocketException e)
-            //{
-            //    Debug.Assert(false);
-            //    if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Writing)) this.Core.ThrowException(e);
-            //    return;
-            //}
             catch (Exception e) { this.Core.ThrowException(e); }
             if (!this.is_disposed) this.Core.Lose();
         }
@@ -244,11 +219,6 @@
         public void BindEvents(ITxEvents events)
         {
             this.events = events;
-        }
-
-        public void BindCore(TcpCore core)
-        {
-            this.Core = core;
         }
     }
 }

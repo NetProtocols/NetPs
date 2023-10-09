@@ -9,4 +9,4 @@
 ## 02. 数据包格式
 - **06 byte**:	FF FF FF FF FF FF
 
-- **16 byte**:	MAC Address
+- **(16 * mac_length) byte**:	MAC Address

@@ -16,24 +16,25 @@
     /// </summary>
     public class TcpCore : SocketCore
     {
-        private TcpConfigFunction tcp_config { get; set; }
-        private CancellationToken CancellationToken { get; set; }
-        private IAsyncResult AsyncResult { get; set; }
         private bool is_disposed = false;
         private bool is_connecting = false;
         private bool is_connected = false;
-        private bool is_shutdown = false;
-        public TcpCore()
+        private ManualResetEvent manualResetEvent = new ManualResetEvent(false);
+        private TcpConfigFunction tcp_config { get; set; }
+        private IAsyncResult AsyncResult { get; set; }
+        public TcpCore() : base()
         {
-            this.tcp_config = null;
             construct();
         }
-        public TcpCore(TcpConfigFunction tcp_config)
+        public TcpCore(TcpConfigFunction tcp_config) : base()
         {
             this.tcp_config = tcp_config;
             construct();
         }
-
+        public TcpCore(Socket socket) : base(socket)
+        {
+            construct();
+        }
         private void construct()
         {
             this.ConnectedObservable = Observable.FromEvent<SateChangeHandle, object>(handler => o => handler(o), evt => this.Connected += evt, evt => this.Connected -= evt);
@@ -66,35 +67,11 @@
         public override bool Actived => base.Actived && (this.IsServer || this.IsConnected && !this.IsShutdown);
         public virtual bool IsServer => false;
         /// <summary>
-        /// 可以结束
-        /// </summary>
-        public virtual bool CanEnd => (this.Socket.Connected == this.Socket.Blocking) || (this.Socket.Connected && !this.Socket.Blocking);
-        /// <summary>
-        /// 可以Poll
-        /// </summary>
-        public virtual bool CanFIN => (this.Socket.Blocking && this.Socket.Connected);
-        /// <summary>
-        /// 可以开始
-        /// </summary>
-        public virtual bool CanBegin => !this.IsDisposed && !(!this.Socket.Blocking && !IsConnected);
-
-        /// <summary>
         /// Gets or sets a value indicating whether gets or sets 正在连接.
         /// </summary>
         public virtual bool IsConnecting => this.is_connecting;
-        public virtual bool IsConnected => (this.IPEndPoint == null || this.is_connected) && Socket.Connected;
-        public override bool IsShutdown => this.is_shutdown;
+        public virtual bool IsConnected => (this.IsReference || this.is_connected) && Socket.Connected;
         public override bool IsClosed => base.IsClosed || this.IsShutdown;
-
-        /// <summary>
-        /// 连接的地址
-        /// </summary>
-        public virtual ISocketUri RemoteAddress { get; protected set; }
-
-        /// <summary>
-        /// 连接的地址
-        /// </summary>
-        public virtual IPEndPoint RemoteIPEndPoint { get; protected set; }
 
         /// <summary>
         /// Gets or sets 连接.
@@ -112,33 +89,20 @@
             this.Socket.Listen(backlog);
             base.to_opened();
         }
-
-        /// <summary>
-        /// 创建新连接.
-        /// </summary>
-        /// <param name="address">.</param>
-        public virtual async Task<bool> ConnectAsync(ISocketUri address)
+        public virtual bool Connect(ISocketUri address)
         {
             if (this.connect_pre(address))
             {
                 try
                 {
-                    return await this.connect_task(this.ConnectTimeout);
+                    return this.connect_task(this.ConnectTimeout);
                 }
                 catch when (this.IsClosed) { Debug.Assert(false); }
                 catch (Exception e) { this.ThrowException(e); }
             }
             return false;
         }
-        public virtual async Task<bool> ConnectAsync(string address) => await this.ConnectAsync(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
-        public virtual void Connect(ISocketUri address)
-        {
-            if (this.connect_pre(address))
-            {
-                this.just_start_connect();
-            }
-        }
-        public virtual void Connect(string address) => this.Connect(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
+        public virtual bool Connect(string address) => this.Connect(new InsideSocketUri(InsideSocketUri.UriSchemeTCP, address));
         private bool connect_pre(ISocketUri address)
         {
             if (address != null)
@@ -185,11 +149,6 @@
         /// </remarks>
         public virtual void Shutdown(SocketShutdown how)
         {
-            lock (this)
-            {
-                if (this.is_shutdown) return;
-                this.is_shutdown = true;
-            }
             //主动关闭的必要：发送 FIN 包
             this.socket_shutdown(how);
             if (!base.IsClosed) this.Lose();
@@ -210,7 +169,7 @@
         /// </summary>
         protected virtual void OnConfiguration()
         {
-            this.Socket = new_socket();
+            this.SetSocket(new_socket());
             //this.Socket.Blocking = false;
             if (tcp_config != null) tcp_config.Invoke(this);
         }
@@ -229,10 +188,8 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            if (this.CancellationToken != null)
-            {
-                this.CancellationToken.WaitHandle.Close();
-            }
+            this.manualResetEvent.Set();
+            this.manualResetEvent.Close();
             base.Dispose();
         }
 
@@ -241,40 +198,38 @@
             this.start_connect();
         }
 
-        private async Task<bool> connect_task(int timeout)
+        private bool connect_task(int timeout)
         {
             if (this.is_disposed) return false;
             try
             {
-                if (CancellationToken == null) CancellationToken = new CancellationToken();
-                //var rep = this.ConnectedObservable.Timeout(TimeSpan.FromMilliseconds(timeout)).FirstOrDefaultAsync();
-                //var task = rep.GetAwaiter();
+                manualResetEvent.Reset();
                 var _task = Task.Factory.StartNew(this.just_start_connect);
-                //var o = await task;
-                if (!this.CancellationToken.IsCancellationRequested)
+                if (manualResetEvent.WaitOne(timeout, false))
                 {
-                    await Task.Delay(timeout, CancellationToken);
-                }
-
-                await _task;
-                if (this.is_connected)
-                {
+                    if (!this.is_connected || this.is_disposed) return false;
                     return true;
                 }
-                if (this.is_disposed) return false;
+                else
+                {
+                    AsyncResult.Close();
+                }
             }
             catch when (this.IsClosed) { Debug.Assert(false); }
             catch (Exception e) { this.ThrowException(e); }
-            tell_disconnected();
+            if (!this.is_disposed)
+            {
+                tell_disconnected();
+            }
             return false;
         }
 
         protected virtual void start_connect()
         {
             if (this.is_disposed) return;
+            if (! to_opened()) return;
             try
             {
-                to_opened();
                 AsyncResult = this.BeginConnect(this.RemoteIPEndPoint, this.connect_callback);
                 AsyncResult.Wait();
                 return;
@@ -291,7 +246,7 @@
             try
             {
                 this.EndConnect(asyncResult);
-                asyncResult.AsyncWaitHandle.Close();
+                asyncResult.Close();
                 if (!this.IsClosed && this.Socket.Connected) this.tell_connected();
                 return;
             }
@@ -308,9 +263,8 @@
                 if (this.is_connected) return;
                 this.is_connected = true;
             }
+            this.manualResetEvent.Set();
             this.OnConnected();
-            CancellationToken.WaitHandle.Close();
-            CancellationToken = new CancellationToken();
             this.Connected?.Invoke(this);
         }
 

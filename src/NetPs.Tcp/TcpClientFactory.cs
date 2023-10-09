@@ -8,7 +8,7 @@
     /// Tcp 客户端工厂.
     /// </summary>
     public class TcpClientFactory<TTx, TRx> : TcpRxTx<TTx, TRx>, ITcpClient
-        where TTx : TcpTx, ITx, new() where TRx : TcpRx, IRx, new()
+        where TTx : ITcpTx, new() where TRx : ITcpRx, new()
     {
         private ITcpClientEvents events { get; set; }
         /// <summary>
@@ -19,16 +19,13 @@
         {
         }
 
-        public TcpClientFactory(ITcpClientEvents events) : base(null)
+        public TcpClientFactory(ITcpClientEvents events) : base()
         {
             this.events = events;
         }
 
-        public TcpClientFactory(Socket socket) : base(null)
+        public TcpClientFactory(Socket socket) : base(socket)
         {
-            PutSocket(socket);
-            this.RemoteIPEndPoint = socket.RemoteEndPoint as global::System.Net.IPEndPoint;
-            this.RemoteAddress = new InsideSocketUri(InsideSocketUri.UriSchemeTCP, this.RemoteIPEndPoint);
         }
 
         /// <summary>
@@ -40,7 +37,13 @@
         /// Gets or sets 接收数据.
         /// </summary>
         public virtual IObservable<byte[]> ReceivedObservable => this.Rx.ReceivedObservable;
-
+        public IHub Hub { get; set; }
+        public virtual void StartHub(IHub hub)
+        {
+            if (Hub != null) Hub.Close();
+            Hub = hub;
+            Hub.Start();
+        }
         /// <summary>
         /// 开始接收数据
         /// </summary>

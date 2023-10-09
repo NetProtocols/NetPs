@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+using System.Threading;
 
 namespace NetPs.Tcp
 {
@@ -15,11 +14,15 @@ namespace NetPs.Tcp
         }
     }
     public abstract class HubBase {
-        private static long id = 1;
+        private static int inner_id = 1;
         private bool is_closed = false;
-        
         public event EventHandler Closed;
-
+        public readonly int id;
+        public HubBase()
+        {
+            id = GetId();
+        }
+        public int ID => this.id;
         public void Close()
         {
             lock (this)
@@ -32,10 +35,9 @@ namespace NetPs.Tcp
         }
 
         protected abstract void OnClosed();
-
-        protected static long GetId()
+        protected virtual int GetId()
         {
-            return id++;
+            return Interlocked.Increment(ref inner_id);
         }
     }
     public interface IHub : IDisposable
@@ -45,7 +47,7 @@ namespace NetPs.Tcp
         /// <summary>
         /// 标识.
         /// </summary>
-        long ID { get; }
+        int ID { get; }
         void Close();
         void Start();
     }

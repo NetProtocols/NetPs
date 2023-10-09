@@ -8,11 +8,10 @@
     public class TcpLimitQueueTx : TcpQueueTx, IDisposable, ISpeedLimit
     {
         private bool is_disposed = false;
-        private long last_time { get; set; }
-        private int transported_count { get; set; }
-        private CancellationToken CancellationToken { get; set; }
         public virtual int Limit { get; protected set; }
-        public virtual long LastTime => this.last_time;
+        private int transported_count { get; set; }
+        private long last_time { get; set; }
+        private CancellationToken CancellationToken { get; set; }
         public TcpLimitQueueTx() : base()
         {
             this.CancellationToken = new CancellationToken();
@@ -20,7 +19,7 @@
             this.transported_count = 0;
             this.last_time = DateTime.Now.Ticks;
         }
-
+        public virtual long LastTime => this.last_time;
         public override void Dispose()
         {
             lock (this)

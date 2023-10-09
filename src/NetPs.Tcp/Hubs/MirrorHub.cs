@@ -2,19 +2,15 @@
 {
     using System;
     using System.Diagnostics;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     public class MirrorHub : HubBase, IHub
     {
         private bool is_disposed = false;
         private bool is_init = false;
-        private TcpRepeaterClient tcp { get; set; }
-        private readonly long id = GetId();
-        private TcpRepeaterClient mirror { get; set; }
-
         public virtual string Mirror_Address { get; protected set; }
-        public MirrorHub(TcpClient tcp, string mirror_addr, int limit)
+        private TcpRepeaterClient tcp { get; set; }
+        private TcpRepeaterClient mirror { get; set; }
+        public MirrorHub(ITcpClient tcp, string mirror_addr, int limit)
         {
             if (!tcp.Actived) return;
             this.Mirror_Address = mirror_addr;
@@ -24,40 +20,36 @@
             this.tcp.Limit(limit);
             mirror.SocketClosed += Mirror_SocketClosed;
             this.tcp.SocketClosed += Tcp_SocketClosed; ;
-            mirror.Connected += Mirror_Connected;
             this.is_init = true;
         }
 
         private void Tcp_SocketClosed(object sender, EventArgs e)
         {
             this.tcp.SocketClosed -= Tcp_SocketClosed;
-            if (!is_disposed) this.Dispose();
+            if (this.mirror.IsClosed)
+            {
+                this.Dispose();
+            }
+            else
+            {
+                this.mirror.FIN();
+            }
         }
 
         private void Mirror_SocketClosed(object sender, EventArgs e)
         {
             mirror.SocketClosed -= Mirror_SocketClosed;
-            try
+            //关闭告知
+            if (this.tcp.IsClosed)
             {
-                //关闭告知
-                if (this.tcp != null)
-                {
-                    this.tcp.FIN();
-                }
+                this.Dispose();
             }
-            catch
+            else
             {
-                Debug.Assert(false);
+                this.tcp.FIN();
             }
         }
 
-        private void Mirror_Connected(object source)
-        {
-            mirror.Rx.StartReceive();
-            this.tcp.Rx.StartReceive();
-        }
-
-        public virtual long ID => this.id;
 
         public virtual void Dispose()
         {
@@ -65,23 +57,29 @@
             {
                 if (this.is_disposed) return;
                 this.is_disposed = true;
-            }
-            if (this.mirror != null)
-            {
-                mirror.Connected -= Mirror_Connected;
-            }
+            } 
             this.Close();
         }
 
-        public async void Start()
+        public void Start()
         {
             try
             {
                 if (!is_init) return;
-                var ok = await mirror.ConnectAsync(this.Mirror_Address);
+                var ok = mirror.Connect(this.Mirror_Address);
                 if (!ok)
                 {
-                    //this.Close();
+                    this.mirror.Lose();
+                    return;
+                }
+                if (this.tcp.Actived)
+                {
+                    mirror.Rx.StartReceive();
+                    this.tcp.Rx.StartReceive();
+                }
+                else
+                {
+                    this.mirror.FIN();
                 }
                 return;
             }
@@ -96,10 +94,6 @@
 
         protected override void OnClosed()
         {
-            if (this.mirror != null && this.mirror.Actived)
-            {
-                this.mirror.FIN();
-            }
         }
     }
 }

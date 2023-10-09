@@ -14,10 +14,11 @@
     public delegate void SocketExceptionHandler(Exception exception);
     public abstract class SocketFunc
     {
+        private bool is_shutdown = false;
         /// <summary>
         /// Gets or sets tcp client.
         /// </summary>
-        public virtual Socket Socket { get; protected set; }
+        public virtual Socket Socket { get; internal set; }
         /// <summary>
         /// Gets or sets 地址.
         /// </summary>
@@ -26,12 +27,25 @@
         /// Gets or sets 终端地址.
         /// </summary>
         public virtual IPEndPoint IPEndPoint { get; protected set; }
+        /// <summary>
+        /// 远程地址
+        /// </summary>
+        public virtual ISocketUri RemoteAddress { get; protected set; }
+        /// <summary>
+        /// 远程地址
+        /// </summary>
+        public virtual IPEndPoint RemoteIPEndPoint { get; protected set; }
         public abstract bool IsDisposed { get; }
         public abstract bool IsClosed { get; }
         public abstract bool Actived { get; }
-        public abstract bool IsShutdown { get; }
+        public virtual bool IsShutdown => this.is_shutdown;
         public virtual bool IsSocketClosed { get; private set; } = false;
         public event EventHandler SocketClosed;
+        private ManualResetEvent manualResetEvent { get; set; }
+        public SocketFunc()
+        {
+            manualResetEvent = new ManualResetEvent(false);
+        }
         /// <summary>
         /// 处理异常.
         /// </summary>
@@ -45,7 +59,36 @@
             Debug.Assert(!this.IsClosed);
             this.SocketException?.Invoke(e);
         }
-
+        protected virtual void SetSocket(Socket socket)
+        {
+            this.Socket = socket;
+            if (socket.LocalEndPoint != null && socket.RemoteEndPoint != null)
+            {
+                var scheme = GetScheme();
+                this.IPEndPoint = socket.LocalEndPoint as IPEndPoint;
+                this.Address = new InsideSocketUri(scheme, this.IPEndPoint);
+                this.RemoteIPEndPoint = socket.RemoteEndPoint as IPEndPoint;
+                this.RemoteAddress = new InsideSocketUri(scheme, this.RemoteIPEndPoint);
+            }
+        }
+        public virtual string GetScheme()
+        {
+            if (Socket == null) return InsideSocketUri.UriSchemeUnknown;
+            switch (Socket.ProtocolType)
+            {
+                case ProtocolType.Tcp:
+                    return InsideSocketUri.UriSchemeTCP;
+                case ProtocolType.Udp:
+                    return InsideSocketUri.UriSchemeUDP;
+                case ProtocolType.Icmp:
+#if NETSTANDARD
+                case ProtocolType.IcmpV6:
+#endif
+                    return InsideSocketUri.UriSchemeICMP;
+                default:
+                    return InsideSocketUri.UriSchemeUnknown;
+            }
+        }
         /// <summary>
         /// 复用地址
         /// </summary>
@@ -80,6 +123,16 @@
         {
             this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, timeout);
         }
+        public virtual int GetSendTimeout()
+        {
+            var value = this.Socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout);
+            if (value is int val) return val;
+            return 0;
+        }
+        public virtual void SetBroadcast(bool value)
+        {
+            this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, value);
+        }
         protected virtual Socket new_socket()
         {
             switch (Address.Scheme)
@@ -106,15 +159,17 @@
         }
         protected virtual void close_socket()
         {
+            //防止未初始化socket的情况
             if (this.Socket != null)
             {
                 try
                 {
-                    //防止未初始化socket的情况
                     this.IsSocketClosed = true;
-                    if (SocketClosed != null) SocketClosed.Invoke(this, null);
-                    Thread.Sleep(1000);
+                    this.BlockingDelay(300);
                     this.Socket.Close();
+                    GC.WaitForPendingFinalizers();
+                    this.BlockingDelay(300);
+                    if (SocketClosed != null) SocketClosed.Invoke(this, null);
                 }
                 catch
                 {
@@ -122,32 +177,30 @@
                 }
             }
         }
-        public virtual void WaitHandle(IAsyncResult asyncResult)
-        {
-            try
-            {
-                if (!asyncResult.IsCompleted)
-                {
-                    asyncResult.AsyncWaitHandle.WaitOne();
-                    asyncResult.AsyncWaitHandle.Close();
-                }
-                else
-                {
-                    asyncResult.AsyncWaitHandle.Close();
-                }
-            }
-            catch when (this.IsClosed) { Debug.Assert(false); }
-            catch (Exception e) { this.ThrowException(e); }
-        }
 
         protected virtual void socket_shutdown(SocketShutdown how)
         {
-            if (this.Socket != null && this.Socket.ProtocolType == ProtocolType.Tcp)
+            if (!this.Address.IsTcp()) throw new ArgumentException("cannot shutdown because not TCP");
+            //限制每个SocketCore实例只能shutdown 一次
+            lock (this)
+            {
+                if (this.is_shutdown) return;
+                this.is_shutdown = true;
+            }
+
+            if (this.Socket != null)
             {
                 try
                 {
+                    /**
+                     * 已经丢失的连接，发送FIN包已经毫无意义，并且会触发异常。
+                     */
                     if (this.Socket.Connected)
                     {
+                        if (this.BlockingDelay(100))
+                        {
+                            if (!this.Socket.Connected) return;
+                        }
                         this.Socket.Shutdown(how);
                     }
                 }
@@ -155,11 +208,29 @@
                 catch (Exception e) { this.ThrowException(e); }
             }
         }
+
+        internal bool BlockingDelay(int timeout)
+        {
+            var wait = false;
+            if (this.Socket == null) return wait;
+
+            /**
+             * 当前状态为阻塞时 等待片刻。
+             */
+            if (this.Socket.Blocking)
+            {
+                this.manualResetEvent.Reset();
+                do this.manualResetEvent.WaitOne(10, false); while ((timeout -= 10) > 0 && this.Socket.Connected);
+                wait = true;
+            }
+            return wait;
+        }
         public virtual bool PollRead(int millisecondsTimeout)
         {
+            if (!this.Actived) return false;
             try
             {
-                return !this.IsClosed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectRead);
+                return this.Socket.Connected && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectRead);
             }
             catch
             {
@@ -168,9 +239,9 @@
         }
         public virtual bool PollWrite(int millisecondsTimeout)
         {
+            if (!this.Actived) return false;
             try
             {
-
                 return !this.IsClosed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectWrite);
             }
             catch
@@ -180,6 +251,7 @@
         }
         public virtual bool PollError(int millisecondsTimeout)
         {
+            if (!this.Actived) return false;
             return !this.IsClosed && this.Socket.Poll(millisecondsTimeout, SelectMode.SelectError);
         }
         public virtual IAsyncResult BeginAccept(AsyncCallback callback)
@@ -189,8 +261,17 @@
         }
         public virtual Socket EndAccept(IAsyncResult asyncResult)
         {
-            if (!this.Actived) return null;
-            return this.Socket.EndAccept(asyncResult);
+            Socket socket = null;
+            if (this.Actived)
+            {
+#if NETSTANDARD
+                Debug.Assert(!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed);
+                if (!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed)
+#endif
+                    socket = this.Socket.EndAccept(asyncResult);
+            }
+            asyncResult.Close();
+            return socket;
         }
         public virtual IAsyncResult BeginConnect(IPEndPoint address, AsyncCallback callback)
         {
@@ -199,33 +280,144 @@
         }
         public virtual void EndConnect(IAsyncResult asyncResult)
         {
-            if (this.IsClosed) return;
-            this.Socket.EndConnect(asyncResult);
+            if (!this.IsClosed)
+            {
+#if NETSTANDARD
+                Debug.Assert(!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed);
+                if (!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed)
+#endif
+                    this.Socket.EndConnect(asyncResult);
+            }
+            asyncResult.Close();
+        }
+        public virtual int GetAvailable()
+        {
+            if (!this.IsSocketClosed) return this.Socket.Available;
+            return 0;
+        }
+        internal abstract void OnSocketLosed();
+        private bool check_receive()
+        {
+            if (this.IsClosed) return false;
+            if (!this.Socket.Connected && !this.Socket.Blocking) return false;
+            if (!this.Actived) return false;
+            return true;
         }
         public virtual IAsyncResult BeginReceive(byte[] buffer, int offset, int count, AsyncCallback callback)
         {
-            if (buffer == null || this.IsClosed) return null;
-            if (this.Socket.Available <= 0 && this.PollRead(0)) return null;
-            if (!this.Actived) return null;
-            return this.Socket.BeginReceive(buffer, offset, count, SocketFlags.None, callback, null);
+            if (buffer != null && this.check_receive())
+            {
+                return this.Socket.BeginReceive(buffer, offset, count, SocketFlags.None, callback, null);
+            }
+
+            this.OnSocketLosed();
+            return null;
         }
         public virtual int EndReceive(IAsyncResult asyncResult)
         {
-            if (!this.Actived) return 0;
-            return this.Socket.EndReceive(asyncResult);
+            int received = 0;
+            if (this.Actived)
+            {
+#if NETSTANDARD
+                if (!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed)
+#endif
+                received = this.Socket.EndReceive(asyncResult);
+            }
+            this.manualResetEvent.Set();
+            if (this.Address.IsTcp())
+            {
+                if (received <= 0)
+                {
+                    if (received == 0)
+                    {
+                        socket_shutdown(SocketShutdown.Both);
+                    }
+                    this.OnSocketLosed();
+                }
+            }
+            asyncResult.Close();
+
+            if (! this.Actived)
+            {
+                received = -1;
+            }
+            return received;
         }
         public virtual IAsyncResult BeginSend(byte[] buffer, int offset, int count, AsyncCallback callback)
         {
             if (buffer == null || !this.Actived) return null;
-            if (this.IsClosed) return null;
             return this.Socket.BeginSend(buffer, offset, count, SocketFlags.None, callback, null);
         }
         public virtual int EndSend(IAsyncResult asyncResult)
         {
-            if (!this.Actived) return 0;
-            return this.Socket.EndSend(asyncResult);
-        }
+            int sended = 0;
+            if (this.Actived)
+            {
+                sended = 1;
+#if NETSTANDARD
+                if (!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed)
+#endif
+                    sended = this.Socket.EndSend(asyncResult);
+            }
+            this.manualResetEvent.Set();
+            asyncResult.Close();
 
+            if (!this.Actived)
+            {
+                sended = -1;
+            }
+            return sended;
+        }
+        public virtual IAsyncResult BeginSendTo(byte[] buffer, int offset, int count, IPEndPoint endpoint, AsyncCallback callback)
+        {
+            if (buffer == null || !this.Actived) return null;
+            //endpoint 为广播地址时所必要的设置
+            this.SetBroadcast(endpoint.Address.IsBroadcast());
+            return this.Socket.BeginSendTo(buffer, offset, count, SocketFlags.None, endpoint, callback, null);
+        }
+        public virtual int EndSendTo(IAsyncResult asyncResult)
+        {
+            int sended = -1;
+            if (this.Actived)
+            {
+#if NETSTANDARD
+                Debug.Assert(!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed);
+                if (!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed)
+#endif
+                    sended = this.Socket.EndSendTo(asyncResult);
+            }
+            this.manualResetEvent.Set();
+            asyncResult.Close();
+
+            if (!this.Actived)
+            {
+                sended = -1;
+            }
+            return sended;
+        }
+        public virtual IAsyncResult BeginReceiveFrom(byte[] buffer, int offset, int count, ref EndPoint endpoint, AsyncCallback callback)
+        {
+            if (buffer == null || !this.Actived) return null;
+            return this.Socket.BeginReceiveFrom(buffer, offset, count, SocketFlags.None, ref endpoint, callback, null);
+        }
+        public virtual int EndReceiveFrom(IAsyncResult asyncResult, ref EndPoint endpoint)
+        {
+            int received = -1;
+            if (this.Actived)
+            {
+#if NETSTANDARD
+                Debug.Assert(!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed);
+                if (!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed)
+#endif
+                    received = this.Socket.EndReceiveFrom(asyncResult, ref endpoint);
+            }
+            asyncResult.AsyncWaitHandle.Close();
+            if (!this.Actived)
+            {
+                received = -1;
+            }
+            return received;
+        }
         public virtual IPEndPoint CreateIPAny()
         {
             if (Address.IsIpv6())
@@ -234,5 +426,39 @@
             }
             return new IPEndPoint(IPAddress.Any, 0);
         }
+
+        #region deal unhandled exceptions
+        private static bool unhandled_exception = false;
+        internal static void register_unhandled()
+        {
+            if (unhandled_exception) return;
+            unhandled_exception = true;
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+#if NETSTANDARD
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+#endif
+        }
+        public static int exception_no = 0;
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            if (e.IsTerminating) return;
+            if (e.ExceptionObject is SocketException)
+            {
+                Interlocked.Increment(ref exception_no);
+            }
+        }
+
+#if NETSTANDARD
+        private static void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            if (e.Observed) return;
+            if (e.Exception.InnerException is SocketException)
+            {
+                e.SetObserved();
+                Interlocked.Increment(ref exception_no);
+            }
+        }
+#endif
+        #endregion
     }
 }

@@ -3,7 +3,7 @@
     using System;
     using System.Net;
 
-    public interface IRx
+    public interface IRx : IDisposable
     {
         byte[] Buffer { get; }
         int ReceivedSize { get; }
