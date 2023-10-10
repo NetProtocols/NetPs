@@ -61,7 +61,7 @@
         {
             this.Limit = limit;
         }
-        public override void OnRecevied()
+        protected override void OnReceived()
         {
             if (this.is_disposed || this.nReceived <= 0) return;
             if (this.Transport.IsDisposed) return;
@@ -130,7 +130,7 @@
                 if (!this.re_rx) return;
             }
 
-            if (this.Transport is TcpTx tx)
+            if (this.Transport is ITcpTx tx)
             {
                 if (!tx.Core.Actived) return;
             }

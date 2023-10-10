@@ -13,3 +13,11 @@
 ```
  var test = new UdpTest();
 ```
+
+### 03. WolTest
+测试发送 广播域中其它机器是否可以收到wol数据包。
+
+观测目标：广播域中其它机器抓取到wol包。
+```
+var test = new WolTest();
+```

@@ -44,6 +44,19 @@
                 }
             }
         }
+        public static bool IsMacAddress(string mac)
+        {
+            var times = 0;
+            var re = new Regex("[0-9a-fA-F]{2}");
+            foreach (Match match in re.Matches(mac))
+            {
+                if (match.Success)
+                {
+                    times++;
+                }
+            }
+            return times == 6;
+        }
 
         public void SetData(byte[] data, int offset)
         {

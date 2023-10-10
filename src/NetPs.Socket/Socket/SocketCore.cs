@@ -14,7 +14,7 @@
     /// <summary>
     /// 套接字基类
     /// </summary>
-    public abstract class SocketCore : SocketFunc, IDisposable, ISocket
+    public abstract class SocketCore : SocketFunc, IDisposable, IDisposables, ISocket
     {
         /// <summary>
         /// 数据流池
@@ -180,6 +180,11 @@
         {
             this.Address = address;
             this.IPEndPoint = new IPEndPoint(address.IP, address.Port);
+        }
+
+        public void AddDispose(IDisposable disposable)
+        {
+            this.Disposables.Add(disposable);
         }
     }
 }

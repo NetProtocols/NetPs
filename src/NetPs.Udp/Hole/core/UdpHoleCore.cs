@@ -21,7 +21,7 @@
 
         public delegate void PacketReceivedHandle(HolePacket packet);
         public event PacketReceivedHandle PacketReceived;
-        public event UdpRx.ReveicedStreamHandler Received;
+        public event ReveicedStreamHandler Received;
         public virtual bool IsServer => is_server;
         public virtual bool IsDisposed => is_disposed;
         public virtual bool IsResolving => is_resolving;

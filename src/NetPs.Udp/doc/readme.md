@@ -1,4 +1,6 @@
-﻿### 01. UdpTx
+﻿UDP通信方式分为单播、广播、组播。
+
+### 01. UdpTx
 
 ![image](UdpTx.png)
 

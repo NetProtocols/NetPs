@@ -2,12 +2,13 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Diagnostics;
     using System.Net;
     using System.Net.Sockets;
     using System.Reactive.Linq;
     using System.Threading.Tasks;
 
-    public class UdpRx : BindUdpCore, IDisposable, IRx
+    public class UdpRx : BindUdpCore, IDisposable, IUdpRx
     {
         protected byte[] bBuffer { get; private set; }
         public int nReceived { get; protected set; }
@@ -33,12 +34,6 @@
         /// Gets or sets 接收数据.
         /// </summary>
         public virtual IObservable<UdpData> ReceicedObservable { get; protected set; }
-
-        /// <summary>
-        /// 接收流.
-        /// </summary>
-        /// <param name="stream">流.</param>
-        public delegate void ReveicedStreamHandler(UdpData data);
 
         /// <summary>
         /// 接收数据.
@@ -112,13 +107,14 @@
             try
             {
                 AsyncResult = this.Core.BeginReceiveFrom(this.bBuffer, 0, this.nBuffersize, ref remotePoint, this.ReceiveCallback);
-                if (AsyncResult == null) return;
-                AsyncResult.Wait();
-                return;
+                if (AsyncResult != null)
+                {
+                    AsyncResult.Wait();
+                    return;
+                }
             }
             //释放
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException)
             {
                 if (!this.is_disposed)
@@ -126,8 +122,13 @@
                     restart_receive(); //忽略 客户端连接错误
                     return;
                 }
-                //else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.Read)) this.core.ThrowException(e);
             }
+            catch (Exception e)
+            {
+                this.Core.ThrowException(e);
+            }
+
+            this.Core.Receiving = false;
         }
 
         private void ReceiveCallback(IAsyncResult asyncResult)
@@ -136,21 +137,20 @@
             try
             {
                 this.nReceived = this.Core.EndReceiveFrom(asyncResult, ref this.remotePoint);
-                if (this.is_disposed || !this.Core.Actived) return;
                 if (this.nReceived > 0)
                 {
                     this.events?.OnReceived(this);
                     this.OnReceived();
+                    return;
                 }
-                else
+                else if(!this.is_disposed)
                 {
                     this.restart_receive();
+                    return;
                 }
-                return;
             }
             //释放
-            catch (ObjectDisposedException) { }
-            catch (NullReferenceException) { }
+            catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException)
             {
                 this.nReceived = -1;
@@ -159,9 +159,10 @@
                     restart_receive(); //忽略 客户端连接错误
                     return;
                 }
-                //else if (!NetPsSocketException.Deal(e, this.core, NetPsSocketExceptionSource.ReadUDP)) this.core.ThrowException(e);
             }
+            catch (Exception e) { this.Core.ThrowException(e); }
 
+            this.Core.Receiving = false;
         }
 
         public void BindEvents(IRxEvents events)

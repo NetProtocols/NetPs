@@ -112,7 +112,7 @@
             }
         }
 
-        public virtual void OnRecevied()
+        protected virtual void OnReceived()
         {
             if (this.is_disposed) return;
             var data = new byte[this.nReceived];
@@ -138,8 +138,11 @@
             try
             {
                 this.AsyncResult = this.Core.BeginReceive(this.bBuffer, 0, this.nBuffersize, this.ReceiveCallback);
-                if (this.AsyncResult != null) this.AsyncResult.Wait();
-                return;
+                if (this.AsyncResult != null)
+                {
+                    this.AsyncResult.Wait();
+                    return;
+                }
             }
             catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException e)
@@ -150,6 +153,7 @@
             }
             catch (Exception e) { this.Core.ThrowException(e); }
 
+            this.Core.Receiving = false;
             if (!this.Core.IsClosed) this.Core.Lose();
         }
         private void ReceiveCallback(IAsyncResult asyncResult)
@@ -159,11 +163,13 @@
             {
                 //socket closed, last result.
                 this.nReceived = this.Core.EndReceive(asyncResult);
-                if (this.nReceived <= 0) return;
-                Debug.Assert(this.Core.Socket.Connected);
-                this.events?.OnReceived(this);
-                this.OnRecevied();
-                return;
+                if (this.nReceived > 0)
+                {
+                    Debug.Assert(this.Core.Socket.Connected);
+                    this.events?.OnReceived(this);
+                    this.OnReceived();
+                    return;
+                }
             }
             catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (SocketException e)
@@ -173,6 +179,8 @@
                 if (!NetPsSocketException.Deal(e, this.Core, NetPsSocketExceptionSource.Read)) this.Core.ThrowException(e);
             }
             catch (Exception e) { this.Core.ThrowException(e); }
+
+            this.Core.Receiving = false;
             if (!this.is_disposed) this.Core.Lose();
         }
 

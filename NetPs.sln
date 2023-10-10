@@ -13,6 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetPs.Webdav", "src\NetPs.W
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决方案项", "{4C486257-7BBD-4274-9697-7B34DC2C721F}"
 	ProjectSection(SolutionItems) = preProject
+		bugs.md = bugs.md
 		LICENSE.txt = LICENSE.txt
 		net35-cf.program.props = net35-cf.program.props
 		netps.props = netps.props
@@ -21,7 +22,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetPs.Udp", "src\NetPs.Udp\NetPs.Udp.csproj", "{F3512229-5479-4083-9F80-065C3EB04684}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestConsole.Net6", "test\TestConsole.Net6\TestConsole.Net6.csproj", "{F4558487-7BB0-461F-97E2-F83D707DC1BD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestConsole.Net6", "test\TestConsole.Net6\TestConsole.Net6.csproj", "{F4558487-7BB0-461F-97E2-F83D707DC1BD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

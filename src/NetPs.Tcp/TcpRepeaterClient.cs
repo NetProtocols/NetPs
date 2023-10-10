@@ -22,10 +22,6 @@
         }
         public override bool IsDisposed => base.IsDisposed || this.is_disposed;
         public virtual void Limit(int limit) => this._Rx.SetLimit(limit);
-        protected override void OnConfiguration()
-        {
-            base.OnConfiguration();
-        }
         public override void Dispose()
         {
             lock (this)

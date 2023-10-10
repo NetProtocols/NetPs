@@ -197,10 +197,8 @@
                      */
                     if (this.Socket.Connected)
                     {
-                        if (this.BlockingDelay(100))
-                        {
-                            if (!this.Socket.Connected) return;
-                        }
+                        this.BlockingDelay(50);
+                        if (!this.Socket.Connected) return;
                         this.Socket.Shutdown(how);
                     }
                 }
@@ -381,7 +379,6 @@
             if (this.Actived)
             {
 #if NETSTANDARD
-                Debug.Assert(!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed);
                 if (!asyncResult.AsyncWaitHandle.SafeWaitHandle.IsClosed)
 #endif
                     sended = this.Socket.EndSendTo(asyncResult);
@@ -454,6 +451,7 @@
             if (e.Observed) return;
             if (e.Exception.InnerException is SocketException)
             {
+                //bug:0x000001
                 e.SetObserved();
                 Interlocked.Increment(ref exception_no);
             }

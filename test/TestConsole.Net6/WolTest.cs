@@ -10,10 +10,19 @@ namespace TestConsole.Net6
     internal class WolTest
     {
         private WolSender wol { get; }
-        public WolTest(string addr)
+        public WolTest()
         {
             this.wol = new WolSender();
-            wol.Send(addr);
+            var text = string.Empty;
+            do
+            {
+                Console.Write("wol> ");
+                text = Console.ReadLine();
+                if (WakeOnLanPacket.IsMacAddress(text))
+                {
+                    this.wol.Send(text);
+                }
+            } while (text != "exit");
         }
     }
 }

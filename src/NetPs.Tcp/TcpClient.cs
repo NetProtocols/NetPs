@@ -1,8 +1,6 @@
 ﻿namespace NetPs.Tcp
 {
     using System;
-    using System.Collections.Generic;
-    using System.Net;
     using System.Net.Sockets;
 
     public class TcpClient: TcpClientFactory<TcpTx, TcpRx>
@@ -18,11 +16,6 @@
         public void StartMirror(string address, int limit = -1)
         {
             this.StartHub(new MirrorHub(this, address, limit));
-        }
-        protected override void OnClosed()
-        {
-            //if (Hub != null) Hub.Close();
-            base.OnClosed();
         }
     }
 }

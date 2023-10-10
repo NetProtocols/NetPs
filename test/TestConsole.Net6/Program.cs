@@ -16,9 +16,10 @@ namespace TestConsole.Net6
         static void Main(string[] args)
         {
             Task.Factory.StartNew(() => Food.Heating()).Wait();
-            new TcpReapterTest("172.17.0.161:15244", "0.0.0.0:7070");
-            new WolTest("00:00:00:00:00:0e");
+            new TcpReapterTest("172.17.0.161:15244", "127.0.0.1:7070");
             Utils.OpenBrowser_Edge("http://127.0.0.1:7070");
+            new WolTest();
+            new DnsTest();
             //new PingTest();
             //Console.ReadLine();
             //var addr = "[::1]:9999";

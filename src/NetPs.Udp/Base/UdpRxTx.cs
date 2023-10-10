@@ -6,27 +6,33 @@
     using System.Net;
     using System.Reactive.Linq;
 
-    public class UdpRxTx : UdpCore
+    public class UdpRxTx<TTx, TRx> : UdpCore
+        where TTx : IUdpTx, new()
+        where TRx : IUdpRx, new()
     {
-        private List<UdpTx> txs = new List<UdpTx>();
+        private List<IUdpTx> txs = new List<IUdpTx>();
         public UdpRxTx()
         {
-            this.Rx = new UdpRx();
+            this.Rx = new TRx();
             this.Rx.BindCore(this);
         }
 
         /// <summary>
         /// Gets or sets 接收.
         /// </summary>
-        public UdpRx Rx { get; protected set; }
+        public IUdpRx Rx { get; protected set; }
 
         /// <summary>
         /// 开始接收数据
         /// </summary>
-        public void StartReveice(Action<UdpData> action = null)
+        public void StartReveice(Action<UdpData> action)
         {
-            if (action == null) this.Disposables.Add(this.ReceicedObservable.Subscribe());
-            else this.Disposables.Add(this.ReceicedObservable.Subscribe(action));
+            if (action != null) this.Disposables.Add(this.ReceicedObservable.Subscribe(action));
+            this.Rx.StartReveice();
+        }
+
+        public void StartReveice()
+        {
             this.Rx.StartReveice();
         }
 
@@ -35,18 +41,19 @@
         /// </summary>
         public virtual IObservable<UdpData> ReceicedObservable => this.Rx.ReceicedObservable;
 
-        public UdpTx GetTx(IPEndPoint address)
+        public IUdpTx GetTx(IPEndPoint address)
         {
             var tx = this.txs.Find(t => t.RemoteIP.Equals(address));
             if (tx == null)
             {
                 lock (txs)
                 {
-                    tx = new UdpTx(address);
+                    tx = new TTx();
+                    tx.SetRemote(address);
                     tx.BindCore(this);
                     txs.Add(tx);
                 }
-                tx.Disposables.Add(tx.TransportedObservable.Subscribe(observer =>
+                tx.AddDispose(tx.TransportedObservable.Subscribe(observer =>
                 {
                     lock (txs)
                     {
@@ -56,12 +63,12 @@
             }
             return tx;
         }
-        public UdpTx GetTx(IPAddress ip, int port)
+        public IUdpTx GetTx(IPAddress ip, int port)
         {
             return this.GetTx(new IPEndPoint(ip, port));
         }
 
-        public UdpTx GetTx(string address)
+        public IUdpTx GetTx(string address)
         {
             var uri = new InsideSocketUri(InsideSocketUri.UriSchemeUDP, address);
             return this.GetTx(new IPEndPoint(uri.IP, uri.Port));

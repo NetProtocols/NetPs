@@ -1,17 +1,13 @@
-﻿namespace NetPs.Udp.Base
+﻿namespace NetPs.Udp
 {
     using System;
     using NetPs.Socket;
-    using System.Net;
 
     public class UdpQueueTx : UdpTx
     {
         private bool is_disposed = false;
         private IQueueStream cache { get; set; }
-        internal UdpQueueTx()
-        {
-        }
-        public UdpQueueTx(IPEndPoint endPoint) : base(endPoint)
+        public UdpQueueTx() : base()
         {
             this.cache = SocketCore.StreamPool.GET();
         }
@@ -40,10 +36,7 @@
         {
             this.cache.Enqueue(data, offset, length);
 
-            if (base.to_start())
-            {
-                transport_next();
-            }
+            transport_next();
         }
 
         protected override void OnTransported()
@@ -66,7 +59,8 @@
         private void transport_next()
         {
             var length = this.cache.RequestRead(this.TransportBufferSize);
-            base.Transport(this.cache.Buffer, (int)this.cache.ReadPosition, length);
+            base.StartTransport(this.cache.Buffer, (int)this.cache.ReadPosition, length);
+            this.cache.RecordRead(length);
         }
     }
 }

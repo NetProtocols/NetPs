@@ -12,4 +12,10 @@ namespace NetPs.Udp
             this.Core = core;
         }
     }
+
+    public interface IBindUdpCore
+    {
+        UdpCore Core { get; }
+        void BindCore(UdpCore core);
+    }
 }

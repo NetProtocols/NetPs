@@ -61,7 +61,8 @@
         private void transport_next()
         {
             var length = this.cache.RequestRead(this.TransportBufferSize);
-            base.Transport(this.cache.Buffer, (int)this.cache.ReadPosition, length);
+            base.StartTransport(this.cache.Buffer, (int)this.cache.ReadPosition, length);
+            this.cache.RecordRead(length);
         }
     }
 }

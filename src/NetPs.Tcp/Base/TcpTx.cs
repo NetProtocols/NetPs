@@ -57,7 +57,7 @@
         /// <summary>
         /// Gets 发送数据块大小.
         /// </summary>
-        public virtual int TransportBufferSize { get; }
+        public virtual int TransportBufferSize { get; private set; }
 
         /// <summary>
         /// Gets a value indicating whether 正在发送.
@@ -130,7 +130,11 @@
 
         protected virtual void restart_transport()
         {
-            if (this.is_disposed || !this.Core.Actived) return;
+            if (this.is_disposed || !this.Core.Actived)
+            {
+                this.to_end();
+                return;
+            }
             try
             {
                 x_Transport();
@@ -156,7 +160,7 @@
         {
             if (this.Core.Actived)
             {
-                Task.StartNew(this.tell_transported);
+                this.tell_transported();
             }
         }
 
@@ -175,16 +179,22 @@
                     if (this.AsyncResult != null)
                     {
                         this.AsyncResult.Wait();
+                        return;
                     }
                 }
                 else
                 {
-                    if (this.Core.Actived) restart_transport(); //对方缓冲区已满，重新发送
+                    if (this.Core.Actived)
+                    {
+                        restart_transport(); //对方缓冲区已满，重新发送
+                        return;
+                    }
                 }
-                return;
             }
             catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (Exception e) { this.Core.ThrowException(e); }
+
+            to_end();
             if (!this.is_disposed) this.Core.Lose();
         }
 
@@ -194,20 +204,24 @@
             try
             {
                 this.state = this.Core.EndSend(asyncResult); //state决定是否冲重传
-                if (this.state <= 0)
+                if (this.state >= 0)
                 {
                     if (this.state == 0)
                     {
                         restart_transport();
+                        return;
                     }
-
-                    return;
+                    else
+                    {
+                        this.OnTransported();
+                        return;
+                    }
                 }
-                this.OnTransported();
-                return;
             }
             catch when (this.Core.IsClosed) { Debug.Assert(false); }
             catch (Exception e) { this.Core.ThrowException(e); }
+
+            to_end();
             if (!this.is_disposed) this.Core.Lose();
         }
 
@@ -219,6 +233,11 @@
         public void BindEvents(ITxEvents events)
         {
             this.events = events;
+        }
+
+        public void SetTransportBufferSize(int size)
+        {
+            this.TransportBufferSize = size;
         }
     }
 }

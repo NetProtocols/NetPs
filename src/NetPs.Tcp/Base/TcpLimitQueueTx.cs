@@ -2,6 +2,7 @@
 {
     using NetPs.Socket;
     using System;
+    using System.Diagnostics;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -11,10 +12,10 @@
         public virtual int Limit { get; protected set; }
         private int transported_count { get; set; }
         private long last_time { get; set; }
-        private CancellationToken CancellationToken { get; set; }
+        private ManualResetEvent manualResetEvent { get; set; }
         public TcpLimitQueueTx() : base()
         {
-            this.CancellationToken = new CancellationToken();
+            this.manualResetEvent = new ManualResetEvent(false);
             this.Limit = -1;
             this.transported_count = 0;
             this.last_time = DateTime.Now.Ticks;
@@ -27,7 +28,8 @@
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            this.CancellationToken.WaitHandle.Close();
+            this.manualResetEvent.Set();
+            this.manualResetEvent.Close();
             base.Dispose();
         }
 
@@ -42,7 +44,7 @@
             if (this.Limit > 0)
             {
                 this.transported_count += this.nTransported;
-                Task.StartNew(wait_limit, CancellationToken);
+                wait_limit();
             }
             else
             {
@@ -50,7 +52,7 @@
             }
         }
 
-        private async Task wait_limit()
+        private void wait_limit()
         {
             if (transported_count > this.Limit)
             {
@@ -60,9 +62,20 @@
                     var wait = this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
-                        if (CancellationToken.IsCancellationRequested) return;
-                        await global::System.Threading.Tasks.Task.Delay(wait, CancellationToken); //阈值10ms, 小于则不等待
-                        if (CancellationToken.IsCancellationRequested) return;
+                        //阈值10ms, 小于则不等待
+                        try
+                        {
+                            if (this.is_disposed || this.manualResetEvent.WaitOne(wait, false))
+                            {
+                                //终止
+                                return;
+                            }
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            Debug.Assert(false);
+                            return;
+                        }
                         last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else

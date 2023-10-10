@@ -231,8 +231,11 @@
             try
             {
                 AsyncResult = this.BeginConnect(this.RemoteIPEndPoint, this.connect_callback);
-                AsyncResult.Wait();
-                return;
+                if (AsyncResult != null)
+                {
+                    AsyncResult.Wait();
+                    return;
+                }
             }
             //防止 SocketErr: 10045
             catch when (this.IsClosed) { Debug.Assert(false); }
@@ -246,9 +249,11 @@
             try
             {
                 this.EndConnect(asyncResult);
-                asyncResult.Close();
-                if (!this.IsClosed && this.Socket.Connected) this.tell_connected();
-                return;
+                if (!this.IsClosed && this.Socket.Connected)
+                {
+                    this.tell_connected();
+                    return;
+                }
             }
             catch when (this.IsClosed) { Debug.Assert(false); }
             catch (Exception e) { this.ThrowException(e); }

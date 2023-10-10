@@ -1,5 +1,6 @@
 ﻿using NetPs.Socket;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,10 +15,10 @@ namespace NetPs.Tcp
         public virtual int Limit { get; protected set; }
         private int received_count { get; set; }
         private long last_time { get; set; }
-        private CancellationToken CancellationToken { get; set; }
+        private ManualResetEvent manualResetEvent { get; set; }
         public TcpLimitRx() : base()
         {
-            this.CancellationToken = new CancellationToken();
+            this.manualResetEvent = new ManualResetEvent(false);
             this.Limit = 0;
             this.received_count = 0;
             this.last_time = DateTime.Now.Ticks;
@@ -30,7 +31,8 @@ namespace NetPs.Tcp
                 if (this.is_disposed) return;
                 this.is_disposed = true;
             }
-            this.CancellationToken.WaitHandle.Close();
+            this.manualResetEvent.Set();
+            this.manualResetEvent.Close();
             base.Dispose();
         }
 
@@ -43,7 +45,7 @@ namespace NetPs.Tcp
             this.Limit = limit;
         }
 
-        public override void OnRecevied()
+        protected override void OnReceived()
         {
             if (this.is_disposed || this.nReceived <= 0) return;
             var buffer = new byte[this.nReceived];
@@ -52,11 +54,11 @@ namespace NetPs.Tcp
             if (this.Limit > 0)
             {
                 received_count += this.nReceived;
-                Task.StartNew(wait_limit, CancellationToken);
+                wait_limit();
             }
         }
 
-        private async Task wait_limit()
+        private void wait_limit()
         {
             if (this.received_count > this.Limit)
             {
@@ -66,9 +68,20 @@ namespace NetPs.Tcp
                     var wait = this.GetWaitMillisecond(now);
                     if (wait > 10)
                     {
-                        if (CancellationToken.IsCancellationRequested) return;
-                        await global::System.Threading.Tasks.Task.Delay(wait, CancellationToken); //阈值10ms, 小于则不等待
-                        if (CancellationToken.IsCancellationRequested) return;
+                        //阈值10ms, 小于则不等待
+                        try
+                        {
+                            if (this.is_disposed || this.manualResetEvent.WaitOne(wait, false))
+                            {
+                                //终止
+                                return;
+                            }
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            Debug.Assert(false);
+                            return;
+                        }
                         last_time = now + this.GetMillisecondTicks(wait);
                     }
                     else

@@ -21,4 +21,8 @@
 	    <Pack>true</Pack>
 	  </None>
 	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="TLS\" />
+	</ItemGroup>
 </Project>
