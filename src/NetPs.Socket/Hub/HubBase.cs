@@ -1,8 +1,8 @@
-﻿using System;
-using System.Threading;
-
-namespace NetPs.Tcp
+﻿namespace NetPs.Socket
 {
+    using System;
+    using System.Threading;
+
     public delegate void HubExceptionHandler(Exception e);
     public static class Hub
     {
@@ -13,11 +13,12 @@ namespace NetPs.Tcp
             if (Hub.Exceptioned != null) Exceptioned.Invoke(e);
         }
     }
-    public abstract class HubBase {
+    public abstract class HubBase
+    {
         private static int inner_id = 1;
         private bool is_closed = false;
         public event EventHandler Closed;
-        public readonly int id;
+        private readonly int id;
         public HubBase()
         {
             id = GetId();
@@ -39,16 +40,5 @@ namespace NetPs.Tcp
         {
             return Interlocked.Increment(ref inner_id);
         }
-    }
-    public interface IHub : IDisposable
-    {
-
-        event EventHandler Closed;
-        /// <summary>
-        /// 标识.
-        /// </summary>
-        int ID { get; }
-        void Close();
-        void Start();
     }
 }

@@ -9,6 +9,7 @@
         int ReceivedSize { get; }
         bool Running { get; }
         IPEndPoint RemoteAddress { get; }
+        void StartReceive();
         void BindEvents(IRxEvents events);
     }
 }

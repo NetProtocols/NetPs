@@ -16,10 +16,13 @@ namespace TestConsole.Net6
         static void Main(string[] args)
         {
             Task.Factory.StartNew(() => Food.Heating()).Wait();
-            new TcpReapterTest("172.17.0.161:15244", "127.0.0.1:7070");
-            Utils.OpenBrowser_Edge("http://127.0.0.1:7070");
+            new TcpRepeaterTest("172.17.0.161:15244", "127.0.0.1:7070");
+            new UdpRepeaterTest("114.114.114.114:53", "127.0.0.1:7071");
+            //Utils.OpenBrowser_Edge("http://127.0.0.1:7070");
+            //new UdpTest();
+            new DnsTest("127.0.0.1:7071");
+            //new DnsTest();
             new WolTest();
-            new DnsTest();
             //new PingTest();
             //Console.ReadLine();
             //var addr = "[::1]:9999";
@@ -36,7 +39,7 @@ namespace TestConsole.Net6
             //c2.He.Holed += He_Holed;
             //c1.Received += C1_Received;
             //c2.He.Hole("c1", "1234");
-            Console.ReadLine();
+            //Console.ReadLine();
         }
 
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)

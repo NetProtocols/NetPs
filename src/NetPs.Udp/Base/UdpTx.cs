@@ -13,6 +13,7 @@
     {
         private bool is_disposed = false;
         private bool transporting = false;
+        protected readonly CompositeDisposable disposables;
         private int state { get; set; }
         public IPEndPoint RemoteIP { get; private set; }
         private IEndTransport EndTransport { get; set; }
@@ -22,7 +23,7 @@
         private byte[] buffer { get; set; }
         private int offset { get; set; }
         private int length { get; set; }
-        protected readonly CompositeDisposable disposables;
+        private UdpTxFunction disposed_function { get; set; }
         public UdpTx()
         {
             this.disposables = new CompositeDisposable();
@@ -58,10 +59,9 @@
         public virtual bool Transporting => this.transporting;
 
         public virtual CompositeDisposable Disposables => this.disposables;
-
         public bool IsDisposed => this.is_disposed;
-
         public bool Running => this.Transporting;
+        public IPEndPoint RemoteAddress => this.RemoteIP;
 
         /// <inheritdoc/>
         public virtual void Dispose()
@@ -74,6 +74,7 @@
             this.Disposables.Dispose();
             this.EndTransport = null;
             this.events?.OnDisposed(this);
+            this.disposed_function?.Invoke(this);
         }
         public void SetRemote(IPEndPoint endPoint)
         {
@@ -217,6 +218,10 @@
         public void SetTransportBufferSize(int size)
         {
             this.TransportBufferSize = size;
+        }
+        public virtual void WhenDisposed(UdpTxFunction function)
+        {
+            this.disposed_function = function;
         }
     }
 }

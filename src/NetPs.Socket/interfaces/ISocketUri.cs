@@ -61,9 +61,13 @@
         {
             return uri.IP.AddressFamily is AddressFamily.InterNetwork;
         }
+        public static bool IsAny(this IPAddress ip)
+        {
+            return ip == IPAddress.Any || ip == IPAddress.IPv6Any;
+        }
         public static bool IsAny(this ISocketUri uri)
         {
-            return uri.IP == IPAddress.Any || uri.IP == IPAddress.IPv6Any;
+            return uri.IP.IsAny();
         }
         public static bool IsTcp(this ISocketUri uri)
         {

@@ -67,7 +67,7 @@
             this.PacketReceivedObservable = Observable.FromEvent<DNSReceivedHandler, DnsPacket>(handler => packet => handler(packet), evt => this.PacketReceived += evt, evt => this.PacketReceived -= evt)
                     .Timeout(TimeSpan.FromMilliseconds(TimeoutMillisenconds));
             host.Rx.Received += Rx_Received;
-            host.Rx.StartReveice();
+            host.Rx.StartReceive();
         }
 
         public virtual event DNSReceivedHandler PacketReceived;

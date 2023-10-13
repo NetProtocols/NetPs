@@ -2,39 +2,39 @@
 {
     using NetPs.Socket;
     using System;
-
-    public class TcpRepeaterClient : TcpClientFactory<TcpTx, TcpRxRepeater>, IDisposable
+    public sealed class TcpMirrorHub : MirrorHub<TcpRepeaterClient>
     {
-        private bool is_disposed = false;
-        private ITcpClient tcpClient { get; set; }
-        internal TcpRepeaterClient()
-        {
-        }
-        public TcpRepeaterClient(IDataTransport transport) : base()
-        {
-            this._Rx.BindTransport(transport);
-        }
+        public TcpMirrorHub(IClient client, string mirror_addr, int limit) : base(client, mirror_addr, limit) { }
+    }
 
-        public TcpRepeaterClient(ITcpClient client, IDataTransport transport) : base(client.Socket)
+    public class TcpRepeaterClient : TcpClientFactory<TcpTx, TcpRxRepeater>, IRepeaterClient, IDisposable
+    {
+        public TcpRepeaterClient() : base() { }
+        public virtual void Limit(int limit)
         {
-            this.tcpClient = client;
-            this._Rx.BindTransport(transport);
+            if (this.Rx is ISpeedLimit limiter)
+            {
+                limiter.SetLimit(limit);
+            }
         }
-        public override bool IsDisposed => base.IsDisposed || this.is_disposed;
-        public virtual void Limit(int limit) => this._Rx.SetLimit(limit);
-        public override void Dispose()
+        public void UseTx(IClient client)
         {
-            lock (this)
+            if (this.Rx is TcpRxRepeater reapter_rx)
             {
-                if (this.is_disposed) return;
-                this.is_disposed = true;
+                reapter_rx.BindTransport(client.GetTx());
             }
-            if (this.tcpClient != null)
-            {
-                this.tcpClient.Lose();
-                this.tcpClient = null;
-            }
-            base.Dispose();
+        }
+        public void UseRx(IClient client)
+        {
+            this.PutSocket(client.Socket);
+        }
+        public void StartClient(string addr)
+        {
+            this.Connect(addr);
+        }
+        public void StopClient()
+        {
+            this.FIN();
         }
     }
 }

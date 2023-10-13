@@ -17,7 +17,24 @@
         }
         public UdpHostFactory() : base()
         {
-            this.Bind("0.0.0.0:0");
+        }
+        public UdpHostFactory(IUdpHost host) : base(host)
+        {
+            this.ChangeAddress(host.Address);
+        }
+        public IUdpHost Clone(IPEndPoint address)
+        {
+            var host = new UdpHostFactory<TTx, TRx>(this);
+            host.Connect(address);
+            return host;
+        }
+        public ITx GetTx()
+        {
+            return this.Tx;
+        }
+        public IRx GetRx()
+        {
+            return this.Rx;
         }
     }
 }

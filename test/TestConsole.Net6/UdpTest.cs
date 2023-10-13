@@ -18,8 +18,8 @@ namespace TestConsole.Net6
         {
             host = new UdpHost("127.0.0.1:2401");
             host.Rx.Received += Rx_Received;
-            host.Rx.StartReveice();
-            host2 = new UdpHost();
+            host.Rx.StartReceive();
+            host2 = new UdpHost("0.0.0.0:0");
             var tx = host.GetTx("127.0.0.1:2401");
             tx.Transport(testdata);
             var tx2 = host2.GetTx("127.0.0.1:2401");

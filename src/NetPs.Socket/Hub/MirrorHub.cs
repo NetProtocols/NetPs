@@ -1,38 +1,42 @@
-﻿namespace NetPs.Tcp
+﻿namespace NetPs.Socket
 {
     using System;
     using System.Diagnostics;
 
-    public class MirrorHub : HubBase, IHub
+    public class MirrorHub<TReapter> : HubBase, IHub
+        where TReapter : IRepeaterClient, new()
     {
         private bool is_disposed = false;
         private bool is_init = false;
         public virtual string Mirror_Address { get; protected set; }
-        private TcpRepeaterClient tcp { get; set; }
-        private TcpRepeaterClient mirror { get; set; }
-        public MirrorHub(ITcpClient tcp, string mirror_addr, int limit)
+        private IRepeaterClient client { get; set; }
+        private IRepeaterClient mirror { get; set; }
+        public MirrorHub(IClient client, string mirror_addr, int limit)
         {
-            if (!tcp.Actived) return;
+            if (!client.Actived) return;
             this.Mirror_Address = mirror_addr;
-            this.mirror = new TcpRepeaterClient(tcp.Tx);
-            this.tcp = new TcpRepeaterClient(tcp, this.mirror.Tx);
+            this.mirror = new TReapter();
+            this.mirror.UseTx(client);
+            this.client = new TReapter();
+            this.client.UseRx(client);
+             
             this.mirror.Limit(limit);
-            this.tcp.Limit(limit);
+            this.client.Limit(limit);
             mirror.SocketClosed += Mirror_SocketClosed;
-            this.tcp.SocketClosed += Tcp_SocketClosed; ;
+            this.client.SocketClosed += Tcp_SocketClosed;
             this.is_init = true;
         }
 
         private void Tcp_SocketClosed(object sender, EventArgs e)
         {
-            this.tcp.SocketClosed -= Tcp_SocketClosed;
+            this.client.SocketClosed -= Tcp_SocketClosed;
             if (this.mirror.IsClosed)
             {
                 this.Dispose();
             }
             else
             {
-                this.mirror.FIN();
+                this.mirror.StopClient();
             }
         }
 
@@ -40,13 +44,13 @@
         {
             mirror.SocketClosed -= Mirror_SocketClosed;
             //关闭告知
-            if (this.tcp.IsClosed)
+            if (this.client.IsClosed)
             {
                 this.Dispose();
             }
             else
             {
-                this.tcp.FIN();
+                this.client.StopClient();
             }
         }
 
@@ -63,23 +67,20 @@
 
         public void Start()
         {
+            if (!is_init) return;
             try
             {
-                if (!is_init) return;
-                var ok = mirror.Connect(this.Mirror_Address);
-                if (!ok)
+                this.mirror.StartClient(this.Mirror_Address);
+                if (this.mirror.IsClosed) return;
+                if (this.client.Actived)
                 {
-                    this.mirror.Lose();
-                    return;
-                }
-                if (this.tcp.Actived)
-                {
-                    mirror.Rx.StartReceive();
-                    this.tcp.Rx.StartReceive();
+                    this.client.UseTx(this.mirror);
+                    this.mirror.GetRx().StartReceive();
+                    this.client.GetRx().StartReceive();
                 }
                 else
                 {
-                    this.mirror.FIN();
+                    this.mirror.StopClient();
                 }
                 return;
             }
@@ -87,9 +88,9 @@
             catch (Exception e)
             {
                 Debug.Assert(false);
-                //this.Close();
                 Hub.ThrowException(e);
             }
+            if (! this.mirror.IsClosed) this.mirror.StopClient();
         }
 
         protected override void OnClosed()

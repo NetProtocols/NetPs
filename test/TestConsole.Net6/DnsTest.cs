@@ -13,9 +13,15 @@ namespace TestConsole.Net6
     internal class DnsTest : IHeatingWatch
     {
         static bool exited = false;
+        private string dns { get; set; }
 
-        public DnsTest()
+        public DnsTest() : this(DnsHost.DNS_NETEASE+":53")
         {
+        }
+
+        public DnsTest(string dns)
+        {
+            this.dns = dns;
             Console.Write("loading");
             Task.Factory.StartNew(() => Food.Heating(this)).Wait();
             while (!exited) Thread.Sleep(300);
@@ -30,7 +36,6 @@ namespace TestConsole.Net6
         {
             Console.WriteLine("ok");
             var host = "nuget.org";
-            var dns = DnsHost.DNS_NETEASE;
             Console.WriteLine(dns);
             while (true)
             {
@@ -44,6 +49,7 @@ namespace TestConsole.Net6
                     {
                         case "dns":
                             dns = a[1];
+                            if (!dns.Contains(":")) dns += ":53";
                             break;
 
                     }
@@ -54,12 +60,11 @@ namespace TestConsole.Net6
             }
             exited = true;
         }
-        private static async Task HostResolver(string host, string dns, int port = 53)
+        private static async Task HostResolver(string host, string dns)
         {
-            dns += ":" + port;
             try
             {
-                using (var dns_client = new DnsHost(2000))
+                using (var dns_client = new DnsHost(20000))
                 {
                     var sw = new Stopwatch();
 

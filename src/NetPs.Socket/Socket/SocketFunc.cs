@@ -102,6 +102,15 @@
             this.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, optionValue);
 
         }
+        public virtual bool GetReuseAddress()
+        {
+            var value = this.Socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress);
+            if (value != null && (value == (object)1 || value == (object)true))
+            {
+                return true;
+            }
+            return false;
+        }
         /// <summary>
         /// Linger
         /// </summary>
@@ -408,7 +417,7 @@
 #endif
                     received = this.Socket.EndReceiveFrom(asyncResult, ref endpoint);
             }
-            asyncResult.AsyncWaitHandle.Close();
+            asyncResult.AsyncWaitHandle.Close(); 
             if (!this.Actived)
             {
                 received = -1;

@@ -2,7 +2,7 @@
 {
     using NetPs.Socket;
     using System;
-    public interface ITcpClient : ISocket, IDisposable
+    public interface ITcpClient : IClient, IDisposable
     {
 
         /// <summary>
@@ -26,6 +26,5 @@
         void StartReceive(ITcpReceive receive);
         void Transport(byte[] data);
         void Transport(byte[] data, int offset, int length);
-        void StartHub(IHub hub);
     }
 }

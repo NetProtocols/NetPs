@@ -10,37 +10,64 @@
         where TTx : IUdpTx, new()
         where TRx : IUdpRx, new()
     {
+        private bool is_disposed = false;
         private List<IUdpTx> txs = new List<IUdpTx>();
         public UdpRxTx()
         {
             this.Rx = new TRx();
             this.Rx.BindCore(this);
         }
+        public UdpRxTx(IUdpHost host) : this()
+        {
+            this.PutSocket(host.Socket);
+            if (host.GetRx() is IUdpRx udp_rx)
+            {
+                this.Rx.UseRx(udp_rx);
+            }
+        }
 
         /// <summary>
-        /// Gets or sets 接收.
+        /// 接收.
         /// </summary>
         public IUdpRx Rx { get; protected set; }
+        /// <summary>
+        /// 发送
+        /// </summary>
+        public IUdpTx Tx { get; protected set; }
+        /// <summary>
+        /// Gets or sets 接收数据.
+        /// </summary>
+        public virtual IObservable<UdpData> ReceivedObservable => this.Rx.ReceivedObservable;
 
         /// <summary>
         /// 开始接收数据
         /// </summary>
-        public void StartReveice(Action<UdpData> action)
+        public void StartReceive(Action<UdpData> action)
         {
-            if (action != null) this.Disposables.Add(this.ReceicedObservable.Subscribe(action));
-            this.Rx.StartReveice();
+            if (action != null) this.Disposables.Add(this.ReceivedObservable.Subscribe(action));
+            this.Rx.StartReceive();
         }
-
-        public void StartReveice()
+        public void StartReceive()
         {
-            this.Rx.StartReveice();
+            this.Rx.StartReceive();
         }
-
-        /// <summary>
-        /// Gets or sets 接收数据.
-        /// </summary>
-        public virtual IObservable<UdpData> ReceicedObservable => this.Rx.ReceicedObservable;
-
+        public void Connect(IPEndPoint address)
+        {
+            this.RemoteIPEndPoint = address;
+            this.RemoteAddress = new InsideSocketUri(InsideSocketUri.UriSchemeUDP, address);
+            this.Rx.SetRemoteAddress(address);
+            this.Tx = this.GetTx(address);
+        }
+        public void Connect(IPAddress ip, int port)
+        {
+            Connect(new IPEndPoint(ip, port));
+        }
+        public void Connect(string address)
+        {
+            var uri = new InsideSocketUri(address);
+            this.Connect(uri.IP, uri.Port);
+            this.IsUdp();
+        }
         public IUdpTx GetTx(IPEndPoint address)
         {
             var tx = this.txs.Find(t => t.RemoteIP.Equals(address));
@@ -53,13 +80,13 @@
                     tx.BindCore(this);
                     txs.Add(tx);
                 }
-                tx.AddDispose(tx.TransportedObservable.Subscribe(observer =>
+                tx.WhenDisposed(_tx =>
                 {
                     lock (txs)
                     {
-                        this.txs.Remove(tx);
+                        this.txs.Remove(_tx);
                     }
-                }));
+                });
             }
             return tx;
         }
@@ -67,16 +94,19 @@
         {
             return this.GetTx(new IPEndPoint(ip, port));
         }
-
         public IUdpTx GetTx(string address)
         {
             var uri = new InsideSocketUri(InsideSocketUri.UriSchemeUDP, address);
             return this.GetTx(new IPEndPoint(uri.IP, uri.Port));
         }
-
         /// <inheritdoc/>
         public override void Dispose()
         {
+            lock (this)
+            {
+                if (this.is_disposed) return;
+                this.is_disposed = true;
+            }
             this.Rx?.Dispose();
             lock (txs)
             {

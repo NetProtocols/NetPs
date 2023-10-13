@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace TestConsole.Net6
 {
-    public class TcpReapterTest : IDisposable
+    public class TcpRepeaterTest : IDisposable
     {
         private TcpServer host { get; set; }
-        public TcpReapterTest(string src, string dst)
+        public TcpRepeaterTest(string src, string dst)
         {
             host = new TcpServer((s, c) =>
             {
-                c.StartHub(new MirrorHub(c, src, 50 << 20)); //1000M 带宽
+                c.StartHub(new TcpMirrorHub(c, src, 10 << 20)); //1000M 带宽
             }, core =>
             {
                 core.SetLinger(false, 0); //立即close

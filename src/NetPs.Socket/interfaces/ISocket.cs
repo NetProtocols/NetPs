@@ -52,6 +52,7 @@
 
         void Close();
         void Lose();
+        void StartHub(IHub hub);
         void WhenLoseConnected(ISocketLosed lose);
     }
 }

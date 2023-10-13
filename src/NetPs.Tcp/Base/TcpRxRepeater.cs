@@ -61,19 +61,19 @@
         {
             this.Limit = limit;
         }
-        protected override void OnReceived()
+        protected override void OnReceived(byte[] buffer, int length)
         {
-            if (this.is_disposed || this.nReceived <= 0) return;
+            if (this.is_disposed || length <= 0) return;
             if (this.Transport.IsDisposed) return;
             this.re_rx = false;
             this.has_limit = this.Limit > 0;
             if (this.has_limit)
             {
-                this.limit_transport(this.bBuffer, 0, this.nReceived);
+                this.limit_transport(buffer, 0, length);
             }
             else
             {
-                this.Transport.Transport(this.bBuffer, 0, this.nReceived);
+                this.Transport.Transport(buffer, 0, length);
             }
         }
 

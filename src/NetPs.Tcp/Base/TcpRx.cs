@@ -112,11 +112,11 @@
             }
         }
 
-        protected virtual void OnReceived()
+        protected virtual void OnReceived(byte[] buffer, int length)
         {
             if (this.is_disposed) return;
-            var data = new byte[this.nReceived];
-            Array.Copy(this.bBuffer, data, this.nReceived);
+            var data = new byte[length];
+            Array.Copy(buffer, data, length);
             SendReceived(data);
             restart_receive();
         }
@@ -167,7 +167,7 @@
                 {
                     Debug.Assert(this.Core.Socket.Connected);
                     this.events?.OnReceived(this);
-                    this.OnReceived();
+                    this.OnReceived(this.bBuffer, this.nReceived);
                     return;
                 }
             }

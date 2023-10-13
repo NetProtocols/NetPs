@@ -33,7 +33,7 @@
         {
             this.host = new UdpHost(address);
             this.ResolvePacket();
-            this.host.Rx.StartReveice();
+            this.host.Rx.StartReceive();
             this.OnRun();
         }
         public virtual void Connect(string server)

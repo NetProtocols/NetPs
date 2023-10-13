@@ -4,12 +4,12 @@
     using System;
     using System.Net;
 
-    public interface IUdpHost : ISocket, IDisposable
+    public interface IUdpHost : IClient, IDisposable
     {
         IUdpRx Rx { get; }
-        IObservable<UdpData> ReceicedObservable { get; }
-        void StartReveice();
-        void StartReveice(Action<UdpData> action);
+        IObservable<UdpData> ReceivedObservable { get; }
+        void StartReceive();
+        void StartReceive(Action<UdpData> action);
         IUdpTx GetTx(IPEndPoint address);
         IUdpTx GetTx(IPAddress ip, int port);
         IUdpTx GetTx(string address);

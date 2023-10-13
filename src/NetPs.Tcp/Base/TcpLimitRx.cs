@@ -45,15 +45,15 @@ namespace NetPs.Tcp
             this.Limit = limit;
         }
 
-        protected override void OnReceived()
+        protected override void OnReceived(byte[] buffer, int length)
         {
             if (this.is_disposed || this.nReceived <= 0) return;
-            var buffer = new byte[this.nReceived];
-            Array.Copy(this.bBuffer, 0, buffer, 0, this.nReceived);
-            this.SendReceived(buffer);
+            var buf = new byte[length];
+            Array.Copy(buffer, 0, buf, 0, length);
+            this.SendReceived(buf);
             if (this.Limit > 0)
             {
-                received_count += this.nReceived;
+                received_count += length;
                 wait_limit();
             }
         }

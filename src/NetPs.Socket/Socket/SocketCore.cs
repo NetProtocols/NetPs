@@ -40,9 +40,7 @@
         }
         public SocketCore(Socket socket) : this()
         {
-            this.SetSocket(socket);
-            this.is_closed = false;
-            this.is_putsocket = true;
+            this.PutSocket(socket);
         }
         public event SateChangeHandle Closed;
 
@@ -66,6 +64,7 @@
         /// Gets 地址.
         /// </summary>
         public EndPoint IP => this.Socket?.RemoteEndPoint;
+        public IHub Hub { get; set; }
         public virtual void IsUdp() => to_opened();
         protected virtual bool to_closed()
         {
@@ -86,7 +85,12 @@
             }
             return true;
         }
-
+        protected virtual void PutSocket(Socket socket)
+        {
+            this.SetSocket(socket);
+            this.is_closed = false;
+            this.is_putsocket = true;
+        }
         /// <summary>
         /// 关闭连接.
         /// </summary>
@@ -94,8 +98,12 @@
         {
             if (!this.is_closed) this.Lose();
         }
-
-
+        public virtual void StartHub(IHub hub)
+        {
+            if (Hub != null) Hub.Close();
+            Hub = hub;
+            Hub.Start();
+        }
         /// <inheritdoc/>
         public virtual void Dispose()
         {

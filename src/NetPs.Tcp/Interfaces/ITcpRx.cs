@@ -6,7 +6,6 @@
     {
         int BufferSize { get; }
         IObservable<byte[]> ReceivedObservable { get; }
-        void StartReceive();
         void WhenReceived(ITcpReceive tcp_receive);
     }
 }

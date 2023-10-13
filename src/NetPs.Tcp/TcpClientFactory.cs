@@ -37,13 +37,6 @@
         /// Gets or sets 接收数据.
         /// </summary>
         public virtual IObservable<byte[]> ReceivedObservable => this.Rx.ReceivedObservable;
-        public IHub Hub { get; set; }
-        public virtual void StartHub(IHub hub)
-        {
-            if (Hub != null) Hub.Close();
-            Hub = hub;
-            Hub.Start();
-        }
         /// <summary>
         /// 开始接收数据
         /// </summary>
@@ -113,6 +106,16 @@
         public void BindTxEvents(ITxEvents events)
         {
             this.Tx.BindEvents(events);
+        }
+
+        public ITx GetTx()
+        {
+            return this.Tx;
+        }
+
+        public IRx GetRx()
+        {
+            return this.Rx;
         }
     }
 }
