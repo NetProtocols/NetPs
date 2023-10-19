@@ -8,6 +8,10 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using NetPs.Udp.Wol;
+using NetPs.Socket.Extras.Security.MessageDigest;
+using System.Text;
+using NetPs.Socket.Memory;
+using NetPs.Socket.Extras.Security.SecureHash;
 
 namespace TestConsole.Net6
 {
@@ -15,10 +19,14 @@ namespace TestConsole.Net6
     {
         static void Main(string[] args)
         {
+            var test_t = "abc";
+
+            var md = new SHA0();
+            var text = md.Make(Encoding.ASCII.GetBytes(test_t));
             Task.Factory.StartNew(() => Food.Heating()).Wait();
             new TcpRepeaterTest("172.17.0.161:15244", "127.0.0.1:7070");
             new UdpRepeaterTest("114.114.114.114:53", "127.0.0.1:7071");
-            //Utils.OpenBrowser_Edge("http://127.0.0.1:7070");
+            Utils.OpenBrowser_Edge("http://127.0.0.1:7070");
             //new UdpTest();
             new DnsTest("127.0.0.1:7071");
             //new DnsTest();

@@ -22,4 +22,7 @@
 		<IL Include="**\*.il" Exclude="**\obj\**\*.il;**\bin\**\*.il" />
 		<!--<PackageReference Include="Microsoft.Net.Compilers" Version="3.3.1" />-->
 	</ItemGroup>
+	<ItemGroup>
+	  <Folder Include="Extras\Compress\" />
+	</ItemGroup>
 </Project>

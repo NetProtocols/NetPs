@@ -14,7 +14,7 @@ namespace TestConsole.Net6
         {
             host = new TcpServer((s, c) =>
             {
-                c.StartHub(new TcpMirrorHub(c, src, 10 << 20)); //1000M 带宽
+                c.StartHub(new TcpMirrorHub(c, src, 10 << 20)); //100M 带宽
             }, core =>
             {
                 core.SetLinger(false, 0); //立即close

@@ -18,6 +18,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "解决方案项", "解决�
 		net35-cf.program.props = net35-cf.program.props
 		netps.props = netps.props
 		readme.md = readme.md
+		rfc.md = rfc.md
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetPs.Udp", "src\NetPs.Udp\NetPs.Udp.csproj", "{F3512229-5479-4083-9F80-065C3EB04684}"

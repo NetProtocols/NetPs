@@ -23,6 +23,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="TLS\" />
+	  <Folder Include="TLS\Crypt\" />
+	  <Folder Include="TLS\Handshark\" />
+	  <Folder Include="TLS\Cert\" />
 	</ItemGroup>
 </Project>

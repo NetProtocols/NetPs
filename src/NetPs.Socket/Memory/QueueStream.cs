@@ -378,7 +378,7 @@
             this.Dequeue(bytes, 0, 4);
             bytes[4] = bytes[0];
             bytes[0] = bytes[3];
-            bytes[3] = bytes[4]; ;
+            bytes[3] = bytes[4];
             bytes[4] = bytes[1];
             bytes[1] = bytes[2];
             bytes[2] = bytes[4];
