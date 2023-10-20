@@ -64,8 +64,6 @@
         }
         private static void R(ref uint a, ref uint b, byte shift)
         {
-            a |= 0;
-            b |= 0;
             if (shift >= 32)
             {
                 b ^= (a >>> (shift - 32));
@@ -79,8 +77,6 @@
         }
         private static void L(ref uint a, ref uint b, byte shift)
         {
-            a |= 0;
-            b |= 0;
             if (shift >= 32)
             {
                 a ^= (b << (shift - 32));
@@ -146,7 +142,6 @@
                     F(ref c);
 
                     c.hash_ix[levels] = 0;
-                    //c.hash_times[levels]++;
                     c.hash_times[levels]++;
                     levels += i;
                     continue;
@@ -154,7 +149,6 @@
                 else
                 {
                     c.hash_ix[levels] += HASH_LEN_SIZE;
-                    //if (levels != 0) c.hash_times[levels]++;
                 }
                 break;
             }

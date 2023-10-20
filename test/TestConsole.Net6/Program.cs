@@ -19,9 +19,10 @@ namespace TestConsole.Net6
     {
         static void Main(string[] args)
         {
-            var test_t = "abc";
-
+            var test_t = "a";
+            new SecurityTest();
             var md = new SHA0();
+            //var text = md.Make(Encoding.ASCII.GetBytes(test_t.Substring(0, 1000000)));
             var text = md.Make(Encoding.ASCII.GetBytes(test_t));
             Task.Factory.StartNew(() => Food.Heating()).Wait();
             new TcpRepeaterTest("172.17.0.161:15244", "127.0.0.1:7070");
