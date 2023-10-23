@@ -16,6 +16,7 @@ namespace TestConsole.Net6
             //Test_MD6();
             Test_Sha0();
             Test_Sha1();
+            Test_Sha2();
         }
         internal static IEnumerable<(byte[], string)> TestInputDatas(params string[] outs)
         {
@@ -69,7 +70,17 @@ namespace TestConsole.Net6
         }
         private static void Test_Sha2()
         {
+            string text, outtext;
+            text = "abc";
 
+            outtext = new SHA224().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "23097d223405d8228642a477bda255b32aadbce4bda0b3f7e36c9da7");
+            outtext = new SHA256().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+            outtext = new SHA384().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7");
+            outtext = new SHA512().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f");
         }
     }
 }

@@ -9,8 +9,8 @@
         internal uint c { get; set; }
         internal uint d { get; set; }
         internal uint e { get; set; }
-        internal uint[] buf => buffer.Data;
-        public long Total => (long)buffer.totalbytes;
+        internal uint[] buf => buffer.Oo.Data;
+        public long Total => (long)buffer.Oo.totalbytes;
         internal uint_buf buffer { get; set; }
     }
 }

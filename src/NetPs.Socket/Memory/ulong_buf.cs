@@ -8,36 +8,43 @@
     /// </remarks>
     internal class ulong_buf
     {
-        public ulong[] Data { get; set; }
-        internal ulong totalbytes_high { get; private set; }
-        internal ulong totalbytes_low { get; private set; }
-        internal uint used { get; private set; }
-        internal uint size { get; private set; }
+        internal struct ooo
+        {
+            internal ulong[] Data { get; set; }
+            internal ulong totalbytes_high { get; set; }
+            internal ulong totalbytes_low { get; set; }
+            internal uint used { get; set; }
+            internal uint size { get; set; }
+        }
+        /// <summary>
+        /// (O.o)
+        /// </summary>
+        internal ooo Oo;
         public IEnumerable<uint> Push(byte[] bytes, int offset, int length, int offset_last)
         {
             uint i = (uint)offset;
             ulong temp;
-            byte x;
+            byte x, y;
 
             do
             {
-                x = (byte)(totalbytes_low & 0b111);
+                x = (byte)(Oo.totalbytes_low & 0b111);
                 if (x != 0)
                 {
                     for (; x > 1; x--, i++)
                     {
-                        Data[used] |= (uint)((bytes[i] << ((7 - x) << 3)));
+                        Oo.Data[Oo.used] |= (ulong)bytes[i] << ((7 - x) << 3);
                         if (length == i) break;
                     }
                     if (x != 0) break;
-                    Data[used] |= (uint)(bytes[i]);
+                    Oo.Data[Oo.used] |= bytes[i];
 
                     if (x == 1)
                     {
-                        used++;
-                        if (used >= size - offset_last)
+                        Oo.used++;
+                        if (Oo.used >= Oo.size - offset_last)
                         {
-                            used = 0;
+                            Oo.used = 0;
                             yield return i;
                         }
                     }
@@ -46,37 +53,37 @@
                         break;
                     }
                 }
-                else if (totalbytes_low != 0 && totalbytes_high != 0 && used >= size - offset_last)
+                else if (Oo.totalbytes_low != 0 && Oo.totalbytes_high != 0 && Oo.used >= Oo.size - offset_last)
                 {
-                    used = 0;
+                    Oo.used = 0;
                     yield return i;
                 }
-                temp = (totalbytes_low + (ulong)length) & 0xffffffffffffffff;
-                if (temp < totalbytes_low)
+                temp = (Oo.totalbytes_low + (ulong)length) & 0xffffffffffffffff;
+                if (temp < Oo.totalbytes_low)
                 {
-                    totalbytes_high++;
+                    Oo.totalbytes_high++;
                 }
-                totalbytes_low = temp;
+                Oo.totalbytes_low = temp;
 
                 for (; i + 3 < length;)
                 {
-                    Data[used] = (uint)((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | (bytes[i + 3]));
-                    used++;
+                    Oo.Data[Oo.used] = ((ulong)bytes[i] << 56) | ((ulong)bytes[i + 1] << 48) | ((ulong)bytes[i + 2] << 40) | ((ulong)bytes[i + 3]<<32) | ((ulong)bytes[i] << 24) | ((ulong)bytes[i + 1] << 16) | ((ulong)bytes[i + 2] << 8) | ((ulong)bytes[i + 3]) ;
+                    Oo.used++;
                     i += 4;
-                    if (used >= size - offset_last)
+                    if (Oo.used >= Oo.size - offset_last)
                     {
-                        used = 0;
+                        Oo.used = 0;
                         yield return i;
                     }
                 }
 
-                x = (byte)(totalbytes_low & 0b111);
+                x = (byte)(Oo.totalbytes_low & 0b111);
                 if (x != 0)
                 {
-                    Data[used] = (uint)((bytes[i] << 56));
-                    for (; x > 0; x--, i++)
+                    Oo.Data[Oo.used] = 0;
+                    for (y = 7; x > 0; x--, y--, i++)
                     {
-                        Data[used] |= (uint)((bytes[i] << (x << 3)));
+                        Oo.Data[Oo.used] |= (ulong)bytes[i] << (y << 3);
                         if (length == i) break;
                     }
                 }
@@ -84,54 +91,54 @@
         }
         public void PushNext(byte b)
         {
-            if ((totalbytes_low & 0b111) != 0)
+            if ((Oo.totalbytes_low & 0b111) != 0)
             {
-                Data[used] |= (uint)(b << ((byte)(7 - totalbytes_low & 0b111)<< 3));
+                Oo.Data[Oo.used] |= (ulong)b << ((byte)(7 - Oo.totalbytes_low & 0b111)<< 3);
             }
             else
             {
-                Data[used] = (uint)b << 56;
+                Oo.Data[Oo.used] = (ulong)b << 56;
             }
-            used++;
-            if (used >= size)
+            Oo.used++;
+            if (Oo.used >= Oo.size)
             {
-                used = 0;
+                Oo.used = 0;
             }
         }
         public void PushTotal()
         {
-            Data[used++] = totalbytes_high;
-            Data[used++] = totalbytes_low;
-            if (used >= size)
+            Oo.Data[Oo.used++] = (Oo.totalbytes_high << 3)  | ((Oo.totalbytes_low & 0xfff0000000000000)>>52);
+            Oo.Data[Oo.used++] = Oo.totalbytes_low << 3;
+            if (Oo.used >= Oo.size)
             {
-                used = 0;
+                Oo.used = 0;
             }
         }
         public void Fill(uint x, int offset_last)
         {
-            for(;used < size - offset_last; used++)
+            for(; Oo.used < Oo.size - offset_last; Oo.used++)
             {
-                Data[used] = x;
+                Oo.Data[Oo.used] = x;
             }
         }
         public void PushNext(uint x)
         {
-            Data[used++] = x;
-            if (used >= size)
+            Oo.Data[Oo.used++] = x;
+            if (Oo.used >= Oo.size)
             {
-                used = 0;
+                Oo.used = 0;
             }
         }
-        public bool NotFirstFull => totalbytes_high > 0 && totalbytes_low > 3 && used == 0;
+        public bool NotFirstFull => Oo.totalbytes_high > 0 && Oo.totalbytes_low > 3 && Oo.used == 0;
         public static ulong_buf New(uint size)
         {
-            var buf = new ulong_buf();
+            var buf = new ooo();
             buf.Data = new ulong[size];
             buf.size = size;
             buf.totalbytes_low = 0;
             buf.totalbytes_high = 0;
             buf.used = 0;
-            return buf;
+            return new ulong_buf { Oo = buf };
         }
     }
 }

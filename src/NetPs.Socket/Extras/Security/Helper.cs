@@ -44,14 +44,14 @@
         }
         internal static void CopyFrom_Reverse(this byte[] data, ulong num, int offset)
         {
-            data[offset] = (byte)((num >> 56) & 0xff);
-            data[offset + 1] = (byte)((num >> 48) & 0xff);
-            data[offset + 2] = (byte)((num >> 40) & 0xff);
-            data[offset + 3] = (byte)((num >> 32) & 0xff);
-            data[offset + 4] = (byte)((num >> 24) & 0xff);
-            data[offset + 5] = (byte)((num >> 16) & 0xff);
-            data[offset + 6] = (byte)((num >> 8) & 0xff);
-            data[offset + 7] = (byte)((num) & 0xff);
+            data[offset + 0] = (byte)(((num & 0xff00000000000000) >> 56) & 0xff);
+            data[offset + 1] = (byte)(((num & 0x00ff000000000000) >> 48) & 0xff);
+            data[offset + 2] = (byte)(((num & 0x0000ff0000000000) >> 40) & 0xff);
+            data[offset + 3] = (byte)(((num & 0x000000ff00000000) >> 32) & 0xff);
+            data[offset + 4] = (byte)(((num & 0x00000000ff000000) >> 24) & 0xff);
+            data[offset + 5] = (byte)(((num & 0x0000000000ff0000) >> 16) & 0xff);
+            data[offset + 6] = (byte)(((num & 0x000000000000ff00) >> 8) & 0xff);
+            data[offset + 7] = (byte)((num & 0x00000000000000ff) & 0xff);
         }
         /// <summary>
         /// 将uint[] 填充到byte[] 中

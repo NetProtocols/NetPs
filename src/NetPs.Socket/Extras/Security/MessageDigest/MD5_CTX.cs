@@ -1,7 +1,7 @@
 ﻿namespace NetPs.Socket.Extras.Security.MessageDigest
 {
     using System;
-    public class MD5_CTX
+    public struct MD5_CTX
     {
         internal uint a { get; set; }
         internal uint b { get; set; }

@@ -12,7 +12,8 @@
         internal uint f { get; set; }
         internal uint g { get; set; }
         internal uint h { get; set; }
-        internal uint[] buf => buffer.Data;
+        internal uint[] buf => buffer.Oo.Data;
+        internal uint size { get; set; }
         internal uint_buf buffer { get; set; }
     }
     public struct SHA512_CTX
@@ -25,7 +26,8 @@
         internal ulong f { get; set; }
         internal ulong g { get; set; }
         internal ulong h { get; set; }
-        internal ulong[] buf => buffer.Data;
+        internal ulong[] buf => buffer.Oo.Data;
+        internal uint size { get; set; }
         internal ulong_buf buffer { get; set; }
     }
 }

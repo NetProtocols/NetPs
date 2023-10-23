@@ -8,34 +8,41 @@
     /// </remarks>
     internal class uint_buf
     {
-        public uint[] Data { get; set; }
-        internal ulong totalbytes { get; private set; }
-        internal uint used { get; private set; }
-        internal uint size { get; private set; }
+        internal struct ooo
+        {
+            internal uint[] Data { get; set; }
+            internal ulong totalbytes { get; set; }
+            internal uint used { get; set; }
+            internal uint size { get; set; }
+        }
+        /// <summary>
+        /// (O.o)
+        /// </summary>
+        internal ooo Oo;
         public IEnumerable<uint> Push(byte[] bytes, int offset, int length, int offset_last)
         {
             uint i = (uint)offset;
-            byte x;
+            byte x, y;
 
             do
             {
-                x = (byte)(totalbytes & 0b11);
+                x = (byte)(Oo.totalbytes & 0b11);
                 if (x != 0)
                 {
                     for (; x > 1; x--, i++)
                     {
-                        Data[used] |= (uint)((bytes[i] << ((3 - x)<< 3)));
+                        Oo.Data[Oo.used] |= (uint)((bytes[i] << ((3 - x)<< 3)));
                         if (length == i) break;
                     }
                     if (x != 0) break;
-                    Data[used] |= (uint)(bytes[i]);
+                    Oo.Data[Oo.used] |= (uint)(bytes[i]);
 
                     if (x == 1)
                     {
-                        used++;
-                        if (used >= size - offset_last)
+                        Oo.used++;
+                        if (Oo.used >= Oo.size - offset_last)
                         {
-                            used = 0;
+                            Oo.used = 0;
                             yield return i;
                         }
                     }
@@ -44,33 +51,33 @@
                         break;
                     }
                 }
-                else if (totalbytes != 0 && used >= size - offset_last)
+                else if (Oo.totalbytes != 0 && Oo.used >= Oo.size - offset_last)
                 {
-                    used = 0;
+                    Oo.used = 0;
                     yield return i;
                 }
-                totalbytes += (uint)length;
+                Oo.totalbytes += (uint)length;
 
                 for (; i + 3 < length;)
                 {
-                    Data[used] = (uint)((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | (bytes[i + 3]));
-                    used++;
+                    Oo.Data[Oo.used] = (uint)((bytes[i] << 24) | (bytes[i + 1] << 16) | (bytes[i + 2] << 8) | (bytes[i + 3]));
+                    Oo.used++;
                     i += 4;
-                    if (used >= size - offset_last)
+                    if (Oo.used >= Oo.size - offset_last)
                     {
-                        used = 0;
+                        Oo.used = 0;
                         yield return i;
                     }
                 }
 
-                x = (byte)(totalbytes & 0b11);
+                x = (byte)(Oo.totalbytes & 0b11);
                 if (x != 0)
                 {
 
-                    Data[used] = (uint)((bytes[i] << 24));
-                    for (; x > 0; x--, i++)
+                    Oo.Data[Oo.used] = 0;
+                    for (y = 3; x > 0; x--, y--, i++)
                     {
-                        Data[used] |= (uint)((bytes[i] << (x << 3)));
+                        Oo.Data[Oo.used] |= (uint)((bytes[i] << (y << 3)));
                         if (length == i) break;
                     }
                 }
@@ -78,53 +85,53 @@
         }
         public void PushNext(byte b)
         {
-            if ((totalbytes & 0b11) != 0)
+            if ((Oo.totalbytes & 0b11) != 0)
             {
-                Data[used] |= (uint)(b << ((byte)(3 - totalbytes & 0b11)<< 3));
+                Oo.Data[Oo.used] |= (uint)(b << ((byte)(3 - Oo.totalbytes & 0b11)<< 3));
             }
             else
             {
-                Data[used] = (uint)b << 24;
+                Oo.Data[Oo.used] = (uint)b << 24;
             }
-            used++;
-            if (used >= size)
+            Oo.used++;
+            if (Oo.used >= Oo.size)
             {
-                used = 0;
+                Oo.used = 0;
             }
         }
         public void PushTotal()
         {
-            Data[used++] = (uint)((totalbytes >> 29) & 0xffffffff);
-            Data[used++] = (uint)((totalbytes << 3) & 0xffffffff);
-            if (used >= size)
+            Oo.Data[Oo.used++] = (uint)((Oo.totalbytes >> 29) & 0xffffffff);
+            Oo.Data[Oo.used++] = (uint)((Oo.totalbytes << 3) & 0xffffffff);
+            if (Oo.used >= Oo.size)
             {
-                used = 0;
+                Oo.used = 0;
             }
         }
         public void Fill(uint x, int offset_last)
         {
-            for(;used < size - offset_last; used++)
+            for(; Oo.used < Oo.size - offset_last; Oo.used++)
             {
-                Data[used] = x;
+                Oo.Data[Oo.used] = x;
             }
         }
         public void PushNext(uint x)
         {
-            Data[used++] = x;
-            if (used >= size)
+            Oo.Data[Oo.used++] = x;
+            if (Oo.used >= Oo.size)
             {
-                used = 0;
+                Oo.used = 0;
             }
         }
-        public bool NotFirstFull => totalbytes > 3 && used == 0;
-        public static uint_buf New(uint size)
+        public bool NotFirstFull => Oo.totalbytes > 3 && Oo.used == 0;
+        public static uint_buf New( uint size)
         {
-            var buf = new uint_buf();
+            var buf = new ooo();
             buf.Data = new uint[size];
             buf.size = size;
             buf.totalbytes = 0;
             buf.used = 0;
-            return buf;
+            return new uint_buf { Oo = buf };
         }
     }
 }

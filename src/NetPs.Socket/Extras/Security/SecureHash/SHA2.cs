@@ -2,7 +2,7 @@
 {
     using NetPs.Socket.Memory;
     using System;
-    public class SHA2
+    internal readonly struct SHA2
     {
         internal const byte SHA256_ROUND_NUM = 64;
         internal const byte SHA512_ROUND_NUM = 80;
@@ -113,7 +113,6 @@
         }
         internal static void ProcessBlock(ref SHA256_CTX ctx)
         {
-
             uint t, s;
             uint temp1, temp2;
             uint a, b, c, d, e, f, g, h;
@@ -131,7 +130,7 @@
                 s = t & 0xf;
                 if (t > 0xf)
                 {
-                    ctx.buf[s] = sigma1(ctx.buf[(s + 14) & 0xf] + ctx.buf[(s + 9) & 0xf] + ctx.buf[(s + 1) & 0xf] + ctx.buf[(s)]);
+                    ctx.buf[s] = sigma1(ctx.buf[(s + 14) & 0xf]) + ctx.buf[(s + 9) & 0xf] + sigma0(ctx.buf[(s + 1) & 0xf]) + ctx.buf[(s)];
                 }
                 temp1 = h + SIGMA1(e) + Ch(e, f, g) + K256[t] + ctx.buf[s];
                 temp2 = SIGMA0(a) + Maj(a, b, c);
@@ -172,7 +171,7 @@
                 s = t & 0xf;
                 if (t > 0xf)
                 {
-                    ctx.buf[s] = sigma1(ctx.buf[(s + 14) & 0xf] + ctx.buf[(s + 9) & 0xf] + ctx.buf[(s + 1) & 0xf] + ctx.buf[(s)]);
+                    ctx.buf[s] = sigma1(ctx.buf[(s + 14) & 0xf]) + ctx.buf[(s + 9) & 0xf] + sigma0(ctx.buf[(s + 1) & 0xf]) + ctx.buf[(s)];
                 }
                 temp1 = h + SIGMA1(e) + Ch(e, f, g) + K512[t] + ctx.buf[s];
                 temp2 = SIGMA0(a) + Maj(a, b, c);
@@ -194,7 +193,7 @@
             ctx.g += g;
             ctx.h += h;
         }
-        internal SHA256_CTX SHA256_Init()
+        internal static SHA256_CTX SHA256_Init()
         {
             var ctx = new SHA256_CTX();
             ctx.buffer = uint_buf.New(16);
@@ -206,9 +205,10 @@
             ctx.f = 0x9b05688c;
             ctx.g = 0x1f83d9ab;
             ctx.h = 0x5be0cd19;
+            ctx.size = 256;
             return ctx;
         }
-        internal SHA256_CTX SHA224_Init()
+        internal static SHA256_CTX SHA224_Init()
         {
             var ctx = new SHA256_CTX();
             ctx.buffer = uint_buf.New(16);
@@ -220,9 +220,10 @@
             ctx.f = 0x68581511;
             ctx.g = 0x64f98fa7;
             ctx.h = 0xbefa4fa4;
+            ctx.size = 224;
             return ctx;
         }
-        internal SHA512_CTX SHA384_Init()
+        internal static SHA512_CTX SHA384_Init()
         {
             var ctx = new SHA512_CTX();
             ctx.buffer = ulong_buf.New(16);
@@ -234,9 +235,10 @@
             ctx.f = 0x8eb44a8768581511;
             ctx.g = 0xdb0c2e0d64f98fa7;
             ctx.h = 0x47b5481dbefa4fa4;
+            ctx.size = 384;
             return ctx;
         }
-        internal SHA512_CTX SHA512_224_Init()
+        internal static SHA512_CTX SHA512_224_Init()
         {
             var ctx = new SHA512_CTX();
             ctx.buffer = ulong_buf.New(16);
@@ -248,9 +250,10 @@
             ctx.f = 0x77e36f7304c48942;
             ctx.g = 0x3f9d85a86a1d36c8;
             ctx.h = 0x1112e6ad91d692a1;
+            ctx.size = 224;
             return ctx;
         }
-        internal SHA512_CTX SHA512_256_Init()
+        internal static SHA512_CTX SHA512_256_Init()
         {
             var ctx = new SHA512_CTX();
             ctx.buffer = ulong_buf.New(16);
@@ -262,9 +265,10 @@
             ctx.f = 0xbe5e1e2553863992;
             ctx.g = 0x2b0199fc2c85b8aa;
             ctx.h = 0x0eb72ddc81c52ca2;
+            ctx.size = 256;
             return ctx;
         }
-        internal SHA512_CTX SHA512_Init()
+        internal static SHA512_CTX SHA512_Init()
         {
             var ctx = new SHA512_CTX();
             ctx.buffer = ulong_buf.New(16);
@@ -276,10 +280,10 @@
             ctx.f = 0x9b05688c2b3e6c1f;
             ctx.g = 0x1f83d9abfb41bd6b;
             ctx.h = 0x5be0cd19137e2179;
-
+            ctx.size = 512;
             return ctx;
         }
-        internal SHA512_CTX SHA512_384_Init()
+        internal static SHA512_CTX SHA512_384_Init()
         {
             var ctx = new SHA512_CTX();
             ctx.buffer = ulong_buf.New(16);
@@ -291,7 +295,7 @@
             ctx.f = 0x8eb44a8768581511;
             ctx.g = 0xdb0c2e0d64f98fa7;
             ctx.h = 0x47b5481dbefa4fa4;
-
+            ctx.size = 384;
             return ctx;
         }
         internal static void Update(ref SHA256_CTX ctx, byte[] data, int length)
@@ -323,7 +327,7 @@
             ctx.buffer.PushTotal();
             ProcessBlock(ref ctx);
 
-            byte[] sha = new byte[32];
+            byte[] sha = new byte[ctx.size >> 3];
             sha.CopyFrom_Reverse(ctx.a, 0);
             sha.CopyFrom_Reverse(ctx.b, 4);
             sha.CopyFrom_Reverse(ctx.c, 8);
@@ -331,7 +335,7 @@
             sha.CopyFrom_Reverse(ctx.e, 16);
             sha.CopyFrom_Reverse(ctx.f, 20);
             sha.CopyFrom_Reverse(ctx.g, 24);
-            sha.CopyFrom_Reverse(ctx.h, 28);
+            if (ctx.size == 256) sha.CopyFrom_Reverse(ctx.h, 28);
             return sha;
         }
         internal static byte[] Final(ref SHA512_CTX ctx)
@@ -343,21 +347,56 @@
             ctx.buffer.PushTotal();
             ProcessBlock(ref ctx);
 
-            byte[] sha = new byte[64];
+            byte[] sha = new byte[ctx.size>>3];
             sha.CopyFrom_Reverse(ctx.a, 0);
             sha.CopyFrom_Reverse(ctx.b, 8);
             sha.CopyFrom_Reverse(ctx.c, 16);
             sha.CopyFrom_Reverse(ctx.d, 24);
             sha.CopyFrom_Reverse(ctx.e, 32);
             sha.CopyFrom_Reverse(ctx.f, 40);
-            sha.CopyFrom_Reverse(ctx.g, 48);
-            sha.CopyFrom_Reverse(ctx.h, 56);
+            if (ctx.size == 512)
+            {
+                sha.CopyFrom_Reverse(ctx.g, 48);
+                sha.CopyFrom_Reverse(ctx.h, 56);
+            }
             return sha;
         }
+    }
+
+    public class SHA224
+    {
         public string Make(byte[] data)
         {
-
-            return string.Empty;
+            var ctx = SHA2.SHA224_Init();
+            SHA2.Update(ref ctx, data, data.Length);
+            return SHA2.Final(ref ctx).ToHexString();
+        }
+    }
+    public class SHA256
+    {
+        public string Make(byte[] data)
+        {
+            var ctx = SHA2.SHA256_Init();
+            SHA2.Update(ref ctx, data, data.Length);
+            return SHA2.Final(ref ctx).ToHexString();
+        }
+    }
+    public class SHA384
+    {
+        public string Make(byte[] data)
+        {
+            var ctx = SHA2.SHA384_Init();
+            SHA2.Update(ref ctx, data, data.Length);
+            return SHA2.Final(ref ctx).ToHexString();
+        }
+    }
+    public class SHA512
+    {
+        public string Make(byte[] data)
+        {
+            var ctx = SHA2.SHA512_Init();
+            SHA2.Update(ref ctx, data, data.Length);
+            return SHA2.Final(ref ctx).ToHexString();
         }
     }
 }
