@@ -54,5 +54,18 @@
             if (levels != 128 && levels != 256 && levels != 512) levels = 128;
             this.levels = (uint)levels;
         }
+        public void SetSize(int size)
+        {
+            this.size = (uint)size;
+            this.r = (40 + this.size / 4);
+            if (this.r < MD6.MD6_RAW_SIZE)
+            {
+                this.r_buf = LoopArray<uint>.New(MD6.MD6_RAW_SIZE);
+            }
+            else
+            {
+                this.r_buf = LoopArray<uint>.New((int)this.r);
+            }
+        }
     }
 }

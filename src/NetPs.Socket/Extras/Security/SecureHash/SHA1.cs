@@ -1,5 +1,6 @@
 ﻿namespace NetPs.Socket.Extras.Security.SecureHash
 {
+    using NetPs.Socket.Memory;
     using System;
     ///<remarks>
     /// https://mirrors.nju.edu.cn/rfc/beta/errata/rfc3174.html
@@ -8,6 +9,7 @@
     {
         internal const uint HASH_ROUND_NUM = 80;
         internal const uint HASH_BLOCK_SIZE = 64;
+        internal const uint HASH_LEN_SIZE = 8;
         internal static uint ROTL(uint x, byte shift)
         {
             return (x << shift) | (x >> (32 - shift));
@@ -28,19 +30,17 @@
         private static SHA1_CTX Init()
         {
             var ctx = new SHA1_CTX();
+            ctx.buffer = uint_buf.New(16);
             ctx.a = 0x67452301;
             ctx.b = 0xEFCDAB89;
             ctx.c = 0x98BADCFE;
             ctx.d = 0x10325476;
             ctx.e = 0xC3D2E1F0;
-            ctx.total = 0;
-            ctx.used = 0;
-            ctx.buf = new uint[16];
             return ctx;
         }
         internal static readonly uint[] K = { 0x5A827999, 0x6ED9EBA1, 0x8F1BBCDC, 0xCA62C1D6 };
         internal static readonly Func[] F = { F1, F2, F3, F2 };
-        private static void ProcessBlock(ref SHA1_CTX ctx, byte[] block)
+        private static void ProcessBlock(ref SHA1_CTX ctx)
         {
             uint t,s, temp;
             uint a, b, c, d, e;
@@ -54,7 +54,7 @@
                 s = t & 0xf;
                 if (t > 0xf)
                 {
-                    ctx.buf[s] = ROTL(ctx.buf[(t - 3)&0xf] ^ ctx.buf[(t - 8)&0xf] ^ ctx.buf[(t - 14)&0xf] ^ ctx.buf[(t - 16) & 0xf], 1);
+                    ctx.buf[s] = ROTL(ctx.buf[(s + 13)&0xf] ^ ctx.buf[(s +8)&0xf] ^ ctx.buf[(s + 2)&0xf] ^ ctx.buf[(s)], 1);
                 }
 
                 temp = ROTL(a, 5) + F[t/20](b, c ,d) + e + K[t / 20] + ctx.buf[s];
@@ -70,32 +70,38 @@
             ctx.d += d;
             ctx.e += e;
         }
-        private static void Update(ref SHA1_CTX ctx, byte[] data, int length)
+        private static void Update(ref SHA1_CTX c, byte[] data, int length)
         {
-            if (ctx.used != 0)
+            foreach(uint i in c.buffer.Push(data, 0, length, 0))
             {
-                if (ctx.used + length < HASH_BLOCK_SIZE)
+                if (i < length)
                 {
-
-                }
-                else
-                {
-
+                    ProcessBlock(ref c);
                 }
             }
         }
-        private static byte[] Final(ref SHA1_CTX ctx)
+        private static byte[] Final(ref SHA1_CTX c)
         {
+            if (c.buffer.NotFirstFull) ProcessBlock(ref c);
+            c.buffer.PushNext(0x80);
+            if (c.buffer.NotFirstFull) ProcessBlock(ref c);
+            c.buffer.Fill(0, 2);
+            c.buffer.PushTotal();
+            ProcessBlock(ref c);
 
-            return null;
+            byte[] sha = new byte[20];
+            sha.CopyFrom_Reverse(c.a, 0);
+            sha.CopyFrom_Reverse(c.b, 4);
+            sha.CopyFrom_Reverse(c.c, 8);
+            sha.CopyFrom_Reverse(c.d, 12);
+            sha.CopyFrom_Reverse(c.e, 16);
+            return sha;
         }
         public string Make(byte[] data)
         {
             var ctx = Init();
             Update(ref ctx, data, data.Length);
-            Final(ref ctx);
-            var text = string.Empty;
-            return text;
+            return Final(ref ctx).ToHexString();
         }
     }
 }

@@ -43,4 +43,11 @@ var packet = await host.SendReqA($"{DnsHost.DNS_ALI}:53", "nuget.org");
 var wol = new WolSender();
 wol.Send("00:00:00:00:00:0e");
 ```
+
+- **SpeedTest**
+    
+    网速测试
+```
+```
+
 *<u>NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。</u>*

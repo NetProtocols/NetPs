@@ -13,13 +13,8 @@ NuGet\Install-Package NetPs.Tcp
 ```
 
 ### How Can?
-
-- **转发**：将tcp\udp 转发到任意实现 ```IDataTransport``` 的实例中。
-- **限流**：限制接收、发送、转发的网络速度。
-
-### Flows
-
-**Tcp**: [基础功能流程图](src/NetPs.Tcp/doc/readme.md)
+- **转发**：将tcp\udp 转发到 ```IDataTransport``` 中。
+- **限流**：限制接收、发送、转发的流速。
 
 ### Next Plan
 
@@ -43,4 +38,13 @@ NuGet\Install-Package NetPs.Tcp
 
 - TLS：增加TLSv1.0、TLSv1.1、TLSv1.2、TLSv1.3的实现。
 
-- 码率检测：获取当前连接的码率， 用于实时传输。
+- 速度检测：测试当前连接的码率、 最大带宽、时延等数据。
+
+
+### 文档
+1. [socket 说明文档](src\NetPs.Socket\readme.md)  
+1.1 [security 信息安全](src\NetPs.Socket\Extras\Security\readme.md)  
+2. [tcp 说明文档](src\NetPs.Tcp\readme.md)  
+3. [udp 说明文档](src\NetPs.Udp\readme.md)  
+3.1 [WOL 网络唤醒](src\NetPs.Udp\Wol\readme.md)  
+3.2 [DNS 客户端](src\NetPs.Udp\DNS\readme.md)  

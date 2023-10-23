@@ -14,12 +14,12 @@
         {
             0x7311c281, 0x2425cfa0, 0x64322864, 0x34aac8e7, 0xb60450e9, 0xef68b7c1,
             0xe8fb2390, 0x8d9f06f1, 0xdd2e76cb, 0xa691e5bf, 0x0cd0d63b, 0x2c30bc41,
-			0x1f8ccf68, 0x23058f8a, 0x54e5ed5b, 0x88e3775d, 0x4ad12aae, 0x0a6d6031,
-			0x3e7f16bb, 0x88222e0d, 0x8af8671d, 0x3fb50c2c, 0x995ad117, 0x8bd25c31,
-			0xc878c1dd, 0x04c4b633, 0x3b72066c, 0x7a1552ac, 0x0d6f3522, 0x631effcb
+            0x1f8ccf68, 0x23058f8a, 0x54e5ed5b, 0x88e3775d, 0x4ad12aae, 0x0a6d6031,
+            0x3e7f16bb, 0x88222e0d, 0x8af8671d, 0x3fb50c2c, 0x995ad117, 0x8bd25c31,
+            0xc878c1dd, 0x04c4b633, 0x3b72066c, 0x7a1552ac, 0x0d6f3522, 0x631effcb
         };
         internal const byte Q_len = 30;
-        private static MD6_CTX Init()
+        internal static MD6_CTX Init()
         {
             var c = new MD6_CTX();
             c.total = 0;
@@ -45,13 +45,11 @@
             c.hash_times = new uint[c.levels];
             return c;
         }
-        public const int MD6_BLOCK_SIZE = 512;
-        public const int MD6_KEY_SIZE = 128;
-        private const int MD6_LEN_SIZE = 8;
-        private const int HASH_LEN_SIZE = 32;
-        private const int MD6_CALC_SIZE = 128;
-        private const int MD6_RAW_SIZE = Q_len + 16 + 4 + MD6_CALC_SIZE;
-
+        internal const int MD6_BLOCK_SIZE = 512;
+        internal const int MD6_KEY_SIZE = 128;
+        internal const int HASH_LEN_SIZE = 32;
+        internal const int MD6_CALC_SIZE = 128;
+        internal const int MD6_RAW_SIZE = Q_len + 16 + 4 + MD6_CALC_SIZE;
         private static void X(ref uint a, ref uint b, LoopArray<uint> A, int pos)
         {
             a ^= A.Get(pos);
@@ -120,7 +118,7 @@
                 s_0 = swap;
             }
         }
-        private void RecordHash(ref MD6_CTX c, int levels = 0)
+        private static void RecordHash(ref MD6_CTX c, int levels = 0)
         {
             while (true)
             {
@@ -153,67 +151,13 @@
                 break;
             }
         }
-        private uint CalcP(long len)
+        private static uint CalcP(long len)
         {
             uint p = (uint)((MD6_BLOCK_SIZE - len % MD6_BLOCK_SIZE) << 3);
             if (p == (MD6_BLOCK_SIZE << 3)) p = 0;
             return p;
         }
-        private byte[] Final(ref MD6_CTX c)
-        {
-            var len = c.total;
-            uint p = CalcP(len);
-            uint z = 1;
-            if (len > MD6_BLOCK_SIZE) z = 0;
-            PrepareRbuf(ref c, p, z, c.times, 0);
-            Mid(ref c, c.buf, 0, c.used);
-            var hash = new byte[c.size >>3];
-            var levels = 0;
-            while (true)
-            {
-                if (c.hash_ix[levels] == 0)
-                {
-                    if((levels + 1) >= c.levels || c.hash_buf[levels+1] == null)
-                    {
-                        int j,k;
-                        for (k = 0, j = (int)(MD6_RAW_SIZE - (c.size >> 5)); k < (int)(c.size >> 5); k++,j ++)
-                        {
-                            hash.CopyFrom_Reverse(c.r_buf.Get(j), k<<2);
-                        }
-                        break;
-                    }
-                }
-                c.r_buf.CopyTo(MD6_RAW_SIZE - HASH_LEN_SIZE, c.hash_buf[levels], c.hash_ix[levels], HASH_LEN_SIZE);
-                len = ((c.hash_times[levels]) << 9) + ((c.hash_ix[levels] + HASH_LEN_SIZE) << 2);
-                p = CalcP(len);
-
-                var i = 1;
-                if ((levels + 1) >= c.levels)
-                {
-                    i = 0;
-                    z = 1;
-                }
-                else
-                {
-                    z = 1;
-                    if (len > MD6_BLOCK_SIZE) z = 0;
-                }
-
-                PrepareRbuf(ref c, p, z, c.hash_times[levels], (uint)(levels+ 1));
-                c.r_buf.Push(c.hash_buf[levels], 0, c.hash_ix[levels] + HASH_LEN_SIZE);
-                if (c.hash_ix[levels] != MD6_CALC_SIZE - HASH_LEN_SIZE)
-                {
-                    c.r_buf.Push(0, MD6_CALC_SIZE - HASH_LEN_SIZE - c.hash_ix[levels]);
-                }
-                F(ref c);
-
-                c.hash_ix[levels] = 0;
-                levels += i;
-            }
-
-            return hash;
-        }
-        private void PrepareRbuf(ref MD6_CTX c, uint p, uint z, uint i, uint deep)
+        private static void PrepareRbuf(ref MD6_CTX c, uint p, uint z, uint i, uint deep)
         {
             c.r_buf.Push(Q, 0, Q_len);
             c.r_buf.Push(c.key, 0, 16);
@@ -222,7 +166,7 @@
             c.r_buf.Push(((c.r & 0xfff) << 16) | ((c.levels & 0xff) << 8) | ((z & 0xf) << 4) | ((p & 0xf000) >> 12));
             c.r_buf.Push(((p & 0xfff) << 20) | ((c.key_len & 0xff) << 12) | (c.size & 0xfff));
         }
-        private void Mid(ref MD6_CTX c, byte[] data, uint pos, int length)
+        private static void Mid(ref MD6_CTX c, byte[] data, uint pos, int length)
         {
             uint j, h,raw;
             for (j = 0, h = pos; j < length>>2; j++, h+=4)
@@ -246,7 +190,7 @@
             if (MD6_CALC_SIZE > j) c.r_buf.Push(0, (int)(MD6_CALC_SIZE - (h >> 2)));
             F(ref c);
         }
-        private void Update(ref MD6_CTX c, byte[] data, int len)
+        internal static void Update(ref MD6_CTX c, byte[] data, int len)
         {
             uint j;
 
@@ -279,6 +223,61 @@
                     RecordHash(ref c);
                 }
             }
+        }
+
+        internal static byte[] Final(ref MD6_CTX c)
+        {
+            var len = c.total;
+            uint p = CalcP(len);
+            uint z = 1;
+            if (len > MD6_BLOCK_SIZE) z = 0;
+            PrepareRbuf(ref c, p, z, c.times, 0);
+            Mid(ref c, c.buf, 0, c.used);
+            var hash = new byte[c.size >> 3];
+            var levels = 0;
+            while (true)
+            {
+                if (c.hash_ix[levels] == 0)
+                {
+                    if ((levels + 1) >= c.levels || c.hash_buf[levels + 1] == null)
+                    {
+                        int j, k;
+                        for (k = 0, j = (int)(MD6_RAW_SIZE - (c.size >> 5)); k < (int)(c.size >> 5); k++, j++)
+                        {
+                            hash.CopyFrom_Reverse(c.r_buf.Get(j), k << 2);
+                        }
+                        break;
+                    }
+                }
+                c.r_buf.CopyTo(MD6_RAW_SIZE - HASH_LEN_SIZE, c.hash_buf[levels], c.hash_ix[levels], HASH_LEN_SIZE);
+                len = ((c.hash_times[levels]) << 9) + ((c.hash_ix[levels] + HASH_LEN_SIZE) << 2);
+                p = CalcP(len);
+
+                var i = 1;
+                if ((levels + 1) >= c.levels)
+                {
+                    i = 0;
+                    z = 1;
+                }
+                else
+                {
+                    z = 1;
+                    if (len > MD6_BLOCK_SIZE) z = 0;
+                }
+
+                PrepareRbuf(ref c, p, z, c.hash_times[levels], (uint)(levels + 1));
+                c.r_buf.Push(c.hash_buf[levels], 0, c.hash_ix[levels] + HASH_LEN_SIZE);
+                if (c.hash_ix[levels] != MD6_CALC_SIZE - HASH_LEN_SIZE)
+                {
+                    c.r_buf.Push(0, MD6_CALC_SIZE - HASH_LEN_SIZE - c.hash_ix[levels]);
+                }
+                F(ref c);
+
+                c.hash_ix[levels] = 0;
+                levels += i;
+            }
+
+            return hash;
         }
         public string Make(byte[] data)
         {

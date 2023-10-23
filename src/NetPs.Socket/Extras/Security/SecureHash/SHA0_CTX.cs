@@ -1,16 +1,16 @@
 ﻿namespace NetPs.Socket.Extras.Security.SecureHash
 {
+    using NetPs.Socket.Memory;
     using System;
-    public class SHA0_CTX
+    public struct SHA0_CTX
     {
         internal uint a { get; set; }
         internal uint b { get; set; }
         internal uint c { get; set; }
         internal uint d { get; set; }
         internal uint e { get; set; }
-        internal uint[] buf { get; set; }
-        internal ulong total { get; set; }
-        internal uint used { get; set; }
-        public long Total => (long)total;
+        internal uint[] buf => buffer.Data;
+        public long Total => (long)buffer.totalbytes;
+        internal uint_buf buffer { get; set; }
     }
 }

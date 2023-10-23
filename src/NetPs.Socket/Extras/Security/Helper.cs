@@ -1,5 +1,6 @@
 ﻿namespace NetPs.Socket.Extras.Security
 {
+    using NetPs.Socket.Memory;
     using System;
     using System.Text;
 
@@ -16,15 +17,24 @@
 
             return text.ToString();
         }
+        /// <summary>
+        /// 十六进制转为字符串显示格式
+        /// </summary>
         public static string ToHexString(this byte[] data)
         {
             return data.ToHexString(0, data.Length);
         }
 
+        /// <summary>
+        /// 将uint 转换为 4 byte并填充到数组中
+        /// </summary>
         internal static void CopyFrom(this byte[] data, uint num, int offset)
         {
             Array.Copy(BitConverter.GetBytes(num), 0, data, offset, sizeof(uint));
         }
+        /// <summary>
+        /// 将uint 转换为 4byte 从后向前填充到数组中
+        /// </summary>
         internal static void CopyFrom_Reverse(this byte[] data, uint num, int offset)
         {
             data[offset] = (byte)((num >> 24) & 0xff);
@@ -32,6 +42,20 @@
             data[offset + 2] = (byte)((num >> 8) & 0xff);
             data[offset + 3] = (byte)((num) & 0xff);
         }
+        internal static void CopyFrom_Reverse(this byte[] data, ulong num, int offset)
+        {
+            data[offset] = (byte)((num >> 56) & 0xff);
+            data[offset + 1] = (byte)((num >> 48) & 0xff);
+            data[offset + 2] = (byte)((num >> 40) & 0xff);
+            data[offset + 3] = (byte)((num >> 32) & 0xff);
+            data[offset + 4] = (byte)((num >> 24) & 0xff);
+            data[offset + 5] = (byte)((num >> 16) & 0xff);
+            data[offset + 6] = (byte)((num >> 8) & 0xff);
+            data[offset + 7] = (byte)((num) & 0xff);
+        }
+        /// <summary>
+        /// 将uint[] 填充到byte[] 中
+        /// </summary>
         internal static void CopyFrom(this byte[] data, int data_offset, uint[] nums, int offset, int length)
         {
             for (int i = data_offset, j = 0; j <length; i+= sizeof(uint), j++)
