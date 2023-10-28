@@ -2,6 +2,9 @@
 {
     using NetPs.Socket.Memory;
     using System;
+    ///<remarks>
+    /// https://csrc.nist.gov/files/pubs/fips/180-4/final/docs/fips180-4.pdf
+    ///</remarks>
     internal readonly struct SHA2
     {
         internal const byte SHA256_ROUND_NUM = 64;

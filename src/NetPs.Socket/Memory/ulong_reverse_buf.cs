@@ -6,7 +6,7 @@
     /// <remarks>
     /// 目的：方便 ulong 和 byte数组 的交互
     /// </remarks>
-    internal class ulong_buf
+    internal class ulong_reverse_buf
     {
         internal struct ooo
         {
@@ -22,7 +22,7 @@
         internal ooo Oo;
         public void SetByte(byte value, int position)
         {
-            Oo.Data[position / 8] |= (ulong)value << (byte)((7- (position & 0b111)) << 3);
+            Oo.Data[position / 8] |= (ulong)value << (byte)(((position & 0b111)) << 3);
         }
         public IEnumerable<uint> Push(byte[] bytes, int offset, int length, int offset_last)
         {
@@ -37,11 +37,11 @@
                 {
                     for (; x > 1; x--, i++)
                     {
-                        Oo.Data[Oo.used] |= (ulong)bytes[i] << ((7 - x) << 3);
+                        Oo.Data[Oo.used] |= (ulong)bytes[i] << ((x) << 3);
                         if (length == i) break;
                     }
                     if (x != 0) break;
-                    Oo.Data[Oo.used] |= bytes[i];
+                    Oo.Data[Oo.used] |= (ulong)bytes[i] << 56;
 
                     if (x == 1)
                     {
@@ -71,7 +71,7 @@
 
                 for (; i + 3 < length;)
                 {
-                    Oo.Data[Oo.used] = ((ulong)bytes[i] << 56) | ((ulong)bytes[i + 1] << 48) | ((ulong)bytes[i + 2] << 40) | ((ulong)bytes[i + 3]<<32) | ((ulong)bytes[i + 4] << 24) | ((ulong)bytes[i + 5] << 16) | ((ulong)bytes[i + 6] << 8) | ((ulong)bytes[i + 7]) ;
+                    Oo.Data[Oo.used] = ((ulong)bytes[i]) | ((ulong)bytes[i + 1] << 8) | ((ulong)bytes[i + 2] << 16) | ((ulong)bytes[i + 3]<<24) | ((ulong)bytes[i + 4] << 32) | ((ulong)bytes[i + 5] << 40) | ((ulong)bytes[i + 6] << 48) | ((ulong)bytes[i + 7] << 56) ;
                     Oo.used++;
                     i += 4;
                     if (Oo.used >= Oo.size - offset_last)
@@ -85,7 +85,7 @@
                 if (x != 0)
                 {
                     Oo.Data[Oo.used] = 0;
-                    for (y = 7; x > 0; x--, y--, i++)
+                    for (y = 0; x > 0; x--, y++, i++)
                     {
                         Oo.Data[Oo.used] |= (ulong)bytes[i] << (y << 3);
                         if (length == i) break;
@@ -136,7 +136,7 @@
         public bool NotFirstFull => Oo.totalbytes_high > 0 && Oo.totalbytes_low > 3 && Oo.used == 0;
         public uint Used => Oo.used;
         public int UsedBytes => (int)(Oo.totalbytes_low % Oo.size);
-        public static ulong_buf New(uint size)
+        public static ulong_reverse_buf New(uint size)
         {
             var buf = new ooo();
             buf.Data = new ulong[size];
@@ -144,7 +144,7 @@
             buf.totalbytes_low = 0;
             buf.totalbytes_high = 0;
             buf.used = 0;
-            return new ulong_buf { Oo = buf };
+            return new ulong_reverse_buf { Oo = buf };
         }
     }
 }

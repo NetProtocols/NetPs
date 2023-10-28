@@ -42,9 +42,9 @@ NuGet\Install-Package NetPs.Tcp
 
 
 ### 文档
-1. [socket 说明文档](src\NetPs.Socket\readme.md)  
-1.1 [security 信息安全](src\NetPs.Socket\Extras\Security\readme.md)  
-2. [tcp 说明文档](src\NetPs.Tcp\readme.md)  
-3. [udp 说明文档](src\NetPs.Udp\readme.md)  
-3.1 [WOL 网络唤醒](src\NetPs.Udp\Wol\readme.md)  
-3.2 [DNS 客户端](src\NetPs.Udp\DNS\readme.md)  
+1. [socket 说明文档](src/NetPs.Socket/readme.md)  
+1.1 [security 信息安全](src/NetPs.Socket/Extras/Security/readme.md)  
+2. [tcp 说明文档](src/NetPs.Tcp/readme.md)  
+3. [udp 说明文档](src/NetPs.Udp/readme.md)  
+3.1 [WOL 网络唤醒](src/NetPs.Udp/Wol/readme.md)  
+3.2 [DNS 客户端](src/NetPs.Udp/DNS/readme.md)  
