@@ -98,6 +98,10 @@
                     {
                         ctx.lane[i / 5][i % 5] ^= ctx.buf[i];
                     }
+                    else
+                    {
+                        ctx.lane[i / 5][i % 5] ^= 0x0;
+                    }
                 }
             }
             for (t = 0; t < ctx.nr; t++)
@@ -172,7 +176,7 @@
         }
         internal static void Update(ref SHA3_CTX ctx, byte[] data, int length)
         {
-            foreach (uint i in ctx.buffer.Push(data, 0, length, (int)(200 - ctx.r)))
+            foreach (uint i in ctx.buffer.Push(data, 0, length, (int)(200 - ctx.r) >> 3) )
             {
                 if (i < length)
                 {
@@ -182,23 +186,22 @@
         }
         internal static byte[] Final(ref SHA3_CTX ctx)
         {
-            if (ctx.buffer.UsedBytes <= ctx.r - 2)
+            int i = ctx.buffer.UsedBytes;
+            if (i <= ctx.r - 2)
             {
+                if (i%8 != 0)
+                {
+                    ctx.buffer.ToNext();
+                }
+                ctx.buffer.Fill(0, (int)(200 - ctx.r) >> 3);
                 if (ctx.shake)
                 {
-                    ctx.buffer.SetByte(0x1F, ctx.buffer.UsedBytes);
-                }
-                else
-                {
-                    ctx.buffer.SetByte(0x06, ctx.buffer.UsedBytes);
-                }
-                ctx.buffer.Fill(0, (int)(199 - ctx.r));
-                if (ctx.shake)
-                {
+                    ctx.buffer.SetByte(0x1F, i);
                     ctx.buffer.SetByte(0x80, (int)(ctx.r - 1));
                 }
                 else
                 {
+                    ctx.buffer.SetByte(0x06, i);
                     ctx.buffer.SetByte(0x80, (int)(ctx.r - 1));
                 }
             }
@@ -206,11 +209,11 @@
             {
                 if (ctx.shake)
                 {
-                    ctx.buffer.SetByte(0x9f, ctx.buffer.UsedBytes);
+                    ctx.buffer.SetByte(0x9f, i);
                 }
                 else
                 {
-                    ctx.buffer.SetByte(0x86, ctx.buffer.UsedBytes);
+                    ctx.buffer.SetByte(0x86, i);
                 }
             }
 

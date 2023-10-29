@@ -1,4 +1,5 @@
-﻿using NetPs.Socket.Extras.Security.MessageDigest;
+﻿using NetPs.Socket.Extras.Security.GuoMi;
+using NetPs.Socket.Extras.Security.MessageDigest;
 using NetPs.Socket.Extras.Security.SecureHash;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ namespace TestConsole.Net6
             Test_Sha1();
             Test_Sha2();
             Test_Sha3();
+            Test_SM3();
         }
         internal static IEnumerable<(byte[], string)> TestInputDatas(params string[] outs)
         {
@@ -103,6 +105,49 @@ namespace TestConsole.Net6
             Debug.Assert(outtext == "5881092dd818bf5cf8a3ddb793fbcba7");
             outtext = new SHA3_SHAKE256().Make(Encoding.ASCII.GetBytes(text));
             Debug.Assert(outtext == "483366601360a8771c6863080cc4114d8db44530f8f1e1ee4f94ea37e78b5739");
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+            outtext = new SHA3_224().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "a67c289b8250a6f437a20137985d605589a8c163d45261b15419556e");
+            outtext = new SHA3_256().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "a79d6a9da47f04a3b9a9323ec9991f2105d4c78a7bc7beeb103855a7a11dfb9f");
+            outtext = new SHA3_384().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "d5b972302f5080d0830e0de7b6b2cf383665a008f4c4f386a61112652c742d20cb45aa51bd4f542fc733e2719e999291");
+            outtext = new SHA3_512().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "d1db17b4745b255e5eb159f66593cc9c143850979fc7a3951796aba80165aab536b46174ce19e3f707f0e5c6487f5f03084bc0ec9461691ef20113e42ad28163");
+
+            outtext = new SHA3_SHAKE128().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "54dd201e53249910db3c7d366574fbb6");
+            outtext = new SHA3_SHAKE256().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "31f19a097c723e91fa59b0998dd8523c2a9e7e13b4025d6b48fcbc328973a108");
+            text = "12345678901234567890123456789012345678901234567890123456789012345678901234567890";
+
+            outtext = new SHA3_224().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "0526898e185869f91b3e2a76dd72a15dc6940a67c8164a044cd25cc8");
+            outtext = new SHA3_256().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "293e5ce4ce54ee71990ab06e511b7ccd62722b1beb414f5ff65c8274e0f5be1d");
+            outtext = new SHA3_384().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "3c213a17f514638acb3bf17f109f3e24c16f9f14f085b52a2f2b81adc0db83df1a58db2ce013191b8ba72d8fae7e2a5e");
+            outtext = new SHA3_512().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "9524b9a5536b91069526b4f6196b7e9475b4da69e01f0c855797f224cd7335ddb286fd99b9b32ffe33b59ad424cc1744f6eb59137f5fb8601932e8a8af0ae930");
+
+            outtext = new SHA3_SHAKE128().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "7bf451c92fdc77b9771e6c9056445894");
+            outtext = new SHA3_SHAKE256().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "24c508adefdf5e3f2596e8b5a888fe10eb7b5b22e1f35d858e6eff3025c4cc18");
+        }
+
+        private static void Test_SM3()
+        {
+            string text, outtext;
+            text = "abc";
+
+            outtext = new SM3().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0");
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+            outtext = new SM3().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "2971d10c8842b70c979e55063480c50bacffd90e98e2e60d2512ab8abfdfcec5");
         }
     }
 }

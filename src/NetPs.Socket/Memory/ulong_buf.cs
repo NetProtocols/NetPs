@@ -24,6 +24,10 @@
         {
             Oo.Data[position / 8] |= (ulong)value << (byte)((7- (position & 0b111)) << 3);
         }
+        public void ToNext()
+        {
+            Oo.used++;
+        }
         public IEnumerable<uint> Push(byte[] bytes, int offset, int length, int offset_last)
         {
             uint i = (uint)offset;
@@ -69,11 +73,11 @@
                 }
                 Oo.totalbytes_low = temp;
 
-                for (; i + 3 < length;)
+                for (; i + 7 < length;)
                 {
                     Oo.Data[Oo.used] = ((ulong)bytes[i] << 56) | ((ulong)bytes[i + 1] << 48) | ((ulong)bytes[i + 2] << 40) | ((ulong)bytes[i + 3]<<32) | ((ulong)bytes[i + 4] << 24) | ((ulong)bytes[i + 5] << 16) | ((ulong)bytes[i + 6] << 8) | ((ulong)bytes[i + 7]) ;
                     Oo.used++;
-                    i += 4;
+                    i += 8;
                     if (Oo.used >= Oo.size - offset_last)
                     {
                         Oo.used = 0;
@@ -135,7 +139,7 @@
         }
         public bool NotFirstFull => Oo.totalbytes_high > 0 && Oo.totalbytes_low > 3 && Oo.used == 0;
         public uint Used => Oo.used;
-        public int UsedBytes => (int)(Oo.totalbytes_low % Oo.size);
+        public int UsedBytes => (int)(Oo.used << 3) + (byte)(Oo.totalbytes_low % 8);
         public static ulong_buf New(uint size)
         {
             var buf = new ooo();
