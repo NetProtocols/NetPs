@@ -53,4 +53,17 @@ packet.Address = InsideSocketUri.ParseIPAddress("::1");
 var rlt = await v6client.Ping(packet);
 ```
 
+- **05. Security**  
+
+提供了MD2\MD4\MD5\MD6、SHA0\SHA1\SHA2\SHA3、SM3加密类。  
+
+示例为SM3的一项测试。
+```
+string text, outtext;
+text = "abc";
+
+outtext = new SM3().Make(Encoding.ASCII.GetBytes(text));
+Debug.Assert(outtext == "66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0");
+```
+
 *<u>NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。</u>*

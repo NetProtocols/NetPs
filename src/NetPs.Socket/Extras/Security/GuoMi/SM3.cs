@@ -62,7 +62,7 @@
         }
         internal static void ProcessBlock(ref SM3_CTX ctx)
         {
-            byte j, i= 0, s;
+            byte j;
             uint S1, S2, T1, T2;
             uint a, b, c, d, e, f, g, h;
             uint[] W = new uint[HASH_ROUND_NUM+4];

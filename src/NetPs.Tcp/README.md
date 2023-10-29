@@ -86,5 +86,17 @@ repeater_client1.Disposables.Add(repeater_client1.ConnectedObservable.Subscribe(
 }));
 ```
 
+### 04.TcpMirrorHub  
+示例为转发tcp 请求到 ```192.168.1.1:80```。
+```
+var host = new TcpServer((s, c) =>
+{
+    c.StartHub(new TcpMirrorHub(c, "192.168.1.1:80", 10 << 20)); //100M 带宽
+}, core =>
+{
+    core.SetLinger(false, 0); //立即close
+});
+host.Run("0.0.0.0:0");
+```
 
 *<u>NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。</u>*

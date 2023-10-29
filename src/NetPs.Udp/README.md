@@ -25,6 +25,19 @@ using (var tx = host.GetTx("192.168.1.1:12345"))
 }
 ```
 
+- **UdpMirrorHub**  
+示例为转发dns请求指定服务器。
+```
+var host = new UdpHost("0.0.0.0:0");
+host.Rx.NoBufferReceived += (buffer, length, address) =>
+{
+    var c = this.host.Clone(address);
+    c.StartHub(new UdpMirrorHub(c, "114.114.114.114:53", 10 << 20));
+    return false;
+};
+host.StartReceive();
+```
+
 - **DnsHost**
   
   支持中文及特殊域名，你也可以手动调用方法进行编解码 `Punycode.Encode(url);`、`Puncode.Decode(url);` 。
@@ -37,8 +50,8 @@ var packet = await host.SendReqA($"{DnsHost.DNS_ALI}:53", "nuget.org");
 ```
 
 - **WolSender**
-
-    向本地所有接口发送三次WakeOnLan Packet.
+    
+    向本地所有接口发送三次网络唤醒包WakeOnLan Packet.
 ```csharp
 var wol = new WolSender();
 wol.Send("00:00:00:00:00:0e");
@@ -46,8 +59,9 @@ wol.Send("00:00:00:00:00:0e");
 
 - **SpeedTest**
     
-    网速测试
+
 ```
+//    网速测试，将在下个版本释放。
 ```
 
 *<u>NetPs以实现现有网络协议库为目标，为数据交互提供基础支撑。</u>*

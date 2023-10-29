@@ -15,15 +15,13 @@ namespace TestConsole.Net6
         {
             this.mirror_address = src;
             this.host = new UdpHost(dst);
-            this.host.Rx.NoBufferReceived += Rx_NoBufferReceived;
+            this.host.Rx.NoBufferReceived += (buffer, length, address) =>
+            {
+                var c = this.host.Clone(address);
+                c.StartHub(new UdpMirrorHub(c, mirror_address, 10 << 20));
+                return false;
+            };
             this.host.StartReceive();
-        }
-
-        private bool Rx_NoBufferReceived(byte[] buffer, int length, System.Net.IPEndPoint address)
-        {
-            var c = this.host.Clone(address);
-            c.StartHub(new UdpMirrorHub(c, mirror_address, 10 << 20));
-            return false;
         }
 
         public void Dispose()
