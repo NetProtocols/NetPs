@@ -1,5 +1,6 @@
 ﻿using NetPs.Socket.Extras.Security.GuoMi;
 using NetPs.Socket.Extras.Security.MessageDigest;
+using NetPs.Socket.Extras.Security.Morse;
 using NetPs.Socket.Extras.Security.SecureHash;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ namespace TestConsole.Net6
     {
         internal SecurityTest()
         {
+            Test_Morse();
             //Test_MD6();
             Test_Sha0();
             Test_Sha1();
@@ -22,6 +24,7 @@ namespace TestConsole.Net6
             Test_Sha3();
             Test_SM3();
         }
+
         internal static IEnumerable<(byte[], string)> TestInputDatas(params string[] outs)
         {
             string text;
@@ -32,6 +35,14 @@ namespace TestConsole.Net6
             yield return (Encoding.ASCII.GetBytes(text), outs[1]);
             text = "abc";
             yield return (Encoding.ASCII.GetBytes(text), outs[2]);
+        }
+        private static void Test_Morse()
+        {
+            var morse = new Morse();
+            var text = "hello world! @code: 1234567890abcdefghijklmnopqrstuvwxyz; @value: -=2023;.:,;?='/!-_\"()$@åæ çðéèĝĥĵñöŝþü AR AS SK =";
+            var s = morse.Encode(text, text.Length);
+            var w = morse.Decode(s, s.Length);
+            Debug.Assert(text == w);
         }
         private static void Test_MD6()
         {

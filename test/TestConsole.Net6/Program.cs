@@ -12,6 +12,8 @@ using NetPs.Socket.Extras.Security.MessageDigest;
 using System.Text;
 using NetPs.Socket.Memory;
 using NetPs.Socket.Extras.Security.SecureHash;
+using NetPs.Socket.Extras.Security;
+using NetPs.Socket.Extras.Security.Morse;
 
 namespace TestConsole.Net6
 {

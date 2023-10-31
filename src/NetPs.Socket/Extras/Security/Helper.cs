@@ -44,10 +44,6 @@
             {
                 data[offset + i] = (byte)(num >> ((3 - i)<< 3));
             }
-            //data[offset] = (byte)((num >> 24) & 0xff);
-            //data[offset + 1] = (byte)((num >> 16) & 0xff);
-            //data[offset + 2] = (byte)((num >> 8) & 0xff);
-            //data[offset + 3] = (byte)((num) & 0xff);
         }
         internal static void CopyFrom_Reverse(this byte[] data, ulong num, int offset, byte count = sizeof(ulong))
         {
@@ -55,14 +51,6 @@
             {
                 data[offset + i] = (byte)(num >> ((7 - i) << 3));
             }
-            //data[offset + 0] = (byte)(((num & 0xff00000000000000) >> 56) & 0xff);
-            //data[offset + 1] = (byte)(((num & 0x00ff000000000000) >> 48) & 0xff);
-            //data[offset + 2] = (byte)(((num & 0x0000ff0000000000) >> 40) & 0xff);
-            //data[offset + 3] = (byte)(((num & 0x000000ff00000000) >> 32) & 0xff);
-            //data[offset + 4] = (byte)(((num & 0x00000000ff000000) >> 24) & 0xff);
-            //data[offset + 5] = (byte)(((num & 0x0000000000ff0000) >> 16) & 0xff);
-            //data[offset + 6] = (byte)(((num & 0x000000000000ff00) >> 8) & 0xff);
-            //data[offset + 7] = (byte)((num & 0x00000000000000ff) & 0xff);
         }
         internal static void CopyFrom(this byte[] data, int data_offset, ulong[][] array, int offset, uint length, uint array_length = 5)
         {

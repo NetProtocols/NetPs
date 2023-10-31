@@ -4,6 +4,7 @@
     using System;
     /// <summary>
     /// https://github.com/guanzhi/GM-Standards/tree/master
+    /// http://www.gmbz.org.cn/main/bzlb.html
     /// </summary>
     public class SM3
     {
