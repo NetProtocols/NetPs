@@ -108,6 +108,15 @@
                 Oo.used = 0;
             }
         }
+        public void PushTotalReverse()
+        {
+            Oo.Data[Oo.used++] = (uint)((Oo.totalbytes << 3) & 0xffffffff);
+            Oo.Data[Oo.used++] = (uint)((Oo.totalbytes >> 29) & 0xffffffff);
+            if (Oo.used >= Oo.size)
+            {
+                Oo.used = 0;
+            }
+        }
         public void Fill(uint x, int offset_last)
         {
             for(; Oo.used < Oo.size - offset_last; Oo.used++)
