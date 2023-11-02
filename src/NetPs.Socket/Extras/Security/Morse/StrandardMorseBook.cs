@@ -16,47 +16,48 @@
         private const string FH = ".:,;?='/!-_\"($@";
         private const string SPEC = "åæ çðéèĝĥĵñöŝþü";
         private bool kuohao_times = true;
-        public uint Encode(char c)
+        public int Encode(char c)
         {
             var code = (ushort)c;
             if (code >= 65 && code <= 90)
             {
-                return BookENG[code - 65];
+                return (int)BookENG[code - 65];
             }
             else if (code >= 97 && code <= 122)
             {
-                return BookENG[code - 97];
+                return (int)BookENG[code - 97];
             }
             else if (code >= 48 && code <= 57)
             {
-                return BookNUM[code - 48];
+                return (int)BookNUM[code - 48];
             }
             var i = FH.IndexOf(c);
-            if (i != -1) return BookFH[i];
+            if (i != -1) return (int)BookFH[i];
             i = SPEC.IndexOf(c);
-            if (i != -1) return BookSPEC[i];
+            if (i != -1) return (int)BookSPEC[i];
             switch (code)
             {
-                case ')': return BookFH[12];
-                case 'à': return BookSPEC[0];
-                case 'ä': return BookSPEC[1];
-                case 'ĉ': return BookSPEC[3];
-                case 'ø': return BookSPEC[11];
-                case 'ŭ': return BookSPEC[14];
+                case ')': return (int)BookFH[12];
+                case 'à': return (int)BookSPEC[0];
+                case 'ä': return (int)BookSPEC[1];
+                case 'ĉ': return (int)BookSPEC[3];
+                case 'ø': return (int)BookSPEC[11];
+                case 'ŭ': return (int)BookSPEC[14];
             }
             return 0;
         }
-        public uint Encode(char c1, char c2)
+        public int Encode(char c1, char c2)
         {
-            if (c1 == 'c' && c2 == 'h') return BookSPEC[2];
-            else if (c1 == 'A' && c2 == 'R') return AR;
-            else if (c1 == 'A' && c2 == 'S') return AS;
-            else if (c1 == 'S' && c2 == 'K') return SK;
-            else if (c1 == 'B' && c2 == 'T') return BT;
+            if (c1 == 'c' && c2 == 'h') return (int)BookSPEC[2];
+            else if (c1 == 'A' && c2 == 'R') return (int)AR;
+            else if (c1 == 'A' && c2 == 'S') return (int)AS;
+            else if (c1 == 'S' && c2 == 'K') return (int)SK;
+            else if (c1 == 'B' && c2 == 'T') return (int)BT;
             return 0;
         }
-        public void Decode(uint morse, ref StringBuilder s)
+        public void Decode(int morse1, ref StringBuilder s)
         {
+            uint morse = (uint)morse1;
             byte i = 0;
             for (; i < 26; i++)
             {

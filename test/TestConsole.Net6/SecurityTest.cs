@@ -25,6 +25,7 @@ namespace TestConsole.Net6
             Test_Sha3();
             Test_SM3();
             Test_RIPEMD();
+            Test_WHIRLPOOL();
         }
 
         internal static IEnumerable<(byte[], string)> TestInputDatas(params string[] outs)
@@ -184,6 +185,18 @@ namespace TestConsole.Net6
             Debug.Assert(outtext == "5740a408ac16b720b84424ae931cbb1fe363d1d0bf4017f1a89f7ea6de77a0b8");
             outtext = new RIPEMD320().Make(Encoding.ASCII.GetBytes(text));
             Debug.Assert(outtext == "ed544940c86d67f250d232c30b7b3e5770e0c60c8cb9a4cafe3b11388af9920e1b99230b843c86a4");
+        }
+        private static void Test_WHIRLPOOL()
+        {
+            string text, outtext;
+            text = "abc";
+            outtext = new WHIRLPOOL().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "4e2448a4c6f486bb16b6562c73b4020bf3043e3a731bce721ae1b303d97e6d4c7181eebdb6c57e277d0e34957114cbd6c797fc9d95d8b582d225292076d4eef5");
+
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            outtext = new WHIRLPOOL().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "dc37e008cf9ee69bf11f00ed9aba26901dd7c28cdec066cc6af42e40f82f3a1e08eba26629129d8fb7cb57211b9281a65517cc879d7b962142c65f5a7af01467");
+
         }
         private static void Test_SM3()
         {

@@ -74,7 +74,7 @@
                     continue;
                 }
 
-                w = book.Encode(a, text[i]);
+                w = (uint)book.Encode(a, text[i]);
                 if (w != 0)
                 {
                     push(w);
@@ -83,7 +83,7 @@
                 }
                 else
                 {
-                    w = book.Encode(a);
+                    w = (uint)book.Encode(a);
                     if (w != 0)
                     {
                         push(w);
@@ -94,7 +94,7 @@
             }
             if (i == length)
             {
-                w = book.Encode(a);
+                w = (uint)book.Encode(a);
                 if (w != 0)
                 {
                     push(w);
@@ -120,7 +120,7 @@
                     {
                         if (zero >= 3)
                         {
-                            if (j != 0) book.Decode(j, ref s);
+                            if (j != 0) book.Decode((int)j, ref s);
                             if (zero >= 6) s.Append(" ");
                             j = 0;
                             no = 0;
@@ -141,7 +141,7 @@
                 }
                 load++;
             }
-            if (j != 0) book.Decode(j, ref s);
+            if (j != 0) book.Decode((int)j, ref s);
 
             return s.ToString();
         }

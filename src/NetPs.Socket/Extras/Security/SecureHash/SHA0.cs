@@ -80,9 +80,9 @@
         }
         internal static byte[] Final(ref SHA0_CTX c)
         {
-            if (c.buffer.NotFirstFull) ProcessBlock(ref c);
+            if (c.buffer.IsFULL()) ProcessBlock(ref c);
             c.buffer.PushNext(0x80);
-            if (c.buffer.NotFirstFull) ProcessBlock(ref c);
+            if (c.buffer.IsFULL(2)) ProcessBlock(ref c);
             c.buffer.Fill(0, 2);
             c.buffer.PushTotal();
             ProcessBlock(ref c);

@@ -323,9 +323,9 @@
         }
         internal static byte[] Final(ref SHA256_CTX ctx)
         {
-            if (ctx.buffer.NotFirstFull) ProcessBlock(ref ctx);
+            if (ctx.buffer.IsFULL()) ProcessBlock(ref ctx);
             ctx.buffer.PushNext(0x80);
-            if (ctx.buffer.NotFirstFull) ProcessBlock(ref ctx);
+            if (ctx.buffer.IsFULL(2)) ProcessBlock(ref ctx);
             ctx.buffer.Fill(0, 2);
             ctx.buffer.PushTotal();
             ProcessBlock(ref ctx);
@@ -343,9 +343,9 @@
         }
         internal static byte[] Final(ref SHA512_CTX ctx)
         {
-            if (ctx.buffer.NotFirstFull) ProcessBlock(ref ctx);
+            if (ctx.buffer.IsFULL()) ProcessBlock(ref ctx);
             ctx.buffer.PushNext(0x80);
-            if (ctx.buffer.NotFirstFull) ProcessBlock(ref ctx);
+            if (ctx.buffer.IsFULL(2)) ProcessBlock(ref ctx);
             ctx.buffer.Fill(0, 2);
             ctx.buffer.PushTotal();
             ProcessBlock(ref ctx);

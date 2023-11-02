@@ -9,16 +9,16 @@
         /// <remarks>
         /// start low to high; e.g. 0b101110101: . . - .
         /// </remarks>
-        uint Encode(char c);
+        int Encode(char c);
         /// <summary>双字符转为morse</summary>
         /// <remarks>
         /// start low to high; e.g. 0b101110101: . . - .
         /// </remarks>
-        uint Encode(char c1, char c2);
+        int Encode(char c1, char c2);
         /// <summary>morse转为文本</summary>
         /// <remarks>
         /// start low to high; e.g. 0b101110101: . . - .
         /// </remarks>
-        void Decode(uint morse, ref StringBuilder s);
+        void Decode(int morse, ref StringBuilder s);
     }
 }

@@ -107,6 +107,7 @@
             {
                 Oo.Data[Oo.used] = (ulong)b << 56;
             }
+
             Oo.used++;
             if (Oo.used >= Oo.size)
             {
@@ -137,7 +138,11 @@
                 Oo.used = 0;
             }
         }
-        public bool NotFirstFull => Oo.totalbytes_high > 0 && Oo.totalbytes_low > 3 && Oo.used == 0;
+        public bool IsFULL(int offset = 0)
+        {
+            if (offset == 0) return (Oo.totalbytes_high == 0 && Oo.totalbytes_low > 7) && Oo.used == 0;
+            else return IsFULL() || Oo.used + offset >= Oo.size;
+        }
         public uint Used => Oo.used;
         public int UsedBytes => (int)(Oo.used << 3) + (byte)(Oo.totalbytes_low % 8);
         public static ulong_buf New(uint size)

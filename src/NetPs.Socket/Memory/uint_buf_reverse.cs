@@ -123,7 +123,11 @@
                 Oo.used = 0;
             }
         }
-        public bool NotFirstFull => Oo.totalbytes > 3 && Oo.used == 0;
+        public bool IsFULL(int offset = 0)
+        {
+            if (offset == 0) return (Oo.totalbytes > 3) && Oo.used == 0;
+            else return IsFULL() || Oo.used + offset >= Oo.size;
+        }
         public static uint_buf_reverse New( uint size)
         {
             var buf = new ooo();
