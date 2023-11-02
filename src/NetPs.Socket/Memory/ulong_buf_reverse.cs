@@ -6,7 +6,7 @@
     /// <remarks>
     /// 目的：方便 ulong 和 byte数组 的交互
     /// </remarks>
-    internal class ulong_reverse_buf
+    internal class ulong_buf_reverse
     {
         internal struct ooo
         {
@@ -116,7 +116,15 @@
         public void PushTotal()
         {
             Oo.Data[Oo.used++] = Oo.totalbytes_low << 3;
-            Oo.Data[Oo.used++] = (Oo.totalbytes_high << 3)  | ((Oo.totalbytes_low & 0xfff0000000000000)>>52);
+            Oo.Data[Oo.used++] = (Oo.totalbytes_high << 3) | ((Oo.totalbytes_low & 0xfff0000000000000) >> 52);
+            if (Oo.used >= Oo.size)
+            {
+                Oo.used = 0;
+            }
+        }
+        public void PushTotal64()
+        {
+            Oo.Data[Oo.used++] = Oo.totalbytes_low << 3;
             if (Oo.used >= Oo.size)
             {
                 Oo.used = 0;
@@ -139,12 +147,23 @@
         }
         public bool IsFULL(int offset = 0)
         {
-            if (offset == 0) return (Oo.totalbytes_high == 0 && Oo.totalbytes_low > 7) && Oo.used == 0;
-            else return IsFULL() || Oo.used + offset >= Oo.size;
+            // 最后一个
+            if (Oo.used == 0) return Oo.totalbytes_low > 7;
+            // 沾左边
+            else
+            {
+                bool r;
+                if (Oo.used + offset == Oo.size) r = Oo.totalbytes_low != 0;
+                // 中间
+                else r = Oo.used + offset > Oo.size;
+                // 填充之后的数据, be已经满了!
+                if (r) Fill(0, 0);
+                return r;
+            }
         }
         public uint Used => Oo.used;
         public int UsedBytes => (int)(Oo.used<<3) + (byte)(Oo.totalbytes_low % 8);
-        public static ulong_reverse_buf New(uint size)
+        public static ulong_buf_reverse New(uint size)
         {
             var buf = new ooo();
             buf.Data = new ulong[size];
@@ -152,7 +171,7 @@
             buf.totalbytes_low = 0;
             buf.totalbytes_high = 0;
             buf.used = 0;
-            return new ulong_reverse_buf { Oo = buf };
+            return new ulong_buf_reverse { Oo = buf };
         }
     }
 }

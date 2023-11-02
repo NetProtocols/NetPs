@@ -88,11 +88,12 @@
             ProcessBlock(ref c);
 
             byte[] sha = new byte[20];
-            sha.CopyFrom_Reverse(c.a, 0);
-            sha.CopyFrom_Reverse(c.b, 4);
-            sha.CopyFrom_Reverse(c.c, 8);
-            sha.CopyFrom_Reverse(c.d, 12);
-            sha.CopyFrom_Reverse(c.e, 16);
+            int i = 0;
+            sha.CopyFrom_Reverse(c.a, i++ << 2);
+            sha.CopyFrom_Reverse(c.b, i++ << 2);
+            sha.CopyFrom_Reverse(c.c, i++ << 2);
+            sha.CopyFrom_Reverse(c.d, i++ << 2);
+            sha.CopyFrom_Reverse(c.e, i++ << 2);
             return sha;
         }
         public string Make(byte[] data)

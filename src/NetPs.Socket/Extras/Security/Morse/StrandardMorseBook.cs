@@ -3,7 +3,10 @@
     using System;
     using System.Text;
 
-    public class StrandardMorseBook : IMorseBook
+    /// <summary>
+    /// 国际通用Morse
+    /// </summary>
+    public class StandardMorseBook : IMorseBook
     {
         private static readonly uint[] BookENG = { 0b11101, 0b101010111, 0b10111010111, 0b1010111, 0b1, 0b101110101, 0b101110111, 0b1010101, 0b101, 0b1110111011101, 0b111010111, 0b101011101, 0b1110111, 0b10111, 0b11101110111, 0b10111011101, 0b1110101110111, 0b1011101, 0b10101, 0b111, 0b1110101, 0b111010101, 0b111011101, 0b11101010111, 0b1110111010111, 0b10101110111 };
         private static readonly uint[] BookNUM = { 0b1110111011101110111, 0b11101110111011101, 0b111011101110101, 0b1110111010101, 0b11101010101, 0b101010101, 0b10101010111, 0b1010101110111, 0b101011101110111, 0b10111011101110111 };
@@ -15,6 +18,7 @@
         private const uint BT = 0b1110101010111;
         private const string FH = ".:,;?='/!-_\"($@";
         private const string SPEC = "åæ çðéèĝĥĵñöŝþü";
+        // 识别左右括号
         private bool kuohao_times = true;
         public int Encode(char c)
         {

@@ -1,15 +1,13 @@
 ﻿namespace NetPs.Socket.Extras.Security.MessageDigest
 {
     using System;
-    using System.Drawing;
-    using System.Text;
 
     /// <remarks>
     /// https://mirrors.nju.edu.cn/rfc/beta/errata/rfc1319.html
     /// </remarks>
     public class MD2
     {
-        public static readonly byte[] S = {
+        internal static readonly byte[] S = {
             0x29, 0x2E, 0x43, 0xC9, 0xA2, 0xD8, 0x7C, 0x01, 0x3D, 0x36, 0x54, 0xA1, 0xEC, 0xF0, 0x06, 0x13,
             0x62, 0xA7, 0x05, 0xF3, 0xC0, 0xC7, 0x73, 0x8C, 0x98, 0x93, 0x2B, 0xD9, 0xBC, 0x4C, 0x82, 0xCA,
             0x1E, 0x9B, 0x57, 0x3C, 0xFD, 0xD4, 0xE0, 0x16, 0x67, 0x42, 0x6F, 0x18, 0x8A, 0x17, 0xE5, 0x12,
@@ -27,60 +25,92 @@
             0xF2, 0xEF, 0xB7, 0x0E, 0x66, 0x58, 0xD0, 0xE4, 0xA6, 0x77, 0x72, 0xF8, 0xEB, 0x75, 0x4B, 0x0A,
             0x31, 0x44, 0x50, 0xB4, 0x8F, 0xED, 0x1F, 0x1A, 0xDB, 0x99, 0x8D, 0x33, 0x9F, 0x11, 0x83, 0x14
         };
-        public static readonly int HASH_BLOCK_SIZE = 16;
-        public static readonly int HASH_ROUND_NUM = 18;
-        public static readonly int MD2_CHECKSUM_SIZE = 16;
-        public int HASH_DIGEST_SIZE = 16;
+        internal const int HASH_BLOCK_SIZE = 16;
+        internal const int HASH_ROUND_NUM = 18;
+        internal const int MD2_CHECKSUM_SIZE = 16;
+        internal const int HASH_DIGEST_SIZE = 16;
+        internal static void ProcessBlock(ref MD2_CTX ctx)
+        {
+            uint j, m , k;
+            byte[] x = new byte[HASH_BLOCK_SIZE<<1];
+            m = ctx.checksum[MD2_CHECKSUM_SIZE - 1];
+            for (j = 0; j < HASH_BLOCK_SIZE; j++)
+            {
+                m = ctx.checksum[j] = (byte)(ctx.checksum[j] ^ S[ctx.buf[j] ^ m]);
+
+                x[j] = ctx.buf[j];
+                x[16 + j] = (byte)(ctx.buf[j] ^ ctx.state[j]);
+            }
+
+            m = 0;
+
+            for (j = 0; j < HASH_ROUND_NUM; j++)
+            {
+                for (k = 0; k < HASH_BLOCK_SIZE; k++)
+                {
+                    m = ctx.state[k] = (byte)(ctx.state[k] ^ S[m]);
+                }
+                for (k = 0; k < HASH_BLOCK_SIZE<<1; k++)
+                {
+                    m = x[k] = (byte)(x[k] ^ S[m]);
+                }
+                m = (byte)((m + j) % 256);
+            }
+        }
+        internal static MD2_CTX Init()
+        {
+            var ctx = new MD2_CTX();
+            ctx.buf = new byte[HASH_BLOCK_SIZE];
+            ctx.state = new byte[HASH_DIGEST_SIZE];
+            ctx.checksum = new byte[MD2_CHECKSUM_SIZE];
+            ctx.used = 0;
+            return ctx;
+        }
+        internal static void Update(ref MD2_CTX ctx, byte[] data, int length)
+        {
+            uint i;
+            ctx.total += (uint)length;
+            if (ctx.used == HASH_BLOCK_SIZE)
+            {
+                ProcessBlock(ref ctx);
+                ctx.used = 0;
+            }
+
+            for (i = 0; i < length; i++)
+            {
+                ctx.buf[ctx.used] = data[i];
+                ctx.used++;
+                if (ctx.used == HASH_BLOCK_SIZE && i + 1 < length)
+                {
+                    ProcessBlock(ref ctx);
+                    ctx.used = 0;
+                }
+            }
+        }
+        internal static byte[] Final(ref MD2_CTX ctx)
+        {
+            byte padd;
+            if (ctx.used == HASH_BLOCK_SIZE)
+            {
+                ProcessBlock(ref ctx);
+                ctx.used = 0;
+            }
+            padd = (byte)(HASH_BLOCK_SIZE - ctx.total % HASH_BLOCK_SIZE);
+            for (; ctx.used != HASH_BLOCK_SIZE; ctx.used++)
+            {
+                ctx.buf[ctx.used] = padd;
+            }
+            ProcessBlock(ref ctx);
+            Array.Copy(ctx.checksum, ctx.buf, HASH_BLOCK_SIZE);
+            ProcessBlock(ref ctx);
+
+            return ctx.state;
+        }
         public virtual string Make(byte[] data)
         {
-            if (data == null || data.Length == 0) return string.Empty;
-
-            int i, j, k;
-            byte m = 0;
-            var inlen = data.Length;
-            int iLen = (inlen / HASH_BLOCK_SIZE + 1) * HASH_BLOCK_SIZE;
-            //补齐填充，输入数不是HASH_BLOCK_SIZE 的倍数
-            var padded = (byte)(iLen - inlen);
-            var C = new byte[MD2_CHECKSUM_SIZE];
-            var X = new byte[48];
-
-            byte get_data(int pos)
-            {
-                if (pos < inlen) return data[pos];
-                else if (pos < iLen) return padded;
-                else return C[pos - iLen];
-            }
-            for (i = 0; i < iLen / HASH_BLOCK_SIZE; i++)
-            {
-                for (j = 0; j < HASH_BLOCK_SIZE; j++)
-                {
-                    var c = get_data(i * HASH_BLOCK_SIZE + j);
-                    C[j] = (byte)(C[j] ^ S[c ^ m]);
-                    m = C[j];
-                }
-            }
-
-            for (i = 0; i < (iLen + 16) / HASH_BLOCK_SIZE; i++)
-            {
-                for (j = 0; j < HASH_BLOCK_SIZE; j++)
-                {
-                    X[16 + j] = get_data(i * HASH_BLOCK_SIZE + j);
-                    X[32 + j] = (byte)(X[16 + j] ^ X[j]);
-                }
-
-                m = 0;
-
-                for (j = 0; j < HASH_ROUND_NUM; j++)
-                {
-                    for (k = 0; k < 48; k++)
-                    {
-                        m = X[k] = (byte)(X[k] ^ S[m]);
-                    }
-                    m = (byte)((m+ j) % 256);
-                }
-            }
-
-            return X.ToHexString(0, HASH_DIGEST_SIZE);
+            var ctx = Init();
+            Update(ref ctx, data, data.Length);
+            return Final(ref ctx).ToHexString();
         }
 
         #region S盒 生成

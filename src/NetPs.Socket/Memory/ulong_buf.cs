@@ -140,8 +140,19 @@
         }
         public bool IsFULL(int offset = 0)
         {
-            if (offset == 0) return (Oo.totalbytes_high == 0 && Oo.totalbytes_low > 7) && Oo.used == 0;
-            else return IsFULL() || Oo.used + offset >= Oo.size;
+            // 最后一个
+            if (Oo.used == 0) return Oo.totalbytes_low > 7;
+            // 沾左边
+            else
+            {
+                bool r;
+                if (Oo.used + offset == Oo.size) r = Oo.totalbytes_low != 0;
+                // 中间
+                else r = Oo.used + offset > Oo.size;
+                // 填充之后的数据, be已经满了!
+                if (r) Fill(0, 0);
+                return r;
+            }
         }
         public uint Used => Oo.used;
         public int UsedBytes => (int)(Oo.used << 3) + (byte)(Oo.totalbytes_low % 8);

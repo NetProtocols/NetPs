@@ -8,7 +8,7 @@
         protected virtual IMorseBook book { get; set; }
         public Morse()
         {
-            this.book = new StrandardMorseBook();
+            this.book = new StandardMorseBook();
         }
         public Morse(IMorseBook book)
         {

@@ -16,6 +16,6 @@
         internal uint md_size { get; set; }
         internal bool absorbing { get; set; }
         internal ulong[] buf => buffer.Oo.Data;
-        internal ulong_reverse_buf buffer { get; set; }
+        internal ulong_buf_reverse buffer { get; set; }
     }
 }

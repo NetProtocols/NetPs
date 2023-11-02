@@ -1,5 +1,6 @@
 ﻿namespace NetPs.Socket.Extras.Security.MessageDigest
 {
+    using NetPs.Socket.Memory;
     using System;
     
     ///<remarks>
@@ -26,12 +27,6 @@
         {
             return y ^ (x | (~z));
         }
-        private const int MD5_BLOCK_SIZE = 64;
-        private const int MD5_LEN_SIZE = 8;
-        private const int HASH_BLOCK_SIZE = MD5_BLOCK_SIZE;
-        private const int HASH_LEN_SIZE = MD5_LEN_SIZE;
-        private const int HASH_LEN_OFFSET = (MD5_BLOCK_SIZE - MD5_LEN_SIZE);
-        private const int HASH_PADDING_PATTERN = 0x80;
         private static MD5_CTX Init()
         {
             var c = new MD5_CTX();
@@ -39,37 +34,22 @@
             c.b = 0xEFCDAB89;
             c.c = 0x98BADCFE;
             c.d = 0x10325476;
-            c.total = 0;
-            c.used = 0;
-            c.buf = new byte[64];
+            c.buffer = uint_buf_reverse.New(16);
             return c;
         }
-        private static void PrepareScheduleWord(byte[] block, ref uint[] X, int pos)
-        {
-            int i, j;
-            for (i = 0, j = pos; i < HASH_BLOCK_SIZE / 4; i++, j += 4)
-            {
-                X[i] = (uint)(block[j] | (block[j + 1] << 8) | (block[j + 2] << 16) | (block[j + 3] << 24));
-            }
-        }
-        private static void RecordTotal(ref MD5_CTX info)
-        {
-            Array.Copy(BitConverter.GetBytes(info.total << 3), 0, info.buf, HASH_LEN_OFFSET, sizeof(long));
-        }
-        private static void ProcessBlock(ref MD5_CTX info, byte[] block, int pos)
+        private static void ProcessBlock(ref MD5_CTX ctx)
         {
             uint a, b, c, d;
             MD4.RoundFunc Func;
-            var X = new uint[16];
-            PrepareScheduleWord(block, ref X, pos);
-            a = info.a;
-            b = info.b;
-            c = info.c;
-            d = info.d;
+            uint[] buf = ctx.buf;
+            a = ctx.a;
+            b = ctx.b;
+            c = ctx.c;
+            d = ctx.d;
 
             uint MD5_OP(uint a, uint b, uint c, uint d, byte k, byte s, byte i)
             {
-                return b + MD4.ROTL(a + Func(b, c, d) + X[k] + T[i - 1], s);
+                return b + MD4.ROTL(a + Func(b, c, d) + buf[k] + T[i - 1], s);
             }
             Func = MD4.F;
             a = MD5_OP(a, b, c, d, 0, 7, 1);   d = MD5_OP(d, a, b, c, 1, 12, 2);   c = MD5_OP(c, d, a, b, 2, 17, 3);   b = MD5_OP(b, c, d, a, 3, 22, 4);
@@ -92,94 +72,36 @@
             a = MD5_OP(a, b, c, d, 8, 6, 57);  d = MD5_OP(d, a, b, c, 15, 10, 58); c = MD5_OP(c, d, a, b, 6, 15, 59);  b = MD5_OP(b, c, d, a, 13, 21, 60);
             a = MD5_OP(a, b, c, d, 4, 6, 61);  d = MD5_OP(d, a, b, c, 11, 10, 62); c = MD5_OP(c, d, a, b, 2, 15, 63);  b = MD5_OP(b, c, d, a, 9, 21, 64);
             
-            info.a += a;
-            info.b += b;
-            info.c += c;
-            info.d += d;
+            ctx.a += a;
+            ctx.b += b;
+            ctx.c += c;
+            ctx.d += d;
         }
-        private static void Update(ref MD5_CTX c, byte[] data, int len)
+        private static void Update(ref MD5_CTX ctx, byte[] data, int length)
         {
-            int copy_len = 0;
-            int pos = 0;
-            if (c.used != 0)
+            foreach (uint i in ctx.buffer.Push(data, 0, length, 0))
             {
-                if (c.used + len < HASH_BLOCK_SIZE)
+                if (i < length)
                 {
-                    Array.Copy(data, pos, c.buf, c.used, len);
-                    c.used += len;
-                    return;
+                    ProcessBlock(ref ctx);
                 }
-                else
-                {
-                    copy_len = HASH_BLOCK_SIZE - c.used;
-                    Array.Copy(data, pos, c.buf, c.used, copy_len);
-                    ProcessBlock(ref c, c.buf, pos);
-
-                    c.total += HASH_BLOCK_SIZE;
-
-                    pos += copy_len;
-                    len -= copy_len;
-
-                    for(var i = 0; i< HASH_BLOCK_SIZE; i++) c.buf[i] = 0;
-                    c.used = 0;
-                }
-            }
-
-            if (len < HASH_BLOCK_SIZE)
-            {
-                Array.Copy(data, pos, c.buf, c.used, len);
-                c.used += len;
-            }
-            else
-            {
-                while (len >= HASH_BLOCK_SIZE)
-                {
-                    ProcessBlock(ref c, data, pos);
-                    c.total += HASH_BLOCK_SIZE;
-
-                    pos += HASH_BLOCK_SIZE;
-                    len -= HASH_BLOCK_SIZE;
-                }
-
-                Array.Copy(data, pos, c.buf, 0, len);
-                c.used = len;
             }
         }
-        private static byte[] Final(ref MD5_CTX c)
+        private static byte[] Final(ref MD5_CTX ctx)
         {
-            if (c.used >= (HASH_BLOCK_SIZE - HASH_LEN_SIZE))
-            {
-                c.total += c.used;
-                c.buf[c.used] = HASH_PADDING_PATTERN;
-                c.used++;
-
-                for (var i = c.used; i < HASH_BLOCK_SIZE; i++) c.buf[i] = 0;
-                ProcessBlock(ref c, c.buf, 0);
-
-                for (var i = 0; i < HASH_BLOCK_SIZE - HASH_LEN_SIZE; i++) c.buf[i] = 0;
-                c.used = 0;
-
-                RecordTotal(ref c);
-                ProcessBlock(ref c, c.buf, 0);
-            }
-            else
-            {
-                c.total += c.used;
-
-                c.buf[c.used] = HASH_PADDING_PATTERN;
-                c.used++;
-
-                for (var i = c.used; i < HASH_BLOCK_SIZE - HASH_LEN_SIZE; i++) c.buf[i] = 0;
-
-                RecordTotal(ref c);
-                ProcessBlock(ref c, c.buf, 0);
-            }
+            if (ctx.buffer.IsFULL()) ProcessBlock(ref ctx);
+            ctx.buffer.PushNext(0x80);
+            if (ctx.buffer.IsFULL(2)) ProcessBlock(ref ctx);
+            ctx.buffer.Fill(0, 2);
+            ctx.buffer.PushTotal();
+            ProcessBlock(ref ctx);
 
             var md = new byte[16];
-            md.CopyFrom(c.a, 0);
-            md.CopyFrom(c.b, 4);
-            md.CopyFrom(c.c, 8);
-            md.CopyFrom(c.d, 12);
+            int i = 0;
+            md.CopyFrom(ctx.a, i++ << 2);
+            md.CopyFrom(ctx.b, i++ << 2);
+            md.CopyFrom(ctx.c, i++ << 2);
+            md.CopyFrom(ctx.d, i++ << 2);
             return md;
         }
         public string Make(byte[] data)

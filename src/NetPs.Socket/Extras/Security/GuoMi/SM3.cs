@@ -126,14 +126,15 @@
             ProcessBlock(ref ctx);
 
             byte[] sha = new byte[32];
-            sha.CopyFrom_Reverse(ctx.a, 0);
-            sha.CopyFrom_Reverse(ctx.b, 4);
-            sha.CopyFrom_Reverse(ctx.c, 8);
-            sha.CopyFrom_Reverse(ctx.d, 12);
-            sha.CopyFrom_Reverse(ctx.e, 16);
-            sha.CopyFrom_Reverse(ctx.f, 20);
-            sha.CopyFrom_Reverse(ctx.g, 24);
-            sha.CopyFrom_Reverse(ctx.h, 28);
+            int i = 0;
+            sha.CopyFrom_Reverse(ctx.a, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.b, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.c, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.d, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.e, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.f, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.g, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.h, i++ << 2);
             return sha;
         }
 

@@ -78,10 +78,10 @@
         internal static void gen_keys()
         {
             ulong prime_count = 0;
-            ulong p = 0, q = 0;
-            ulong e = (2 << 16) + 1;
-            ulong d = 0;
-            ulong max = 0, phi_max = 0;
+            //ulong p = 0, q = 0;
+            //ulong e = (2 << 16) + 1;
+            //ulong d = 0;
+            //ulong max = 0, phi_max = 0;
             var s = RandomSource.New((int)DateTime.Now.Ticks);
 
             do

@@ -55,7 +55,7 @@ var rlt = await v6client.Ping(packet);
 
 - **05. Security**  
 
-提供了MD2\MD4\MD5\MD6、SHA0\SHA1\SHA2\SHA3、SM3加密类。  
+提供了Hash计算工具 MD2\MD4\MD5\MD6、SHA0\SHA1\SHA2\SHA3、SM3、RIPEMD128\RIPEMD160\RIPEMD256\RIPEMD320、WHIRLPOOL。  
 
 示例为SM3的一项测试。
 ```

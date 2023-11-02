@@ -331,13 +331,14 @@
             ProcessBlock(ref ctx);
 
             byte[] sha = new byte[ctx.size >> 3];
-            sha.CopyFrom_Reverse(ctx.a, 0);
-            sha.CopyFrom_Reverse(ctx.b, 4);
-            sha.CopyFrom_Reverse(ctx.c, 8);
-            sha.CopyFrom_Reverse(ctx.d, 12);
-            sha.CopyFrom_Reverse(ctx.e, 16);
-            sha.CopyFrom_Reverse(ctx.f, 20);
-            sha.CopyFrom_Reverse(ctx.g, 24);
+            int i = 0;
+            sha.CopyFrom_Reverse(ctx.a, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.b, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.c, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.d, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.e, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.f, i++ << 2);
+            sha.CopyFrom_Reverse(ctx.g, i++ << 2);
             if (ctx.size == 256) sha.CopyFrom_Reverse(ctx.h, 28);
             return sha;
         }
@@ -351,16 +352,17 @@
             ProcessBlock(ref ctx);
 
             byte[] sha = new byte[ctx.size>>3];
-            sha.CopyFrom_Reverse(ctx.a, 0);
-            sha.CopyFrom_Reverse(ctx.b, 8);
-            sha.CopyFrom_Reverse(ctx.c, 16);
-            sha.CopyFrom_Reverse(ctx.d, 24);
-            sha.CopyFrom_Reverse(ctx.e, 32);
-            sha.CopyFrom_Reverse(ctx.f, 40);
+            int i = 0;
+            sha.CopyFrom_Reverse(ctx.a, i++ << 3);
+            sha.CopyFrom_Reverse(ctx.b, i++ << 3);
+            sha.CopyFrom_Reverse(ctx.c, i++ << 3);
+            sha.CopyFrom_Reverse(ctx.d, i++ << 3);
+            sha.CopyFrom_Reverse(ctx.e, i++ << 3);
+            sha.CopyFrom_Reverse(ctx.f, i++ << 3);
             if (ctx.size == 512)
             {
-                sha.CopyFrom_Reverse(ctx.g, 48);
-                sha.CopyFrom_Reverse(ctx.h, 56);
+                sha.CopyFrom_Reverse(ctx.g, i++ << 3);
+                sha.CopyFrom_Reverse(ctx.h, i++ << 3);
             }
             return sha;
         }

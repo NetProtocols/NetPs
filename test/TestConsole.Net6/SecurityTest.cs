@@ -4,12 +4,8 @@ using NetPs.Socket.Extras.Security.Morse;
 using NetPs.Socket.Extras.Security.OtherHash;
 using NetPs.Socket.Extras.Security.SecureHash;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace TestConsole.Net6
 {
@@ -18,7 +14,11 @@ namespace TestConsole.Net6
         internal SecurityTest()
         {
             Test_Morse();
-            //Test_MD6();
+            Test_MD2();
+            Test_MD4();
+            Test_MD5();
+            Test_MD6();
+
             Test_Sha0();
             Test_Sha1();
             Test_Sha2();
@@ -26,6 +26,8 @@ namespace TestConsole.Net6
             Test_SM3();
             Test_RIPEMD();
             Test_WHIRLPOOL();
+            Test_TIGER();
+            Test_SNEFRU();
         }
 
         internal static IEnumerable<(byte[], string)> TestInputDatas(params string[] outs)
@@ -46,6 +48,47 @@ namespace TestConsole.Net6
             var s = morse.Encode(text, text.Length);
             var w = morse.Decode(s, s.Length);
             Debug.Assert(text == w);
+        }
+        private static void Test_MD2()
+        {
+            string text, outtext;
+            text = "abc";
+
+            outtext = new MD2().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "da853b0d3f88d99b30283a69e6ded6bb");
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+            outtext = new MD2().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "da33def2a42df13975352846c30338cd");
+            text = "abcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabc";
+
+            outtext = new MD2().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "95133809c29ad15c70d4d7fb3c5f9d78");
+        }
+        private static void Test_MD4()
+        {
+            string text, outtext;
+            text = "abc";
+
+            outtext = new MD4().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "a448017aaf21d8525fc10ae87aa6729d");
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+            outtext = new MD4().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "043f8582f241db351ce627e153e7f0e4");
+
+        }
+        private static void Test_MD5()
+        {
+            string text, outtext;
+            text = "abc";
+
+            outtext = new MD5().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "900150983cd24fb0d6963f7d28e17f72");
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+            outtext = new MD5().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "d174ab98d277d9f5a5611c2c9f419d9f");
         }
         private static void Test_MD6()
         {
@@ -197,6 +240,34 @@ namespace TestConsole.Net6
             outtext = new WHIRLPOOL().Make(Encoding.ASCII.GetBytes(text));
             Debug.Assert(outtext == "dc37e008cf9ee69bf11f00ed9aba26901dd7c28cdec066cc6af42e40f82f3a1e08eba26629129d8fb7cb57211b9281a65517cc879d7b962142c65f5a7af01467");
 
+        }
+        private static void Test_TIGER()
+        {
+            string text, outtext;
+            text = "abc";
+            outtext = new TIGER192_3().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "2aab1484e8c158f2bfb8c5ff41b57a525129131c957b5f93");
+            outtext = new TIGER192_4().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "538883c8fc5f28250299018e66bdf4fdb5ef7b65f2e91753");
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            outtext = new TIGER192_3().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "8dcea680a17583ee502ba38a3c368651890ffbccdc49a8cc");
+            outtext = new TIGER192_4().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "ac2ca58530529697d1ca33b191203d111b73ab1884f16e06");
+        }
+        private static void Test_SNEFRU()
+        {
+            string text, outtext;
+            text = "abc";
+            outtext = new SNEFRU128().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "553d0648928299a0f22a275a02c83b10");
+            outtext = new SNEFRU256().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "7d033205647a2af3dc8339f6cb25643c33ebc622d32979c4b612b02c4903031b");
+            text = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            outtext = new SNEFRU128().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "0efd7f93a549f023b79781090458923e");
+            outtext = new SNEFRU256().Make(Encoding.ASCII.GetBytes(text));
+            Debug.Assert(outtext == "83aa9193b62ffd269faa43d31e6ac2678b340e2a85849470328be9773a9e5728");
         }
         private static void Test_SM3()
         {

@@ -387,34 +387,35 @@
             ProcessBlock(ref ctx);
 
             byte[] md = new byte[ctx.size >> 3];
-            md.CopyFrom(ctx.a, 0);
-            md.CopyFrom(ctx.b, 4);
-            md.CopyFrom(ctx.c, 8);
-            md.CopyFrom(ctx.d, 12);
+            int i = 0;
+            md.CopyFrom(ctx.a, i++ <<2);
+            md.CopyFrom(ctx.b, i++ << 2);
+            md.CopyFrom(ctx.c, i++ << 2);
+            md.CopyFrom(ctx.d, i++ << 2);
             if (ctx.size < 160) return md;
 
             if (ctx.size < 256)
             {
-                md.CopyFrom(ctx.e, 16);
+                md.CopyFrom(ctx.e, i++ << 2);
                 return md;
             }
 
             if (ctx.size == 256)
             {
-                md.CopyFrom(ctx.aa, 16);
-                md.CopyFrom(ctx.bb, 20);
-                md.CopyFrom(ctx.cc, 24);
-                md.CopyFrom(ctx.dd, 28);
+                md.CopyFrom(ctx.aa, i++ << 2);
+                md.CopyFrom(ctx.bb, i++ << 2);
+                md.CopyFrom(ctx.cc, i++ << 2);
+                md.CopyFrom(ctx.dd, i++ << 2);
                 return md;
             }
             if (ctx.size == 320)
             {
-                md.CopyFrom(ctx.e, 16);
-                md.CopyFrom(ctx.aa, 20);
-                md.CopyFrom(ctx.bb, 24);
-                md.CopyFrom(ctx.cc, 28);
-                md.CopyFrom(ctx.dd, 32);
-                md.CopyFrom(ctx.ee, 36);
+                md.CopyFrom(ctx.e, i++ << 2);
+                md.CopyFrom(ctx.aa, i++ << 2);
+                md.CopyFrom(ctx.bb, i++ << 2);
+                md.CopyFrom(ctx.cc, i++ << 2);
+                md.CopyFrom(ctx.dd, i++ << 2);
+                md.CopyFrom(ctx.ee, i++ << 2);
                 return md;
             }
             return md;

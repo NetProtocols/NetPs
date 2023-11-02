@@ -116,7 +116,7 @@
         internal static SHA3_CTX Init(uint kind, bool shake = false, uint d = 0)
         {
             var ctx = new SHA3_CTX();
-            ctx.buffer = ulong_reverse_buf.New(25);
+            ctx.buffer = ulong_buf_reverse.New(25);
             ctx.b = 200;
             ctx.kind = kind;
             ctx.shake = shake;
