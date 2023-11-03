@@ -5,7 +5,7 @@
     /// <summary>
     /// http://www.gmbz.org.cn/main/bzlb.html
     /// </summary>
-    public class SM3
+    public class SM3 : IHash
     {
         internal const uint HASH_ROUND_NUM = 64;
         internal static uint[] T = { 0x79CC4519, 0x7A879D8A };

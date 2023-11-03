@@ -5,7 +5,7 @@
     /// <summary>
     /// https://nvlpubs.nist.gov/nistpubs/Legacy/FIPS/NIST.FIPS.180.pdf
     /// </summary>
-    public class SHA0
+    public class SHA0 : IHash
     {
         internal const uint BLOCK_SIZE = 512;
         internal const uint WORD_SIZE = BLOCK_SIZE - 64;

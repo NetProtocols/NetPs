@@ -74,7 +74,6 @@
                     ProcessBlock(ref ctx);
                 }
             }
-            ctx.buffer.Oo.used = 0;
             ctx.buffer.Fill(0, 2);
             ctx.buffer.PushTotal();
             ProcessBlock(ref ctx);
@@ -92,7 +91,7 @@
 
     }
 
-    public class SNEFRU128
+    public class SNEFRU128 : IHash
     {
         public string Make(byte[] data)
         {
@@ -101,7 +100,7 @@
             return SNEFRU.Final(ref ctx).ToHexString();
         }
     }
-    public class SNEFRU256
+    public class SNEFRU256 : IHash
     {
         public string Make(byte[] data)
         {

@@ -247,7 +247,7 @@
             return sha;
         }
     }
-    public class SHA3_224
+    public class SHA3_224 : IHash
     {
         public string Make(byte[] data)
         {
@@ -256,7 +256,7 @@
             return SHA3.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA3_256
+    public class SHA3_256 : IHash
     {
         public string Make(byte[] data)
         {
@@ -265,7 +265,7 @@
             return SHA3.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA3_384
+    public class SHA3_384 : IHash
     {
         public string Make(byte[] data)
         {
@@ -274,7 +274,7 @@
             return SHA3.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA3_512
+    public class SHA3_512 : IHash
     {
         public string Make(byte[] data)
         {
@@ -283,7 +283,7 @@
             return SHA3.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA3_SHAKE128
+    public class SHA3_SHAKE128 : IHash
     {
         public string Make(byte[] data)
         {
@@ -292,7 +292,7 @@
             return SHA3.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA3_SHAKE256
+    public class SHA3_SHAKE256 : IHash
     {
         public string Make(byte[] data)
         {

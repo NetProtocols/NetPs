@@ -123,6 +123,10 @@
             {
                 Oo.Data[Oo.used] = x;
             }
+            if (Oo.used >= Oo.size)
+            {
+                Oo.used = 0;
+            }
         }
         public void PushNext(uint x)
         {

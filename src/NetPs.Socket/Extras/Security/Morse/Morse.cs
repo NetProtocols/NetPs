@@ -1,4 +1,10 @@
-﻿namespace NetPs.Socket.Extras.Security.Morse
+﻿/// ======================
+/// '.'         1
+/// '_'         111
+/// 间隔        0
+/// 字符间隔    000
+/// 字符串间符  000000
+namespace NetPs.Socket.Extras.Security.Morse
 {
     using System;
     using System.Text;

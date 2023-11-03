@@ -5,7 +5,7 @@
     ///<remarks>
     /// https://mirrors.nju.edu.cn/rfc/beta/errata/rfc3174.html
     ///</remarks>
-    public class SHA1
+    public class SHA1 : IHash
     {
         internal const uint HASH_ROUND_NUM = 80;
         internal const uint HASH_BLOCK_SIZE = 64;

@@ -133,7 +133,7 @@
         }
     }
 
-    public class TIGER192_3
+    public class TIGER192_3 : IHash
     {
         public string Make(byte[] data)
         {
@@ -143,7 +143,7 @@
             return TIGER.Final(ref ctx).ToHexString();
         }
     }
-    public class TIGER192_4
+    public class TIGER192_4 : IHash
     {
         public string Make(byte[] data)
         {

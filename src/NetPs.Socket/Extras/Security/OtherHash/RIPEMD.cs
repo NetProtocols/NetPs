@@ -422,7 +422,7 @@
 
         }
     }
-    public class RIPEMD160
+    public class RIPEMD160 : IHash
     {
         public string Make(byte[] data)
         {
@@ -431,7 +431,7 @@
             return RIPEMD.Final(ref ctx).ToHexString();
         }
     }
-    public class RIPEMD128
+    public class RIPEMD128 : IHash
     {
         public string Make(byte[] data)
         {
@@ -440,7 +440,7 @@
             return RIPEMD.Final(ref ctx).ToHexString();
         }
     }
-    public class RIPEMD256
+    public class RIPEMD256 : IHash
     {
         public string Make(byte[] data)
         {
@@ -449,7 +449,7 @@
             return RIPEMD.Final(ref ctx).ToHexString();
         }
     }
-    public class RIPEMD320
+    public class RIPEMD320 : IHash
     {
         public string Make(byte[] data)
         {

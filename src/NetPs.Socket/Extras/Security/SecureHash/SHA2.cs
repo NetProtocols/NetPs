@@ -368,7 +368,7 @@
         }
     }
 
-    public class SHA224
+    public class SHA224 : IHash
     {
         public string Make(byte[] data)
         {
@@ -377,7 +377,7 @@
             return SHA2.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA256
+    public class SHA256 : IHash
     {
         public string Make(byte[] data)
         {
@@ -386,7 +386,7 @@
             return SHA2.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA384
+    public class SHA384 : IHash
     {
         public string Make(byte[] data)
         {
@@ -395,7 +395,7 @@
             return SHA2.Final(ref ctx).ToHexString();
         }
     }
-    public class SHA512
+    public class SHA512 : IHash
     {
         public string Make(byte[] data)
         {

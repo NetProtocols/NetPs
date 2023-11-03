@@ -6,7 +6,7 @@
     ///<remarks>
     ///https://people.csail.mit.edu/rivest/pubs/RABCx08.pdf
     ///</remarks>
-    public class MD6
+    public class MD6 : IHash
     {
         internal static readonly uint[] S0 = { 0x01234567, 0x89abcdef };
         internal static readonly uint[] Sm = { 0x7311c281, 0x2425cfa0 };
@@ -285,6 +285,37 @@
             var c = Init();
             Update(ref c, data, len);
             return Final(ref c).ToHexString();
+        }
+    }
+
+    public class MD6_512 : IHash
+    {
+        public string Make(byte[] data)
+        {
+            var c = MD6.Init();
+            c.SetSize(512);
+            MD6.Update(ref c, data, data.Length);
+            return MD6.Final(ref c).ToHexString();
+        }
+    }
+    public class MD6_256 : IHash
+    {
+        public string Make(byte[] data)
+        {
+            var c = MD6.Init();
+            c.SetSize(256);
+            MD6.Update(ref c, data, data.Length);
+            return MD6.Final(ref c).ToHexString();
+        }
+    }
+    public class MD6_128 : IHash
+    {
+        public string Make(byte[] data)
+        {
+            var c = MD6.Init();
+            c.SetSize(128);
+            MD6.Update(ref c, data, data.Length);
+            return MD6.Final(ref c).ToHexString();
         }
     }
 }

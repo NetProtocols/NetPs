@@ -4,4 +4,17 @@
     internal class Crc
     {
     }
+
+    public class Crc32
+    {
+
+    }
+    public class Crc32B
+    {
+
+    }
+    public class Crc32C
+    {
+
+    }
 }

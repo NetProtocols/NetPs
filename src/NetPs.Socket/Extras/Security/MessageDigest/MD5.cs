@@ -6,7 +6,7 @@
     ///<remarks>
     ///http://mirrors.nju.edu.cn/rfc/beta/errata/rfc1321.html
     ///</remarks>
-    public class MD5
+    public class MD5 : IHash
     {
         internal static readonly uint[] T =
         {

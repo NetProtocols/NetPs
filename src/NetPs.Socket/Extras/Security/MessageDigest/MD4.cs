@@ -6,7 +6,7 @@
     ///<remarks>
     ///http://mirrors.nju.edu.cn/rfc/beta/errata/rfc1320.html
     ///</remarks>
-    public class MD4
+    public class MD4 : IHash
     {
         internal delegate uint RoundFunc(uint x, uint y, uint z);
         internal static uint F(uint x, uint y, uint z)
