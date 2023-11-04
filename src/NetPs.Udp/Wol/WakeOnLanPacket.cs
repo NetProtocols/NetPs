@@ -3,25 +3,26 @@
     using NetPs.Socket;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Text;
     using System.Text.RegularExpressions;
 
     public class WakeOnLanPacket : IPacket
     {
+        public const int DEFAULT_MAC_LEN = 6;
         public string Mac { get; set; }
+        private int mac_length { get; set; }
         public WakeOnLanPacket()
         {
         }
-        public WakeOnLanPacket(string mac)
+        public WakeOnLanPacket(string mac, int length = DEFAULT_MAC_LEN)
         {
             Mac = mac;
+            this.mac_length = length;
         }
 
         public byte[] GetData()
         {
-            var mac_len = MacBytes().Count();
-            var data = new byte[6 + 16*mac_len];
+            var data = new byte[6 + 16* mac_length];
             var i = 6;
             while (i-- > 0) data[i] = 0xff;
             var j = -1;
@@ -29,7 +30,7 @@
             {
                 j++;
                 i = 16;
-                while (i-- > 0) data[6 + i * mac_len + j] = b;
+                while (i-- > 0) data[6 + i * mac_length + j] = b;
             }
             return data;
         }
@@ -44,7 +45,7 @@
                 }
             }
         }
-        public static bool IsMacAddress(string mac)
+        public static bool IsMacAddress(string mac, int length = DEFAULT_MAC_LEN)
         {
             var times = 0;
             var re = new Regex("[0-9a-fA-F]{2}");
@@ -55,7 +56,7 @@
                     times++;
                 }
             }
-            return times == 6;
+            return times == length;
         }
 
         public void SetData(byte[] data, int offset)

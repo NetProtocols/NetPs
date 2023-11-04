@@ -2,7 +2,6 @@
 {
     using System;
     using System.Collections.Generic;
-    using System.Linq;
 
     /// <summary>
     /// 队列流池
@@ -13,7 +12,7 @@
     public class QueueStreamPool: IDisposable
     {
         public const int MIN_RELEASE_DELAY = 10000000; //最小1s
-        private IList<QueueStream> resources { get; }
+        private Queue<QueueStream> resources { get; }
         //最近释放时间
         private long last_release_ticks { get; set; }
         private int max_live { get; set; }
@@ -29,7 +28,7 @@
         {
             this.is_disposed = false;
             max_live = max;
-            this.resources = new List<QueueStream>();
+            this.resources = new Queue<QueueStream>();
         }
 
         public void SET_MAX(int max)
@@ -43,7 +42,7 @@
             if (this.is_disposed) stream.Dispose();
             else
             {
-                lock(this) resources.Add(stream);
+                lock(this) resources.Enqueue(stream);
                 stream.LOCK();
             }
 
@@ -58,9 +57,7 @@
             {
                 lock(this)
                 {
-                    var max = resources.Max(res => res.Capacity);
-                    stream = resources.Where(res => res.Capacity == max).First();
-                    resources.Remove(stream);
+                    stream = resources.Dequeue();
                 }
             }
             if (stream == null) stream = new QueueStream();
@@ -100,10 +97,10 @@
                     last_release_ticks = now;
                     lock (this)
                     {
-                        foreach (var res in resources.OrderBy(res => res.Capacity).Take(resources.Count - save_count))
+                        int i;
+                        for (i = resources.Count -1; i >= 0; i--)
                         {
-                            res.Dispose();
-                            this.resources.Remove(res);
+                            resources.Dequeue().Dispose();
                         }
                     }
                 }
@@ -120,7 +117,11 @@
             }
             if (resources.Count > 0)
             {
-                foreach (var res in resources.AsEnumerable()) res.Dispose();
+                int i;
+                for (i = resources.Count - 1; i >= 0; i--)
+                {
+                    resources.Dequeue().Dispose();
+                }
             }
         }
     }

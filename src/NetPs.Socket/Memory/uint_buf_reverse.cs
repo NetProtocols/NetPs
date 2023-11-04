@@ -143,6 +143,8 @@
                 return r;
             }
         }
+        public uint Used => Oo.used;
+        public int UsedBytes => (int)(Oo.used << 3) + (byte)(Oo.totalbytes & 0b11);
         public static uint_buf_reverse New( uint size)
         {
             var buf = new ooo();

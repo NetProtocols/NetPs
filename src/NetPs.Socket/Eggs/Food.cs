@@ -1,10 +1,8 @@
 ﻿namespace NetPs.Socket.Eggs
 {
     using System;
-    using System.Collections;
     using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
     using System.Reflection;
     using System.Threading;
 
@@ -14,6 +12,8 @@
         public const string Assemblys = "NetPs.Tcp;NetPs.Udp;";
         public static void Heating(IHeatingWatch watch = null)
         {
+            Type[] types_ref;
+            int i, j;
             if (watch == null) watch = new NoneWatch();
             var ass = Assemblys.Split(Delimiter);
 
@@ -27,14 +27,18 @@
                 if (a == null) continue;
                 watch.Heat_Progress();
                 var types = a.GetTypes();
-                for (var i = 0; i < types.Length; i++)
+                for (i = types.Length - 1; i >= 0; i--)
                 {
                     if (types[i].IsAbstract) continue;
                     else if (!types[i].IsClass) continue;
 
-                    if (types[i].GetInterfaces().Contains(typeof(IHeat)))
+                    types_ref = types[i].GetInterfaces();
+                    for (j = types_ref.Length - 1; j   >= 0; j--)
                     {
-                        queue.Enqueue(run_heat(types[i], watch));
+                        if (types_ref[j] == typeof(IHeat))
+                        {
+                            queue.Enqueue(run_heat(types[i], watch));
+                        }
                     }
                 }
             }

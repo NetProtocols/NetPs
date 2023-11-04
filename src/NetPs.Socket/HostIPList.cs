@@ -2,7 +2,7 @@
 {
     using NetPs.Socket.Operations;
     using System;
-    using System.Linq;
+    using System.Collections.Generic;
     using System.Net;
 
     /// <summary>
@@ -34,15 +34,25 @@
             this.ips = ArrayTool.FindAll(Dns.GetHostEntry(Dns.GetHostName()).AddressList, f => !IPAddress.IsLoopback(f));
 #else
             //需要筛选状态为运行的interface
-            var interfaces = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
-                .Where(f => f.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up && f.NetworkInterfaceType != System.Net.NetworkInformation.NetworkInterfaceType.Loopback);
-            var unicasts = interfaces.SelectMany(f => f.GetIPProperties().UnicastAddresses);
-            this.ips = unicasts
-                .Where(f => !IPAddress.IsLoopback(f.Address))
-                .Select(f => new IPAddressWithMask(f.Address.GetAddressBytes(), f.IPv4Mask.GetAddressBytes()))
-                .ToArray();
-            //this.ips = ArrayTool.FindAll(Dns.GetHostAddresses(Dns.GetHostName()), f => !IPAddress.IsLoopback(f));
+            int i, j;
+            System.Net.NetworkInformation.NetworkInterface[] ins;
+            Queue<IPAddress> ips;
+            System.Net.NetworkInformation.UnicastIPAddressInformationCollection collet;
 
+            ins = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces();
+            ips = new Queue<IPAddress>(ins.Length);
+            for (i = ins.Length -1; i >= 0; i--)
+            {
+                if (ins[i].OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up || ins[i].NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+                collet = ins[i].GetIPProperties().UnicastAddresses;
+                for (j = collet.Count -1; j >= 0; j--)
+                {
+                    if (IPAddress.IsLoopback(collet[j].Address)) continue;
+                    ips.Enqueue(new IPAddressWithMask(collet[j].Address.GetAddressBytes(), collet[j].IPv4Mask.GetAddressBytes()));
+                }
+            }
+
+            this.ips = ips.ToArray();
 #endif
         }
 

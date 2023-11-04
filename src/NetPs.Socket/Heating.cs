@@ -5,9 +5,7 @@
     using NetPs.Socket.Operations;
     using NetPs.Socket.Packets;
     using System;
-    using System.Linq;
     using System.Net;
-    using System.Net.Sockets;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -31,7 +29,7 @@
             new NetPsSocketException(SocketErrorCode.Success, string.Empty);
             new QueueStream().Dispose();
             new hot_SocketCore().Dispose();
-            ArrayTool.Exist(ArrayTool.FindAll(ArrayTool.Empty<int>().ToReadOnly().ToArray(), ar => true), ar => true);
+            ArrayTool.Exist(ArrayTool.FindAll(ArrayTool.Empty<int>(), ar => true), ar => true);
             new InsideSocketUri(hot_uri);
             new InsideSocketUri();
             watch.Heat_Progress();

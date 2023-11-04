@@ -1,7 +1,6 @@
 ﻿namespace NetPs.Socket
 {
     using System;
-    using System.Linq;
     using System.Net;
     using System.Net.Sockets;
 
@@ -42,8 +41,9 @@
             {
                 return ip_withmask.IsBroadcast();
             }
-            return ip.GetAddressBytes().Last() == 0xff;
+            return ip.GetAddressBytes().LastEq(0xff);
         }
+        internal static bool LastEq(this byte[] bytes, byte val) { return bytes[bytes.Length - 1] == val; }
         public static ISocketUri ResetPort(this ISocketUri uri, int port)
         {
             if (uri is InsideSocketUri inside)

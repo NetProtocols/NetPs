@@ -331,7 +331,7 @@
             return GOST.Final(ref ctx).ToHexString();
         }
     }
-    public class GOST94_CRYPT : IHash
+    public class GOST94_CRYPTO : IHash
     {
         public string Make(byte[] data)
         {

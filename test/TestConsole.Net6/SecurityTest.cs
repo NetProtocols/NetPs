@@ -268,7 +268,7 @@ namespace TestConsole.Net6
                 ["UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU"]
                 = "53A3A3ED25180CEF0C1D85A074273E551C25660A87062A52D926A9E8FE5733A4",
             },
-            ["GOST94_CRYPT"] = new Dictionary<string, string>
+            ["GOST94_CRYPTO"] = new Dictionary<string, string>
             {
                 ["abc"]
                 = "B285056DBF18D7392D7677369524DD14747459ED8143997E163B2986F92FD42C",
@@ -294,6 +294,111 @@ namespace TestConsole.Net6
                 = "CC49B68C195D18D3FEF26F3D4A6554DB62298B96D19FBEFA52A139E8558D0528535569EBDEA172692857EDE3351C02FE9D749EF7273DCECACA5B3E295511650B",
                 ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
                 = "116201023E88D93A4D076BA77207E8702C6CFA6FCC69B82BB22AE6BE9B63F16B19BAAF8771E01E6DC25C2B4486FA3BBF8601905762CBBAD5BA25A1E034879192",
+            },
+            ["HAVAL128_3"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9e40ed883fb63e985d299b40cda2b8f2",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "DE5EB3F7D9EB08FAE7A07D68E3047EC6"
+            },
+            ["HAVAL160_3"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "b21e876c4d391e2a897661149d83576b5530a089",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "97DC988D97CAAE757BE7523C4E8D4EA63007A4B9"
+            },
+            ["HAVAL192_3"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "a7b14c9ef3092319b0e75e3b20b957d180bf20745629e8de",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "DEF6653091E3005B43A61681014A066CD189009D00856EE7"
+            },
+            ["HAVAL224_3"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "5bc955220ba2346a948d2848eca37bdd5eca6ecca7b594bd32923fab",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "939F7ED7801C1CE4B32BC74A4056EEE6081C999ED246907ADBA880A7"
+            },
+            ["HAVAL256_3"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "8699f1e3384d05b2a84b032693e2b6f46df85a13a50d93808d6874bb8fb9e86c",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "899397D96489281E9E76D5E65ABAB751F312E06C06C07C9C1D42ABD31BB6A404"
+            },
+            ["HAVAL128_4"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "6f2132867c9648419adcd5013e532fa2",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "CAD57C0563BDA208D66BB89EB922E2A2"
+            },
+            ["HAVAL160_4"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "77aca22f5b12cc09010afc9c0797308638b1cb9b",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "148334AAD24B658BDC946C521CDD2B1256608C7B"
+            },
+            ["HAVAL192_4"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "7e29881ed05c915903dd5e24a8e81cde5d910142ae66207c",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "E5C9F81AE0B31FC8780FC37CB63BB4EC96496F79A9B58344"
+            },
+            ["HAVAL224_4"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "124c43d2ba4884599d013e8c872bfea4c88b0b6bf6303974cbe04e68",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "3E63C95727E0CD85D42034191314401E42AB9063A94772647E3E8E0F"
+            },
+            ["HAVAL256_4"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "8f409f1bb6b30c5016fdce55f652642261575bedca0b9533f32f5455459142b5",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "46A3A1DFE867EDE652425CCD7FE8006537EAD26372251686BEA286DA152DC35A"
+            },
+            ["HAVAL128_5"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "d054232fe874d9c6c6dc8e6a853519ea",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "4B27D04DDB516BDCDFEB96EB8C7C8E90"
+            },
+            ["HAVAL160_5"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "ae646b04845e3351f00c5161d138940e1fa0c11c",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "6DDBDE98EA1C4F8C7F360FB9163C7C952680AA70"
+            },
+            ["HAVAL192_5"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "d12091104555b00119a8d07808a3380bf9e60018915b9025",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "D651C8AC45C9050810D9FD64FC919909900C4664BE0336D0"
+            },
+            ["HAVAL224_5"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "8081027a500147c512e5f1055986674d746d92af4841abeb89da64ad",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "180AED7F988266016719F60148BA2C9B4F5EC3B9758960FC735DF274"
+            },
+            ["HAVAL256_5"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "976cd6254c337969e5913b158392a2921af16fca51f5601d486e0a9de01156e7",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "B45CB6E62F2B1320E4F8F1B0B273D45ADD47C321FD23999DCF403AC37636D963"
             },
             ["SM3"] = new Dictionary<string, string>
             {

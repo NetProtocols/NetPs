@@ -166,7 +166,7 @@
             }
         }
         public uint Used => Oo.used;
-        public int UsedBytes => (int)(Oo.used<<3) + (byte)(Oo.totalbytes_low % 8);
+        public int UsedBytes => (int)(Oo.used<<3) + (byte)(Oo.totalbytes_low & 0b111);
         public static ulong_buf_reverse New(uint size)
         {
             var buf = new ooo();

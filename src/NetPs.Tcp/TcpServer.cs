@@ -3,7 +3,6 @@
     using NetPs.Socket;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Net.Sockets;
     using System.Reactive.Linq;
 
@@ -196,7 +195,15 @@
         protected override void OnClosed()
         {
             alive = false;
-            this.Connects.ToList().ForEach(con => con.Dispose());
+            int i = 0;
+            lock (this.Connects)
+            {
+                for(i= Connects.Count - 1; i>=0; i--)
+                {
+                    Connects[i].Dispose();
+                }
+                Connects.Clear();
+            }
             closed_function?.Invoke();
             this.events?.OnClosed(this);
             base.OnClosed();
@@ -214,11 +221,18 @@
 
         private void add_connect(ITcpClient client)
         {
-            lock (this.Connects) { this.Connects.Add(client); }
+            lock (this.Connects)
+            {
+                if (alive) this.Connects.Add(client);
+                else client.Dispose();
+            }
         }
         private void remove_connect(ITcpClient client)
         {
-            lock (this.Connects) { this.Connects.Remove(client); }
+            lock (this.Connects)
+            {
+                if (alive) this.Connects.Remove(client);
+            }
         }
     }
 }

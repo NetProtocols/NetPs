@@ -2,7 +2,6 @@
 {
     using NetPs.Socket.Memory;
     using System;
-    using System.Reactive.Linq;
 
     public struct SHA3_CTX
     {
