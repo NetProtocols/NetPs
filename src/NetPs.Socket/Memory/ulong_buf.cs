@@ -14,6 +14,7 @@
             internal ulong totalbytes_high { get; set; }
             internal ulong totalbytes_low { get; set; }
             internal uint used { get; set; }
+            internal byte used_one { get; set; }
             internal uint size { get; set; }
         }
         /// <summary>
@@ -22,11 +23,12 @@
         internal ooo Oo;
         public void SetByte(byte value, int position)
         {
-            Oo.Data[position / 8] |= (ulong)value << (byte)((7- (position & 0b111)) << 3);
+            Oo.Data[position>>3] |= (ulong)value << (byte)((sizeof(ulong)- 1- (position & 0b111)) << 3);
         }
         public void ToNext()
         {
             Oo.used++;
+            Oo.used_one = 0;
         }
         public IEnumerable<uint> Push(byte[] bytes, int offset, int length, int offset_last)
         {
@@ -72,6 +74,7 @@
                     Oo.totalbytes_high++;
                 }
                 Oo.totalbytes_low = temp;
+                Oo.used_one = (byte)(temp & 0b111);
 
                 for (; i + 7 < length;)
                 {
@@ -109,6 +112,7 @@
             }
 
             Oo.used++;
+            Oo.used_one = 0;
             if (Oo.used >= Oo.size)
             {
                 Oo.used = 0;
@@ -118,6 +122,7 @@
         {
             Oo.Data[Oo.used++] = (Oo.totalbytes_high << 3)  | ((Oo.totalbytes_low & 0xfff0000000000000)>>52);
             Oo.Data[Oo.used++] = Oo.totalbytes_low << 3;
+            Oo.used_one = 0;
             if (Oo.used >= Oo.size)
             {
                 Oo.used = 0;
@@ -129,6 +134,7 @@
             {
                 Oo.Data[Oo.used] = x;
             }
+            Oo.used_one = 0;
             if (Oo.used >= Oo.size)
             {
                 Oo.used = 0;
@@ -137,6 +143,7 @@
         public void PushNext(uint x)
         {
             Oo.Data[Oo.used++] = x;
+            Oo.used_one = 0;
             if (Oo.used >= Oo.size)
             {
                 Oo.used = 0;
@@ -150,7 +157,7 @@
             else
             {
                 bool r;
-                if (Oo.used + offset == Oo.size) r = Oo.totalbytes_low != 0;
+                if (Oo.used + offset == Oo.size) r = Oo.used_one != 0;
                 // 中间
                 else r = Oo.used + offset > Oo.size;
                 // 填充之后的数据, be已经满了!
@@ -159,7 +166,7 @@
             }
         }
         public uint Used => Oo.used;
-        public int UsedBytes => (int)(Oo.used << 3) + (byte)(Oo.totalbytes_low % 8);
+        public int UsedBytes => (int)(Oo.used << 3) + Oo.used_one;
         public static ulong_buf New(uint size)
         {
             var buf = new ooo();

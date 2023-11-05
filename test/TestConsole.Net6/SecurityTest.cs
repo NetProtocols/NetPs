@@ -300,7 +300,11 @@ namespace TestConsole.Net6
                 ["abc"]
                 = "9e40ed883fb63e985d299b40cda2b8f2",
                 ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
-                = "DE5EB3F7D9EB08FAE7A07D68E3047EC6"
+                = "DE5EB3F7D9EB08FAE7A07D68E3047EC6",
+                ["0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567"]
+                = "e096bbfa6992e39f3a76fee98c99e354",
+                ["012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456"]
+                = "7c766f7ca98961b152550c528584e58a"
             },
             ["HAVAL160_3"] = new Dictionary<string, string>
             {
@@ -412,6 +416,321 @@ namespace TestConsole.Net6
                 = "2971d10c8842b70c979e55063480c50bacffd90e98e2e60d2512ab8abfdfcec5",
                 ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
                 = "ad81805321f3e69d251235bf886a564844873b56dd7dde400f055b7dde39307a",
+            },
+            ["FNV1_32"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "439c2f4b"
+            },
+            ["FNV1_32A"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "1a47e90b"
+            },
+            ["FNV1_64"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "d8dcca186bafadcb"
+            },
+            ["FNV1_64A"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "e71fa2190541574b"
+            },
+            ["JOAAT"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "ed131f5b"
+            },
+            ["ADLER32"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "024d0127"
+            },
+            ["ADLER64"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "0000024d00000127"
+            },
+            ["CRC32"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "352441C2"
+            },
+            ["CRC32_BZIP2"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "648CBB73"
+            },
+            ["CRC32_C"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "364B3FB7"
+            },
+            ["CRC32_D"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "5832F57E"
+            },
+            ["CRC32_MPEG2"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9B73448C"
+            },
+            ["CRC32_POSIX"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "D3E8C673"
+            },
+            ["CRC32_Q"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9590B5B0"
+            },
+            ["CRC32_JAMCRC"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "CADBBE3D"
+            },
+            ["CRC32_XFER"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "3EB041D1"
+            },
+            ["CRC8"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "5F"
+            },
+            ["CRC8_SAE_J1850"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9A"
+            },
+            ["CRC8_SAE_J1850_ZERO"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "6B"
+            },
+            ["CRC8_8H2F"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "41"
+            },
+            ["CRC8_CDMA2000"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "33"
+            },
+            ["CRC8_DARC"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "0D"
+            },
+            ["CRC8_DVB_S2"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "5A"
+            },
+            ["CRC8_EBU"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "F7"
+            },
+            ["CRC8_ICODE"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "66"
+            },
+            ["CRC8_ITU"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "0A"
+            },
+            ["CRC8_MAXIM"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "42"
+            },
+            ["CRC8_ROHC"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "24"
+            },
+            ["CRC8_WCDMA"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "2B"
+            },
+            ["CRC16_CCIT_ZERO"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9DD6"
+            },
+            ["CRC16_ARC"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9738"
+            },
+            ["CRC16_AUG_CCITT"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "8CDA"
+            },
+            ["CRC16_BUYPASS"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "CADB"
+            },
+            ["CRC16_CCITT_FALSE"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "514A"
+            },
+            ["CRC16_CDMA2000"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "F9C7"
+            },
+            ["CRC16_DDS_110"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "EEDB"
+            },
+            ["CRC16_DECT_R"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "1A21"
+            },
+            ["CRC16_DECT_X"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "1A20"
+            },
+            ["CRC16_DNP"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "E957"
+            },
+            ["CRC16_EN_13757"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "571C"
+            },
+            ["CRC16_GENIBUS"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "AEB5"
+            },
+            ["CRC16_MAXIM"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "68C7"
+            },
+            ["CRC16_MCRF4XX"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "61DA"
+            },
+            ["CRC16_RIELLO"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "0CAF"
+            },
+            ["CRC16_T10_DIF"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "443B"
+            },
+            ["CRC16_TELEDISK"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "8089"
+            },
+            ["CRC16_TMS37157"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "70E6"
+            },
+            ["CRC16_USB"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "A8B6"
+            },
+            ["CRC16_A"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "FDFD"
+            },
+            ["CRC16_KERMIT"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "58E9"
+            },
+            ["CRC16_MODBUS"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "5749"
+            },
+            ["CRC16_X_25"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9E25"
+            },
+            ["CRC16_XMODEM"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9DD6"
+            },
+            ["CRC64_ECMA_182"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "66501A349A0E0855"
+            },
+            ["CRC64_GO_ISO"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "3776C42000000000"
+            },
+            ["CRC64_WE"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "048B813AF9F49702"
+            },
+            ["CRC64_XZ"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "2CD8094A1A277627"
+            },
+            ["FLETCHER16"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "4c27"
+            },
+            ["FLETCHER32"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "024a0126"
+            },
+            ["FLETCHER64"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "0000024a00000126"
+            },
+            ["MURMUR_X86_128"] = new Dictionary<string, string>
+            {
+                ["xxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+                = "5e40bab278825a164cf929d31fec6047"
+            },
+            ["MURMUR_X86_32"] = new Dictionary<string, string>
+            {
+                ["xxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+                = "8905ac28"
+            },
+            ["MURMUR_X64_128"] = new Dictionary<string, string>
+            {
+                ["xxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+                = "becf7e04dbcf74637751664ef66e73e0"
             }
         };
     }

@@ -190,12 +190,16 @@
         internal static byte[] Final(ref HAVAL_CTX ctx)
         {
             if (ctx.buffer.IsFULL()) ProcessBlock(ref ctx);
-            ctx.buffer.PushNext(0x01);
-            if (ctx.buffer.IsFULL(2)) ProcessBlock(ref ctx);
-            if ((ctx.buffer.UsedBytes & 0b11) > 2 &&  ctx.buffer.Used == BLOCK_SIZE - 2)
+            // 128 - 10 = 118 bit
+            if (ctx.buffer.UsedBytes >= 118)
             {
+                ctx.buffer.PushNext(0x01);
                 ctx.buffer.Fill(0, 0);
                 ProcessBlock(ref ctx);
+            }
+            else
+            {
+                ctx.buffer.PushNext(0x01);
             }
             // 10bit
             ctx.buffer.Fill(0, 2);

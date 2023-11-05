@@ -52,6 +52,13 @@
                 data[offset + i] = (byte)(num >> ((7 - i) << 3));
             }
         }
+        internal static void CopyFrom_Reverse2(this byte[] data, ulong num, int offset, byte count = sizeof(ulong))
+        {
+            for (byte i = 0; i < count; i++)
+            {
+                data[offset + i] = (byte)(num >> (((11 - i)& 7) << 3));
+            }
+        }
         internal static void CopyFrom(this byte[] data, int data_offset, ulong[][] array, int offset, uint length, uint array_length = 5)
         {
             int i, j = offset;
@@ -83,6 +90,35 @@
                 data[i + 2] = (byte)((nums[offset + j] >> 8) & 0xff);
                 data[i + 3] = (byte)((nums[offset + j]) & 0xff);
             }
+        }
+        //反转bit
+        internal static byte Bitrev(byte x)
+        {
+            byte i;
+            byte tmp;
+            for (i = 0, tmp = 0; i < 8; i++, x >>= 1) if ((x & 1) == 1) tmp |= (byte)(1 << (7 - i));
+            return tmp;
+        }
+        internal static ushort Bitrev(ushort x)
+        {
+            byte i;
+            ushort tmp;
+            for (i = 0, tmp = 0; i < 16; i++, x >>= 1) if ((x & 1) == 1) tmp |= (ushort)(1 << (15 - i));
+            return tmp;
+        }
+        internal static ulong Bitrev(ulong x)
+        {
+            byte i;
+            ulong tmp;
+            for (i = 0, tmp = 0; i < 64; i++, x >>= 1) if ((x & 1) == 1) tmp |= (ulong)1 << (63 - i);
+            return tmp;
+        }
+        internal static uint Bitrev(uint x)
+        {
+            byte i;
+            uint tmp;
+            for (i = 0, tmp = 0; i < 32; i++, x >>= 1) if ((x & 1) == 1) tmp |= (uint)1 << (31 - i);
+            return tmp;
         }
     }
 }
