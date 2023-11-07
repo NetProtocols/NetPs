@@ -208,30 +208,42 @@
 
     public class MURMUR_X86_128 : IHash
     {
+        public static int DEFAILT_SEED = 123;
+        public int Seed { get; set; }
+        public MURMUR_X86_128() { this.Seed = DEFAILT_SEED; }
+        public MURMUR_X86_128(int seed) { this.Seed = seed; }
         public string Make(byte[] data)
         {
             var ctx = MURMUR.Init_X86_128();
-            ctx.SetSeed(123);
+            ctx.SetSeed(Seed);
             MURMUR.Update(ref ctx, data, data.Length);
             return MURMUR.Final(ref ctx).ToHexString();
         }
     }
     public class MURMUR_X86_32 : IHash
     {
+        public static int DEFAILT_SEED = 1234;
+        public int Seed { get; set; }
+        public MURMUR_X86_32() { this.Seed = DEFAILT_SEED; }
+        public MURMUR_X86_32(int seed) { this.Seed = seed; }
         public string Make(byte[] data)
         {
             var ctx = MURMUR.Init_X86_32();
-            ctx.SetSeed(1234);
+            ctx.SetSeed(Seed);
             MURMUR.Update(ref ctx, data, data.Length);
             return MURMUR.Final(ref ctx).ToHexString();
         }
     }
     public class MURMUR_X64_128 : IHash
     {
+        public static long DEFAILT_SEED = 123;
+        public long Seed { get; set; }
+        public MURMUR_X64_128() { this.Seed = DEFAILT_SEED; }
+        public MURMUR_X64_128(long seed) { this.Seed = seed; }
         public string Make(byte[] data)
         {
             var ctx = MURMUR.Init_X64_128();
-            ctx.SetSeed(123);
+            ctx.SetSeed(Seed);
             MURMUR.Update(ref ctx, data, data.Length);
             return MURMUR.Final(ref ctx).ToHexString();
         }

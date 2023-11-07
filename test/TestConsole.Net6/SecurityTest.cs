@@ -196,6 +196,26 @@ namespace TestConsole.Net6
                 ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
                 = "24c508adefdf5e3f2596e8b5a888fe10eb7b5b22e1f35d858e6eff3025c4cc18",
             },
+            ["KECCAK_224"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "c30411768506ebe1c2871b1ee2e87d38df342317300a9b97a95ec6a8"
+            },
+            ["KECCAK_256"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45"
+            },
+            ["KECCAK_384"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "f7df1165f033337be098e7d288ad6a2f74409d7a60b49c36642218de161b1f99f8c681e4afaf31a34db29fb763e3c28e"
+            },
+            ["KECCAK_512"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "18587dc2ea106b9a1563e32b3312421ca164c7f1f07bc922a9c83d77cea3a1e5d0c69910739025372dc14ac9642629379540c17e2a65b19d77aa511a9d00bb96"
+            },
             ["RIPEMD128"] = new Dictionary<string, string>
             {
                 ["abc"]
@@ -731,6 +751,112 @@ namespace TestConsole.Net6
             {
                 ["xxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
                 = "becf7e04dbcf74637751664ef66e73e0"
+            },
+            ["BCC"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "60"
+            },
+            ["LRC"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "DA"
+            },
+            ["CHECKSUM8"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "DA"
+            },
+            ["CHECKSUM16"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "9d9e"
+            },
+            ["BLAKE256"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "1833a9fa7cf4086bd5fda73da32e5a1d75b4c3f89d5c436369f9d78bb2da5c28",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "7542c21b016b4d630d37b5f34ddc4c602e064d33746948f1d3f30ef17c3eedf5",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "4e6d62c426a2ebd4ee9c3ae673bafb6f10c35ed731a5bf5fb26ab7e4cba12398",
+            },
+            ["BLAKE224"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "7c270941a0b4a412db099b710da90112ce49f8510add4f896c07ace4",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "8b32d423b3386ff3c6844935e37fd27b2ac11b45f218797ef6e82cd1",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "c1e5e2b546de517d9e12b0743fee9f45fd3da39e545453f251bf7480",
+            },
+            ["BLAKE384"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "fcbbe2a60f9d4bfabf2e018cc3b1628d520d6b325d5e90a8d196f3948811a952823349236daf0c49be6a214ede021aaa",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "a8ee3028c6af66e7dffc73ee054205222a835ec9a754b32be2db946af4b3d7d0b0ce198953dbb03a5aa0c7bed1622b69",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "399250093f270a34ff22cbcc06c255d869d0d8f692e35ca79539721dcae4869c9570bc3b050c6076c0e8651303ec4175",
+            },
+            ["BLAKE512"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "14266c7c704a3b58fb421ee69fd005fcc6eeff742136be67435df995b7c986e7cbde4dbde135e7689c354d2bc5b8d260536c554b4f84c118e61efc576fed7cd3",
+                ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"]
+                = "e674fd9f9024150fe7f4c9bf3bb1b314df9ebd1a1640256f87ebed11a9a751cd3b5867a44d3b92aaa4f52f14851af494193fa18156e48df3120a4aa73fe85f59",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "5a58387f673ec8494f0eccd6be55d8a31fce0b35881ceab96d133180ea9d62be9fe0b5ebd4962e134eab347ca4dceceafcc2c7c085c140a2583d8260c06844a7",
+            },
+            ["BLAKE2b_160"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "384264f676f39536840523f284921cdc68b6846b",
+            },
+            ["BLAKE2b_256"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "a4705bbca1ae2e7a5d184a403a15f36c31c7e567adeae33f0f3e2f3ca9958198",
+            },
+            ["BLAKE2b_384"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "6f56a82c8e7ef526dfe182eb5212f7db9df1317e57815dbda46083fc30f54ee6c66ba83be64b302d7cba6ce15bb556f4",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "1ce12d72189f06f1b95c16f4bf7e0685519bc1065eae2efd015a31db13bd123ea8f8bf83a8682ad29e3828a0a0af299c",
+            },
+            ["BLAKE2b_512"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d17d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "686f41ec5afff6e87e1f076f542aa466466ff5fbde162c48481ba48a748d842799f5b30f5b67fc684771b33b994206d05cc310f31914edd7b97e41860d77d282",
+            },
+            ["BLAKE2s_128"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "aa4938119b1dc7b87cbad0ffd200d0ae",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "d0b88b4a58efa805a1f7642865edd050",
+            },
+            ["BLAKE2s_160"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "5ae3b99be29b01834c3b508521ede60438f8de17",
+            },
+            ["BLAKE2s_224"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "0b033fc226df7abde29f67a05d3dc62cf271ef3dfea4d387407fbd55",
+            },
+            ["BLAKE2s_256"] = new Dictionary<string, string>
+            {
+                ["abc"]
+                = "508c5e8c327c14e2e1a72ba34eeb452f37458b209ed63a294d999b4c86675982",
+                ["12345678901234567890123456789012345678901234567890123456789012345678901234567890"]
+                = "fdaedb290a0d5af9870864fec2e090200989dc9cd53a3c092129e8535e8b4f66",
             }
         };
     }

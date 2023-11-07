@@ -199,6 +199,11 @@
                     ctx.buffer.SetByte(0x1F, i);
                     ctx.buffer.SetByte(0x80, (int)(ctx.r - 1));
                 }
+                else if (ctx.keccak)
+                {
+                    ctx.buffer.SetByte(0x01, i);
+                    ctx.buffer.SetByte(0x80, (int)(ctx.r - 1));
+                }
                 else
                 {
                     ctx.buffer.SetByte(0x06, i);
@@ -210,6 +215,10 @@
                 if (ctx.shake)
                 {
                     ctx.buffer.SetByte(0x9f, i);
+                }
+                else if (ctx.keccak)
+                {
+                    ctx.buffer.SetByte(0x81, i);
                 }
                 else
                 {
@@ -297,6 +306,46 @@
         public string Make(byte[] data)
         {
             var ctx = SHA3.Init(256, true);
+            SHA3.Update(ref ctx, data, data.Length);
+            return SHA3.Final(ref ctx).ToHexString();
+        }
+    }
+    public class KECCAK_224 : IHash
+    {
+        public string Make(byte[] data)
+        {
+            var ctx = SHA3.Init(224);
+            ctx.keccak = true;
+            SHA3.Update(ref ctx, data, data.Length);
+            return SHA3.Final(ref ctx).ToHexString();
+        }
+    }
+    public class KECCAK_256 : IHash
+    {
+        public string Make(byte[] data)
+        {
+            var ctx = SHA3.Init(256);
+            ctx.keccak = true;
+            SHA3.Update(ref ctx, data, data.Length);
+            return SHA3.Final(ref ctx).ToHexString();
+        }
+    }
+    public class KECCAK_384 : IHash
+    {
+        public string Make(byte[] data)
+        {
+            var ctx = SHA3.Init(384);
+            ctx.keccak = true;
+            SHA3.Update(ref ctx, data, data.Length);
+            return SHA3.Final(ref ctx).ToHexString();
+        }
+    }
+    public class KECCAK_512 : IHash
+    {
+        public string Make(byte[] data)
+        {
+            var ctx = SHA3.Init(512);
+            ctx.keccak = true;
             SHA3.Update(ref ctx, data, data.Length);
             return SHA3.Final(ref ctx).ToHexString();
         }

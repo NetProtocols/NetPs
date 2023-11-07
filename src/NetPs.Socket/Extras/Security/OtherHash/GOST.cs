@@ -245,7 +245,7 @@
         internal static byte[] Final(ref GOST94_CTX ctx)
         {
             if (ctx.buffer.IsFULL()) ProcessBlock_SUM(ref ctx);
-            else
+            else if (ctx.buffer.UsedBytes != 0)
             {
                 // padding
                 ctx.buffer.PushNext(0x00);

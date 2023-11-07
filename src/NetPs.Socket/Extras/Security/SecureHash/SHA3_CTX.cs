@@ -7,6 +7,7 @@
     {
         internal uint kind { get; set; }
         internal bool shake { get; set; }
+        internal bool keccak { get; set; }
         internal ulong[][] lane { get; set; }
         internal uint b { get; set; }
         internal uint r { get; set; }

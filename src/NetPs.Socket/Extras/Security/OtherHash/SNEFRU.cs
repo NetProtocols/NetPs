@@ -64,7 +64,7 @@
         internal static byte[] Final(ref SNEFRU_CTX ctx)
         {
             if (ctx.buffer.IsFULL()) ProcessBlock(ref ctx);
-            else
+            else if (ctx.buffer.UsedBytes != 0)
             {
                 ctx.buffer.PushNext(0x00);
                 if (ctx.buffer.IsFULL()) ProcessBlock(ref ctx);
