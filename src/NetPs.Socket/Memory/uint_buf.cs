@@ -41,7 +41,7 @@
                 {
                     for (; x > 1; x--, i++)
                     {
-                        Oo.Data[Oo.used] |= (uint)((bytes[i] << ((3 - x)<< 3)));
+                        Oo.Data[Oo.used] |= (uint)((bytes[i] << ((x ^ 3)<< 3)));
                         if (length == i) break;
                     }
                     if (x != 0) break;

@@ -46,14 +46,8 @@
 
             for (j = 0; j < HASH_ROUND_NUM; j++)
             {
-                for (k = 0; k < HASH_BLOCK_SIZE; k++)
-                {
-                    m = ctx.state[k] = (byte)(ctx.state[k] ^ S[m]);
-                }
-                for (k = 0; k < HASH_BLOCK_SIZE<<1; k++)
-                {
-                    m = x[k] = (byte)(x[k] ^ S[m]);
-                }
+                for (k = 0; k < HASH_BLOCK_SIZE; k++)       m = ctx.state[k] = (byte)(ctx.state[k] ^ S[m]);
+                for (k = 0; k < HASH_BLOCK_SIZE<<1; k++)    m = x[k] = (byte)(x[k] ^ S[m]);
                 m = (byte)((m + j) % 256);
             }
         }

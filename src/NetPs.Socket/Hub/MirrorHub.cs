@@ -22,39 +22,26 @@
              
             this.mirror.Limit(limit);
             this.client.Limit(limit);
-            mirror.SocketClosed += Mirror_SocketClosed;
-            this.client.SocketClosed += Tcp_SocketClosed;
             this.is_init = true;
         }
-
-        private void Tcp_SocketClosed(object sender, EventArgs e)
+        private void OnSocketClosed(object sender, EventArgs e)
         {
-            this.client.SocketClosed -= Tcp_SocketClosed;
-            if (this.mirror.IsClosed)
-            {
-                this.Dispose();
-            }
-            else
+            mirror.SocketClosed -= OnSocketClosed;
+            client.SocketClosed -= OnSocketClosed;
+            cmd_stop();
+            this.Dispose();
+        }
+        internal void cmd_stop()
+        {
+            if (!this.mirror.IsClosed)
             {
                 this.mirror.StopClient();
             }
-        }
-
-        private void Mirror_SocketClosed(object sender, EventArgs e)
-        {
-            mirror.SocketClosed -= Mirror_SocketClosed;
-            //关闭告知
-            if (this.client.IsClosed)
-            {
-                this.Dispose();
-            }
-            else
+            if (!this.client.IsClosed)
             {
                 this.client.StopClient();
             }
         }
-
-
         public virtual void Dispose()
         {
             lock (this)
@@ -71,16 +58,19 @@
             try
             {
                 this.mirror.StartClient(this.Mirror_Address);
-                if (this.mirror.IsClosed) return;
-                if (this.client.Actived)
+                if (this.mirror.Actived && this.client.Actived)
                 {
+                    //监听断开事件
+                    mirror.SocketClosed += OnSocketClosed;
+                    this.client.SocketClosed += OnSocketClosed;
+
                     this.client.UseTx(this.mirror);
                     this.mirror.GetRx().StartReceive();
                     this.client.GetRx().StartReceive();
                 }
                 else
                 {
-                    this.mirror.StopClient();
+                    cmd_stop();
                 }
                 return;
             }
@@ -90,7 +80,7 @@
                 Debug.Assert(false);
                 Hub.ThrowException(e);
             }
-            if (! this.mirror.IsClosed) this.mirror.StopClient();
+            cmd_stop();
         }
 
         protected override void OnClosed()

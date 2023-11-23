@@ -21,3 +21,10 @@
 ```
 var test = new WolTest();
 ```
+### 04. SecurityTest
+测试加密、解密函数。
+
+观测目标：计算后与预定值相同。
+```
+var test = new SecurityTest();
+```

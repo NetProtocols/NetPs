@@ -192,27 +192,17 @@
             this.manualResetEvent.Close();
             base.Dispose();
         }
-
-        private void just_start_connect()
-        {
-            this.start_connect();
-        }
-
         private bool connect_task(int timeout)
         {
             if (this.is_disposed) return false;
             try
             {
                 manualResetEvent.Reset();
-                var _task = Task.Factory.StartNew(this.just_start_connect);
+                this.start_connect(false);
                 if (manualResetEvent.WaitOne(timeout, false))
                 {
                     if (!this.is_connected || this.is_disposed) return false;
                     return true;
-                }
-                else
-                {
-                    AsyncResult.Close();
                 }
             }
             catch when (this.IsClosed) { Debug.Assert(false); }
@@ -224,7 +214,7 @@
             return false;
         }
 
-        protected virtual void start_connect()
+        protected virtual void start_connect(bool wait = true)
         {
             if (this.is_disposed) return;
             if (! to_opened()) return;
@@ -233,7 +223,7 @@
                 AsyncResult = this.BeginConnect(this.RemoteIPEndPoint, this.connect_callback);
                 if (AsyncResult != null)
                 {
-                    AsyncResult.Wait();
+                    if (wait) AsyncResult.Wait();
                     return;
                 }
             }

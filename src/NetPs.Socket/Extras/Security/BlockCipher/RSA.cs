@@ -1,4 +1,4 @@
-﻿namespace NetPs.Socket.Extras.Security.RSA
+﻿namespace NetPs.Socket.Extras.Security.BlockCipher
 {
     using System;
     internal class RSA
@@ -22,7 +22,7 @@
                 q = gcd / a;
                 r = gcd % a;
                 m = x - u * q;
-                n = y-v * q;
+                n = y - v * q;
                 gcd = a;
                 a = r;
                 x = u;
@@ -40,34 +40,34 @@
             if ((a & 1) == 1)
             {
                 product = modmult(a >> 1, b, mod);
-                if ((product << 1 ) > product)
+                if (product << 1 > product)
                 {
                     return ((product << 1) % mod + b) % mod;
                 }
             }
             product = modmult(a >> 1, b, mod);
-            if ((product << 1) > product)
+            if (product << 1 > product)
             {
                 return (product << 1) % mod;
             }
             ulong sum = 0;
             while (b > 0)
             {
-                if ((b &1) == 1)
+                if ((b & 1) == 1)
                 {
                     sum = (sum + a) % mod;
                 }
-                a = (2*a) % mod;
+                a = 2 * a % mod;
                 b >>= 1;
             }
             return sum;
         }
         internal static long modExp(ulong b, ulong e, ulong m)
         {
-            ulong product= 1;
+            ulong product = 1;
             if (b < 0 || e < 0 || m <= 0) return -1;
             b = b % m;
-            while(e > 0)
+            while (e > 0)
             {
                 if ((e & 1) == 1) product = modmult(product, b, m);
                 b = modmult(b, b, m);

@@ -43,7 +43,7 @@
                 {
                     for (; x > 1; x--, i++)
                     {
-                        Oo.Data[Oo.used] |= (ulong)bytes[i] << ((7 - x) << 3);
+                        Oo.Data[Oo.used] |= (ulong)bytes[i] << ((x ^ 7) << 3);
                         if (length == i) break;
                     }
                     if (x != 0) break;

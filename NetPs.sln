@@ -25,6 +25,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetPs.Udp", "src\NetPs.Udp\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TestConsole.Net6", "test\TestConsole.Net6\TestConsole.Net6.csproj", "{F4558487-7BB0-461F-97E2-F83D707DC1BD}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetPs.DDNS", "src\NetPs.DDNS\NetPs.DDNS.csproj", "{CA53B7A6-8F29-4C8A-8ECB-972B3D62E115}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,10 @@ Global
 		{F4558487-7BB0-461F-97E2-F83D707DC1BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4558487-7BB0-461F-97E2-F83D707DC1BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4558487-7BB0-461F-97E2-F83D707DC1BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA53B7A6-8F29-4C8A-8ECB-972B3D62E115}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA53B7A6-8F29-4C8A-8ECB-972B3D62E115}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA53B7A6-8F29-4C8A-8ECB-972B3D62E115}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA53B7A6-8F29-4C8A-8ECB-972B3D62E115}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

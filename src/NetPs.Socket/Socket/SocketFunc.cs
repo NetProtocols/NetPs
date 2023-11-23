@@ -42,6 +42,7 @@
         public virtual bool IsSocketClosed { get; private set; } = false;
         public event EventHandler SocketClosed;
         private ManualResetEvent manualResetEvent { get; set; }
+        public bool EventRunning { get; internal set; }
         public SocketFunc()
         {
             manualResetEvent = new ManualResetEvent(false);
@@ -226,7 +227,8 @@
              */
             if (this.Socket.Blocking)
             {
-                this.manualResetEvent.Reset();
+                E_Reset();
+                if (this.EventRunning)
                 do this.manualResetEvent.WaitOne(10, false); while ((timeout -= 10) > 0 && this.Socket.Connected);
                 wait = true;
             }
@@ -330,7 +332,7 @@
 #endif
                 received = this.Socket.EndReceive(asyncResult);
             }
-            this.manualResetEvent.Set();
+            E_Set();
             if (this.Address.IsTcp())
             {
                 if (received <= 0)
@@ -366,7 +368,7 @@
 #endif
                     sended = this.Socket.EndSend(asyncResult);
             }
-            this.manualResetEvent.Set();
+            E_Set();
             asyncResult.Close();
 
             if (!this.Actived)
@@ -392,7 +394,7 @@
 #endif
                     sended = this.Socket.EndSendTo(asyncResult);
             }
-            this.manualResetEvent.Set();
+            E_Set();
             asyncResult.Close();
 
             if (!this.Actived)
@@ -432,7 +434,24 @@
             }
             return new IPEndPoint(IPAddress.Any, 0);
         }
-
+        internal void E_Reset()
+        {
+            lock (this.manualResetEvent)
+            {
+                if (this.EventRunning) return;
+                EventRunning = true;
+                this.manualResetEvent.Reset();
+            }
+        }
+        internal void E_Set()
+        {
+            lock (this.manualResetEvent)
+            {
+                if (!this.EventRunning) return;
+                EventRunning = false;
+                this.manualResetEvent.Set();
+            }
+        }
         #region deal unhandled exceptions
         private static bool unhandled_exception = false;
         internal static void register_unhandled()

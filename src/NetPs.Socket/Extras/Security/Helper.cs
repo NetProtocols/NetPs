@@ -42,14 +42,14 @@
         {
             for (byte i = 0; i< count; i++)
             {
-                data[offset + i] = (byte)(num >> ((3 - i)<< 3));
+                data[offset + i] = (byte)(num >> ((i ^ 3)<< 3));
             }
         }
         internal static void CopyFrom_Reverse(this byte[] data, ulong num, int offset, byte count = sizeof(ulong))
         {
             for (byte i = 0; i< count; i++)
             {
-                data[offset + i] = (byte)(num >> ((7 - i) << 3));
+                data[offset + i] = (byte)(num >> ((i ^ 7) << 3));
             }
         }
         internal static void CopyFrom_Reverse2(this byte[] data, ulong num, int offset, byte count = sizeof(ulong))
@@ -83,12 +83,11 @@
         }
         internal static void CopyFrom_Reverse(this byte[] data, int data_offset, uint[] nums, int offset, int length)
         {
-            for (int i = data_offset, j = 0; j < length; i += 4, j++)
+            uint i, j;
+            byte k;
+            for (i = (uint)data_offset, j = 0; j < length; i += 4, j++)
             {
-                data[i] = (byte)((nums[offset + j] >> 24) & 0xff);
-                data[i + 1] = (byte)((nums[offset + j] >> 16) & 0xff);
-                data[i + 2] = (byte)((nums[offset + j] >> 8) & 0xff);
-                data[i + 3] = (byte)((nums[offset + j]) & 0xff);
+                for (k = 0; k < 4; k++) data[i + k] = (byte)(nums[offset + j] >> ((k ^ 3) << 3));
             }
         }
         //反转bit
@@ -96,28 +95,28 @@
         {
             byte i;
             byte tmp;
-            for (i = 0, tmp = 0; i < 8; i++, x >>= 1) if ((x & 1) == 1) tmp |= (byte)(1 << (7 - i));
+            for (i = 0, tmp = 0; i < 8; i++, x >>= 1) if ((x & 1) == 1) tmp |= (byte)(1 << (i ^ 7));
             return tmp;
         }
         internal static ushort Bitrev(ushort x)
         {
             byte i;
             ushort tmp;
-            for (i = 0, tmp = 0; i < 16; i++, x >>= 1) if ((x & 1) == 1) tmp |= (ushort)(1 << (15 - i));
+            for (i = 0, tmp = 0; i < 16; i++, x >>= 1) if ((x & 1) == 1) tmp |= (ushort)(1 << (i ^ 15));
             return tmp;
         }
         internal static ulong Bitrev(ulong x)
         {
             byte i;
             ulong tmp;
-            for (i = 0, tmp = 0; i < 64; i++, x >>= 1) if ((x & 1) == 1) tmp |= (ulong)1 << (63 - i);
+            for (i = 0, tmp = 0; i < 64; i++, x >>= 1) if ((x & 1) == 1) tmp |= (ulong)1 << (i ^ 63);
             return tmp;
         }
         internal static uint Bitrev(uint x)
         {
             byte i;
             uint tmp;
-            for (i = 0, tmp = 0; i < 32; i++, x >>= 1) if ((x & 1) == 1) tmp |= (uint)1 << (31 - i);
+            for (i = 0, tmp = 0; i < 32; i++, x >>= 1) if ((x & 1) == 1) tmp |= (uint)1 << (i ^ 31);
             return tmp;
         }
     }

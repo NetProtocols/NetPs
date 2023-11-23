@@ -49,7 +49,7 @@
 #### 1.3.6 HAVAL  
 1992年公布；已被证实是不安全的。 输出分别为128bit、160bit、192bit、224bit、256bit。  
 #### 1.3.7 BLAKE
-
+BLAKE256、BLAKE512、BLAKE2s、BLAKE2b，后续2.0版本增加BLAKE3。
 ##### 1.3.8 非加密型
 ###### 1.3.8.1 FNV
 2011年公布，输出分别为32bit、64bit。
@@ -84,7 +84,5 @@
 ### 3.2 RC5
 ### 3.2 RC6
 
-
-## 4. Check
-### 4.1 MurmurHash
-2008年公布;
+## 4.对称加密算法
+### AES、Camellia、CLEFIA、KASUMI

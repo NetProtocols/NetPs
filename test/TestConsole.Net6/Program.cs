@@ -1,19 +1,6 @@
-﻿using NetPs.Socket;
+﻿using System;
+using NetPs.Socket;
 using NetPs.Socket.Eggs;
-using NetPs.Socket.Packets;
-using NetPs.Tcp;
-using NetPs.Tcp.Hole;
-using NetPs.Udp.Hole;
-using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
-using NetPs.Udp.Wol;
-using NetPs.Socket.Extras.Security.MessageDigest;
-using System.Text;
-using NetPs.Socket.Memory;
-using NetPs.Socket.Extras.Security.SecureHash;
-using NetPs.Socket.Extras.Security;
-using NetPs.Socket.Extras.Security.Morse;
 
 namespace TestConsole.Net6
 {
